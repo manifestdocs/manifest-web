@@ -192,7 +192,7 @@
 
 	.time-marker {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		position: relative;
 		margin-left: -50px;
 	}
