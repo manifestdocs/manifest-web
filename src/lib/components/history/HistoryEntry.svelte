@@ -31,16 +31,20 @@
 		};
 	});
 
-	function handleFeatureClick() {
+	function handleFeatureClick(event: MouseEvent) {
+		event.stopPropagation();
 		onFeatureClick?.(entry.feature_id);
 	}
 
-	function toggleExpand() {
-		isExpanded = !isExpanded;
+	function handleEntryClick() {
+		if (body) {
+			isExpanded = !isExpanded;
+		}
 	}
 </script>
 
-<div class="history-entry" class:has-body={body !== null}>
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<div class="history-entry" class:has-body={body !== null} onclick={handleEntryClick}>
 	<div class="entry-header">
 		<button type="button" class="feature-link" onclick={handleFeatureClick}>
 			<StateIcon state={entry.feature_state} size={12} />
@@ -56,19 +60,11 @@
 			</span>
 		{/if}
 		{#if body}
-			<button type="button" class="expand-toggle" onclick={toggleExpand} aria-expanded={isExpanded}>
-				<svg
-					width="12"
-					height="12"
-					viewBox="0 0 12 12"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					class:rotated={isExpanded}
-				>
+			<span class="expand-indicator" class:rotated={isExpanded}>
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
 					<path d="M3 4.5L6 7.5L9 4.5" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
-			</button>
+			</span>
 		{/if}
 	</div>
 	{#if body && isExpanded}
@@ -86,6 +82,17 @@
 		padding: 4px 0;
 		font-size: 13px;
 		line-height: 1.4;
+	}
+
+	.history-entry.has-body {
+		cursor: pointer;
+	}
+
+	.history-entry.has-body:hover {
+		background: var(--background-subtle);
+		margin: 0 -8px;
+		padding: 4px 8px;
+		border-radius: 4px;
 	}
 
 	.entry-header {
@@ -140,29 +147,16 @@
 		color: var(--accent-blue);
 	}
 
-	.expand-toggle {
+	.expand-indicator {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		background: none;
-		border: none;
 		padding: 2px;
-		cursor: pointer;
 		color: var(--foreground-subtle);
-		border-radius: 3px;
-		transition: background-color 0.15s ease;
-	}
-
-	.expand-toggle:hover {
-		background: var(--background-muted);
-		color: var(--foreground);
-	}
-
-	.expand-toggle svg {
 		transition: transform 0.15s ease;
 	}
 
-	.expand-toggle svg.rotated {
+	.expand-indicator.rotated {
 		transform: rotate(180deg);
 	}
 
