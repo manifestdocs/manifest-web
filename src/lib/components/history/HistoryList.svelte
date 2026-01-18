@@ -95,9 +95,7 @@
 			{#each groupedEntries as group, i (group.label + i)}
 				<div class="time-group">
 					<div class="time-marker">
-						<div class="line-top"></div>
 						<span class="pill">{group.label}</span>
-						<div class="line-bottom"></div>
 					</div>
 					<div class="entries">
 						{#each group.entries as entry (entry.id)}
@@ -172,6 +170,18 @@
 	.timeline {
 		display: flex;
 		flex-direction: column;
+		position: relative;
+		padding-left: 50px;
+	}
+
+	.timeline::before {
+		content: '';
+		position: absolute;
+		left: 50px;
+		top: 10px;
+		bottom: 10px;
+		width: 1px;
+		background: var(--border-default);
 	}
 
 	.time-group {
@@ -182,32 +192,9 @@
 
 	.time-marker {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		width: 100px;
-	}
-
-	.line-top,
-	.line-bottom {
-		width: 1px;
-		background: var(--border-default);
-	}
-
-	.line-top {
-		height: 8px;
-	}
-
-	.time-group:first-child .line-top {
-		background: transparent;
-	}
-
-	.line-bottom {
-		flex: 1;
-		min-height: 16px;
-	}
-
-	.time-group:last-child .line-bottom {
-		background: transparent;
+		position: relative;
+		margin-left: -50px;
 	}
 
 	.pill {
