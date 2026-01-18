@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
-	import { FeatureTree } from '$lib/components/features/index.js';
-	import { StateIcon } from '$lib/components/icons/index.js';
+	import { GroupIcon, StateIcon } from '$lib/components/icons/index.js';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
@@ -18,6 +17,24 @@
 	let { features, versions, selectedId, onSelect, onCreateVersion }: Props = $props();
 
 	let showCreateDialog = $state(false);
+	let expandedIds = $state(new Set<string>());
+
+	// Auto-expand all on load
+	$effect(() => {
+		if (features.length > 0 && expandedIds.size === 0) {
+			const newExpanded = new Set<string>();
+			function expandAll(nodes: FeatureTreeNode[]) {
+				for (const node of nodes) {
+					if (node.children && node.children.length > 0) {
+						newExpanded.add(node.id);
+						expandAll(node.children);
+					}
+				}
+			}
+			expandAll(features);
+			expandedIds = newExpanded;
+		}
+	});
 
 	// Group versions into Now, Next, Later
 	type VersionGroup = {
@@ -29,17 +46,12 @@
 		const groups: VersionGroup[] = [];
 		const unreleased = versions.filter((v) => !v.released_at);
 
-		// Now: first unreleased version
 		if (unreleased.length > 0) {
 			groups.push({ label: 'Now', versions: [unreleased[0]] });
 		}
-
-		// Next: second unreleased version
 		if (unreleased.length > 1) {
 			groups.push({ label: 'Next', versions: [unreleased[1]] });
 		}
-
-		// Later: remaining unreleased versions
 		if (unreleased.length > 2) {
 			groups.push({ label: 'Later', versions: unreleased.slice(2) });
 		}
@@ -47,122 +59,123 @@
 		return groups;
 	});
 
-	// Flatten all features to find ones targeting each version
-	function getAllFeatures(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
-		const result: FeatureTreeNode[] = [];
+	// Flatten features with visibility based on expanded state
+	type FlatFeature = {
+		feature: FeatureTreeNode;
+		depth: number;
+	};
+
+	function getVisibleFeatures(nodes: FeatureTreeNode[], depth = 0): FlatFeature[] {
+		const result: FlatFeature[] = [];
 		for (const node of nodes) {
-			result.push(node);
-			if (node.children && node.children.length > 0) {
-				result.push(...getAllFeatures(node.children));
+			result.push({ feature: node, depth });
+			if (node.children && node.children.length > 0 && expandedIds.has(node.id)) {
+				result.push(...getVisibleFeatures(node.children, depth + 1));
 			}
 		}
 		return result;
 	}
 
-	let allFeatures = $derived(getAllFeatures(features));
+	let visibleFeatures = $derived(getVisibleFeatures(features));
 
-	function getFeaturesForVersion(versionId: string): FeatureTreeNode[] {
-		return allFeatures.filter((f) => f.target_version_id === versionId);
+	function toggleExpand(id: string) {
+		const newExpanded = new Set(expandedIds);
+		if (newExpanded.has(id)) {
+			newExpanded.delete(id);
+		} else {
+			newExpanded.add(id);
+		}
+		expandedIds = newExpanded;
 	}
-
-	// Get unassigned specified/proposed features (not implemented, not deprecated, no version)
-	let unassignedFeatures = $derived(
-		allFeatures.filter(
-			(f) =>
-				!f.target_version_id &&
-				f.state !== 'implemented' &&
-				f.state !== 'deprecated' &&
-				(!f.children || f.children.length === 0)
-		)
-	);
 </script>
 
-<div class="nnl-container">
-	<!-- Left: Feature Tree -->
-	<aside class="feature-sidebar">
-		<FeatureTree {features} {selectedId} {onSelect} />
-	</aside>
+<div class="matrix-container">
+	<!-- Header -->
+	<div class="matrix-header">
+		<!-- Feature column header -->
+		<div class="header-cell feature-header">
+			<span>Features</span>
+		</div>
 
-	<!-- Right: Version Panels -->
-	<div class="version-panels">
-		{#if groupedVersions.length === 0 && unassignedFeatures.length === 0}
-			<div class="empty-state">
-				<p>No versions yet</p>
-				<button class="create-btn" onclick={() => (showCreateDialog = true)} type="button">
-					Create first version
-				</button>
+		<!-- Version group headers -->
+		{#each groupedVersions as group}
+			<div class="header-cell group-header" style="flex: 0 0 {group.versions.length * 80}px">
+				<span class="group-label">{group.label}</span>
 			</div>
-		{:else}
-			{#each groupedVersions as group}
-				<div class="version-group">
-					<div class="group-header">
-						<span class="group-label">{group.label}</span>
-					</div>
-					<div class="group-content">
-						{#each group.versions as version}
-							{@const versionFeatures = getFeaturesForVersion(version.id)}
-							<div class="version-panel">
-								<div class="version-header">
-									<span class="version-name">{version.name}</span>
-									{#if version.description}
-										<span class="version-desc">{version.description}</span>
-									{/if}
-								</div>
-								<div class="version-features">
-									{#if versionFeatures.length === 0}
-										<span class="no-features">No features assigned</span>
-									{:else}
-										{#each versionFeatures as feature}
-											<button
-												type="button"
-												class="feature-item"
-												class:selected={selectedId === feature.id}
-												onclick={() => onSelect(feature.id)}
-											>
-												<StateIcon state={feature.state} size={14} />
-												<span class="feature-name">{feature.title}</span>
-											</button>
-										{/each}
-									{/if}
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/each}
+		{/each}
 
-			<!-- Unassigned features -->
-			{#if unassignedFeatures.length > 0}
-				<div class="version-group unassigned">
-					<div class="group-header">
-						<span class="group-label">Unassigned</span>
-					</div>
-					<div class="group-content">
-						<div class="version-panel">
-							<div class="version-features">
-								{#each unassignedFeatures as feature}
-									<button
-										type="button"
-										class="feature-item"
-										class:selected={selectedId === feature.id}
-										onclick={() => onSelect(feature.id)}
-									>
-										<StateIcon state={feature.state} size={14} />
-										<span class="feature-name">{feature.title}</span>
-									</button>
-								{/each}
-							</div>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			<button class="add-version-btn" onclick={() => (showCreateDialog = true)} type="button">
-				<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+		<div class="header-cell add-header">
+			<button class="add-btn" onclick={() => (showCreateDialog = true)} type="button" title="Add version">
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 				</svg>
-				<span>Add Version</span>
 			</button>
+		</div>
+	</div>
+
+	<!-- Sub-header with version names -->
+	<div class="matrix-subheader">
+		<div class="subheader-cell feature-subheader"></div>
+		{#each groupedVersions as group}
+			{#each group.versions as version}
+				<div class="subheader-cell version-name" title={version.description || ''}>
+					{version.name}
+				</div>
+			{/each}
+		{/each}
+		<div class="subheader-cell add-subheader"></div>
+	</div>
+
+	<!-- Body -->
+	<div class="matrix-body">
+		{#if visibleFeatures.length === 0}
+			<div class="empty-state">No features yet</div>
+		{:else}
+			{#each visibleFeatures as { feature, depth } (feature.id)}
+				{@const hasChildren = feature.children && feature.children.length > 0}
+				{@const isExpanded = expandedIds.has(feature.id)}
+				{@const isLeaf = !hasChildren}
+				<div class="matrix-row" class:is-group={hasChildren}>
+					<!-- Feature cell -->
+					<button
+						type="button"
+						class="feature-cell"
+						class:selected={selectedId === feature.id}
+						style="padding-left: {depth * 16 + 8}px"
+						onclick={() => onSelect(feature.id)}
+					>
+						{#if hasChildren}
+							<button
+								type="button"
+								class="toggle-btn"
+								onclick={(e) => { e.stopPropagation(); toggleExpand(feature.id); }}
+							>
+								<svg class="chevron" class:expanded={isExpanded} width="14" height="14" viewBox="0 0 16 16" fill="none">
+									<path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+								</svg>
+							</button>
+							<GroupIcon size={14} />
+						{:else}
+							<span class="toggle-spacer"></span>
+							<StateIcon state={feature.state} size={14} />
+						{/if}
+						<span class="feature-title">{feature.title}</span>
+					</button>
+
+					<!-- Version cells -->
+					{#each groupedVersions as group}
+						{#each group.versions as version}
+							<div class="version-cell" class:targeted={isLeaf && feature.target_version_id === version.id}>
+								{#if isLeaf && feature.target_version_id === version.id}
+									<span class="dot"></span>
+								{/if}
+							</div>
+						{/each}
+					{/each}
+
+					<div class="add-cell"></div>
+				</div>
+			{/each}
 		{/if}
 	</div>
 </div>
@@ -174,182 +187,213 @@
 />
 
 <style>
-	.nnl-container {
+	.matrix-container {
 		display: flex;
+		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
 	}
 
-	.feature-sidebar {
-		width: 280px;
-		min-width: 200px;
-		flex-shrink: 0;
+	.matrix-header {
 		display: flex;
-		flex-direction: column;
 		background: var(--background-subtle);
-		border-right: 1px solid var(--border-default);
-		overflow: auto;
+		border-bottom: 1px solid var(--border-default);
 	}
 
-	.version-panels {
-		flex: 1;
-		display: flex;
-		gap: 0;
-		overflow-x: auto;
-		overflow-y: auto;
-		background: var(--background);
-		align-items: flex-start;
-		padding: 16px;
+	.header-cell {
+		padding: 10px 12px;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
 	}
 
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-		height: 100%;
-		gap: 16px;
-		color: var(--foreground-subtle);
-	}
-
-	.empty-state p {
-		margin: 0;
-		font-size: 14px;
-	}
-
-	.create-btn {
-		padding: 8px 16px;
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--background-muted);
-		border: 1px solid var(--border-default);
-		border-radius: 6px;
-		cursor: pointer;
-	}
-
-	.create-btn:hover {
-		background: var(--background-subtle);
-		border-color: var(--foreground-subtle);
-	}
-
-	.version-group {
-		display: flex;
-		flex-direction: column;
+	.feature-header {
+		flex: 0 0 280px;
 		min-width: 200px;
-		border-right: 1px solid var(--border-default);
-	}
-
-	.version-group:last-of-type {
-		border-right: none;
-	}
-
-	.version-group.unassigned {
-		opacity: 0.7;
 	}
 
 	.group-header {
-		padding: 12px 16px;
-		border-bottom: 1px solid var(--border-default);
-		background: var(--background-subtle);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-left: 1px solid var(--border-default);
 	}
 
 	.group-label {
-		font-size: 14px;
 		font-weight: 600;
 		color: var(--foreground);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
 	}
 
-	.group-content {
+	.add-header {
+		flex: 1;
+		min-width: 40px;
 		display: flex;
-		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		padding-left: 8px;
+		border-left: 1px solid var(--border-default);
 	}
 
-	.version-panel {
-		padding: 12px 16px;
+	.add-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		color: var(--foreground-subtle);
+		background: transparent;
+		border: 1px dashed var(--border-default);
+		border-radius: 4px;
+		cursor: pointer;
 	}
 
-	.version-header {
-		margin-bottom: 12px;
+	.add-btn:hover {
+		color: var(--foreground);
+		border-color: var(--foreground-subtle);
+		background: var(--background-muted);
 	}
 
-	.version-name {
-		font-size: 13px;
+	.matrix-subheader {
+		display: flex;
+		background: var(--background);
+		border-bottom: 1px solid var(--border-default);
+	}
+
+	.subheader-cell {
+		padding: 6px 12px;
+		font-size: 11px;
 		font-weight: 500;
 		color: var(--foreground-muted);
 	}
 
-	.version-desc {
-		display: block;
-		font-size: 11px;
-		color: var(--foreground-subtle);
-		margin-top: 2px;
+	.feature-subheader {
+		flex: 0 0 280px;
+		min-width: 200px;
 	}
 
-	.version-features {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-
-	.no-features {
-		font-size: 12px;
-		color: var(--foreground-subtle);
-		font-style: italic;
-	}
-
-	.feature-item {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 8px;
-		font-size: 13px;
-		color: var(--foreground);
-		background: transparent;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-		text-align: left;
-		transition: background-color 0.1s ease;
-	}
-
-	.feature-item:hover {
-		background: var(--background-muted);
-	}
-
-	.feature-item.selected {
-		background: var(--background-emphasis);
-	}
-
-	.feature-name {
+	.version-name {
+		flex: 0 0 80px;
+		text-align: center;
+		border-left: 1px solid var(--border-default);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.add-version-btn {
+	.add-subheader {
+		flex: 1;
+		min-width: 40px;
+		border-left: 1px solid var(--border-default);
+	}
+
+	.matrix-body {
+		flex: 1;
+		overflow: auto;
+	}
+
+	.empty-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 48px;
+		color: var(--foreground-subtle);
+		font-size: 13px;
+	}
+
+	.matrix-row {
+		display: flex;
+		border-bottom: 1px solid var(--border-subtle);
+	}
+
+	.matrix-row.is-group {
+		background: var(--background-subtle);
+	}
+
+	.feature-cell {
+		flex: 0 0 280px;
+		min-width: 200px;
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		padding: 8px 12px;
-		margin: 12px 16px;
-		font-size: 12px;
-		font-weight: 500;
-		color: var(--foreground-subtle);
+		padding: 6px 8px;
+		font-size: 13px;
+		color: var(--foreground);
 		background: transparent;
-		border: 1px dashed var(--border-default);
-		border-radius: 6px;
+		border: none;
 		cursor: pointer;
-		transition: all 0.15s ease;
+		text-align: left;
+	}
+
+	.feature-cell:hover {
+		background: var(--background-muted);
+	}
+
+	.feature-cell.selected {
+		background: var(--background-emphasis);
+	}
+
+	.toggle-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		padding: 0;
+		border: none;
+		background: transparent;
+		cursor: pointer;
+		color: var(--foreground-subtle);
+	}
+
+	.toggle-btn:hover {
+		color: var(--foreground);
+	}
+
+	.toggle-spacer {
+		width: 16px;
 		flex-shrink: 0;
 	}
 
-	.add-version-btn:hover {
-		color: var(--foreground);
-		border-color: var(--foreground-subtle);
-		background: var(--background-muted);
+	.chevron {
+		transition: transform 0.15s ease;
+	}
+
+	.chevron.expanded {
+		transform: rotate(90deg);
+	}
+
+	.feature-title {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.version-cell {
+		flex: 0 0 80px;
+		min-height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-left: 1px solid var(--border-subtle);
+	}
+
+	.version-cell.targeted {
+		background: var(--background-emphasis);
+	}
+
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--accent-blue);
+	}
+
+	.add-cell {
+		flex: 1;
+		min-width: 40px;
+		border-left: 1px solid var(--border-subtle);
 	}
 </style>
