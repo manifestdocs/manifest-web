@@ -100,6 +100,7 @@
 					</div>
 					<div class="group-content">
 						{#each group.versions as version}
+							{@const versionFeatures = getFeaturesForVersion(version.id)}
 							<div class="version-panel">
 								<div class="version-header">
 									<span class="version-name">{version.name}</span>
@@ -108,7 +109,6 @@
 									{/if}
 								</div>
 								<div class="version-features">
-									{@const versionFeatures = getFeaturesForVersion(version.id)}
 									{#if versionFeatures.length === 0}
 										<span class="no-features">No features assigned</span>
 									{:else}
