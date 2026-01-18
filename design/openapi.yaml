@@ -1,0 +1,1213 @@
+openapi: 3.1.0
+info:
+  title: Manifest API
+  description: |
+    Living feature documentation server for AI-assisted development.
+
+    Manifest tracks **features** (system capabilities) rather than work items.
+    Features are living descriptions that evolve with the codebase, organized in a
+    hierarchical tree structure under projects.
+
+    ## Core Concepts
+
+    - **Project**: Groups features, directories, and git remotes for a codebase
+    - **Feature**: A capability of the system, organized hierarchically
+    - **History**: Append-only log of implementation work
+  version: 0.1.0
+  license:
+    name: MIT
+  contact:
+    name: Manifest
+
+servers:
+  - url: http://localhost:17010/api/v1
+    description: Local development server
+
+tags:
+  - name: Projects
+    description: Project management - groups features and directories
+  - name: Directories
+    description: Project directory management
+  - name: Versions
+    description: Version management for release planning
+  - name: Features
+    description: Feature tree management
+  - name: Health
+    description: Server health checks
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ============================================================
+  # Projects
+  # ============================================================
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List all projects
+      operationId: listProjects
+      responses:
+        '200':
+          description: List of projects ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags: [Projects]
+      summary: Create a new project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectInput'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /projects/by-directory:
+    get:
+      tags: [Projects]
+      summary: Find project by directory path
+      description: |
+        Given a directory path, finds the project that contains it.
+        Matches if the path equals or is a subdirectory of any project directory.
+        Useful for MCP clients to discover project context from the current working directory.
+      operationId: getProjectByDirectory
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Absolute directory path to look up
+          example: "/Users/dev/projects/my-app/src"
+      responses:
+        '200':
+          description: Project with directories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectWithDirectories'
+        '404':
+          description: No project found for the given directory
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "No project found for directory: /Users/dev/unknown"
+
+  /projects/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      summary: Get a project with its directories
+      operationId: getProject
+      responses:
+        '200':
+          description: Project with directories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectWithDirectories'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Projects]
+      summary: Update a project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectInput'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Projects]
+      summary: Delete a project
+      description: Deletes the project and cascades to all features
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Project deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/directories:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Directories]
+      summary: List project directories
+      operationId: listProjectDirectories
+      responses:
+        '200':
+          description: List of directories (primary first, then by path)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectDirectory'
+    post:
+      tags: [Directories]
+      summary: Add a directory to a project
+      operationId: addProjectDirectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddDirectoryInput'
+      responses:
+        '201':
+          description: Directory added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDirectory'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /projects/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      summary: Get project-wide history
+      description: |
+        Returns history entries across all features in the project, ordered by
+        creation date (newest first). Each entry includes feature context for display.
+        Useful for PMs to see recent changes across the entire project.
+      operationId: getProjectHistory
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+          description: Maximum number of entries to return. Defaults to 50.
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of entries to skip for pagination. Defaults to 0.
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Only return entries created after this ISO datetime.
+      responses:
+        '200':
+          description: History entries with feature context
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectHistoryEntry'
+
+  /projects/{id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Versions]
+      summary: List versions for a project
+      operationId: listProjectVersions
+      responses:
+        '200':
+          description: List of versions ordered by creation date
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Version'
+    post:
+      tags: [Versions]
+      summary: Create a new version
+      operationId: createVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVersionInput'
+      responses:
+        '201':
+          description: Version created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /versions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/VersionId'
+    get:
+      tags: [Versions]
+      summary: Get a version by ID
+      operationId: getVersion
+      responses:
+        '200':
+          description: The version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Versions]
+      summary: Update a version
+      operationId: updateVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVersionInput'
+      responses:
+        '200':
+          description: Version updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Versions]
+      summary: Delete a version
+      operationId: deleteVersion
+      responses:
+        '204':
+          description: Version deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/features:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Features]
+      summary: List all features in a project
+      description: |
+        Returns feature summaries ordered by priority then title.
+        Always returns summaries only - use GET /features/{id} for full details.
+      operationId: listProjectFeatures
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Feature summaries in the project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureSummary'
+    post:
+      tags: [Features]
+      summary: Create a feature in a project
+      operationId: createFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeatureInput'
+      responses:
+        '201':
+          description: Feature created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /projects/{id}/features/bulk:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [Features]
+      summary: Bulk create features with hierarchical structure
+      description: |
+        Create multiple features at once, supporting hierarchical relationships.
+        Use this to set up an entire feature tree in one operation.
+
+        When `confirm=false` (default), returns the proposed features without creating them.
+        This allows reviewing the structure before committing.
+
+        When `confirm=true`, creates all features and returns their IDs.
+        Children are created after their parents, maintaining the tree structure.
+      operationId: bulkCreateFeatures
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateFeaturesInput'
+      responses:
+        '200':
+          description: Proposed or created features
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanFeaturesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /projects/{id}/features/roots:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Features]
+      summary: List root features (no parent) in a project
+      operationId: listRootFeatures
+      responses:
+        '200':
+          description: Root features ordered by title
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feature'
+
+  /projects/{id}/features/tree:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Features]
+      summary: Get complete feature tree
+      description: |
+        Returns all features in a hierarchical tree structure with children
+        recursively nested. Useful for visualizing the full project structure.
+      operationId: getFeatureTree
+      responses:
+        '200':
+          description: Feature tree with nested children
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureTreeNode'
+
+  # ============================================================
+  # Directories (standalone)
+  # ============================================================
+  /directories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DirectoryId'
+    delete:
+      tags: [Directories]
+      summary: Remove a directory
+      operationId: removeProjectDirectory
+      responses:
+        '204':
+          description: Directory removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================
+  # Features (standalone)
+  # ============================================================
+  /features:
+    get:
+      tags: [Features]
+      summary: List all features across all projects
+      description: |
+        Returns feature summaries ordered by priority then title.
+        Always returns summaries only - use GET /features/{id} for full details.
+      operationId: listFeatures
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Feature summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureSummary'
+
+  /features/search:
+    get:
+      tags: [Features]
+      summary: Search features by title or content
+      description: |
+        Search features by matching against title and details.
+        Returns summaries ranked by relevance (title matches first).
+        Use GET /features/{id} for full details of a specific result.
+      operationId: searchFeatures
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search term to match against title and details
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional project UUID to limit search to
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+          description: Maximum number of results to return. Defaults to 10.
+      responses:
+        '200':
+          description: Feature summaries matching the search query, ranked by relevance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureSummary'
+
+  /features/{id}:
+    parameters:
+      - $ref: '#/components/parameters/FeatureId'
+    get:
+      tags: [Features]
+      summary: Get a feature by ID
+      operationId: getFeature
+      responses:
+        '200':
+          description: The feature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Features]
+      summary: Update a feature
+      operationId: updateFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFeatureInput'
+      responses:
+        '200':
+          description: Feature updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Features]
+      summary: Delete a feature
+      description: Deletes the feature and cascades to all children
+      operationId: deleteFeature
+      responses:
+        '204':
+          description: Feature deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /features/{id}/children:
+    parameters:
+      - $ref: '#/components/parameters/FeatureId'
+    get:
+      tags: [Features]
+      summary: List direct children of a feature
+      operationId: listChildren
+      responses:
+        '200':
+          description: Direct children ordered by title
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feature'
+
+  /features/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/FeatureId'
+    get:
+      tags: [Features]
+      summary: Get feature history
+      description: Returns the implementation history log (like git log)
+      operationId: getFeatureHistory
+      responses:
+        '200':
+          description: History entries in reverse chronological order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureHistory'
+
+  /features/{id}/diff:
+    parameters:
+      - $ref: '#/components/parameters/FeatureId'
+    get:
+      tags: [Features]
+      summary: Get feature diff
+      description: |
+        Returns the diff between current details and desired details.
+        Use this to see what changes are pending before implementation.
+      operationId: getFeatureDiff
+      responses:
+        '200':
+          description: Diff between current and desired state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureDiff'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project UUID
+
+    DirectoryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Directory UUID
+
+    FeatureId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Feature UUID
+
+    VersionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Version UUID
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+      description: Maximum number of items to return.
+
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Number of items to skip for pagination.
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "Project not found"
+
+    InternalError:
+      description: Internal server error
+      content:
+        text/plain:
+          schema:
+            type: string
+
+  schemas:
+    # ============================================================
+    # Project schemas
+    # ============================================================
+    Project:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Manifest"
+        description:
+          type: string
+          nullable: true
+          example: "Living feature documentation server"
+        instructions:
+          type: string
+          nullable: true
+          description: Project-wide instructions for AI agents (coding guidelines, conventions, etc.)
+          example: "Use Result<T,E> for errors. Follow coding-guidelines.md."
+        current_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the current/active version for this project
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProjectInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "My Project"
+        description:
+          type: string
+          nullable: true
+        instructions:
+          type: string
+          nullable: true
+          description: Project-wide instructions for AI agents
+
+    UpdateProjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        instructions:
+          type: string
+          nullable: true
+          description: Project-wide instructions for AI agents
+        current_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set the current/active version for this project
+
+    ProjectDirectory:
+      type: object
+      required: [id, project_id, path, is_primary, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        path:
+          type: string
+          example: "/Users/dev/projects/my-project"
+        git_remote:
+          type: string
+          nullable: true
+          example: "git@github.com:org/repo.git"
+        is_primary:
+          type: boolean
+          default: false
+        instructions:
+          type: string
+          nullable: true
+          description: Directory-specific instructions for AI agents (build commands, test commands, etc.)
+          example: "Run tests with: cargo test. Build with: cargo build --release"
+        created_at:
+          type: string
+          format: date-time
+
+    AddDirectoryInput:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          example: "/Users/dev/projects/my-project"
+        git_remote:
+          type: string
+          nullable: true
+        is_primary:
+          type: boolean
+          default: false
+        instructions:
+          type: string
+          nullable: true
+          description: Directory-specific instructions for AI agents
+
+    ProjectWithDirectories:
+      type: object
+      required: [id, name, created_at, updated_at, directories]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        instructions:
+          type: string
+          nullable: true
+          description: Project-wide instructions for AI agents
+        current_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the current/active version for this project
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        directories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectDirectory'
+
+    ProjectHistoryEntry:
+      type: object
+      required: [id, feature_id, feature_title, feature_state, summary, created_at]
+      description: |
+        Project-wide history entry with feature context. Used for the unified
+        project history view, where PMs can see recent changes across all features.
+      properties:
+        id:
+          type: string
+          format: uuid
+        feature_id:
+          type: string
+          format: uuid
+        feature_title:
+          type: string
+          description: Feature title, denormalized for display
+        feature_state:
+          $ref: '#/components/schemas/FeatureState'
+          description: Feature state at time of query
+        summary:
+          type: string
+          description: Summary of work completed
+        commits:
+          type: array
+          description: Git commits created during this work
+          items:
+            $ref: '#/components/schemas/CommitRef'
+        created_at:
+          type: string
+          format: date-time
+
+    # ============================================================
+    # Feature schemas
+    # ============================================================
+    Feature:
+      type: object
+      required: [id, project_id, title, state, priority, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent feature ID (null for root features)
+        title:
+          type: string
+          example: "User Authentication"
+        details:
+          type: string
+          nullable: true
+          description: Current feature specification (what the feature IS)
+        desired_details:
+          type: string
+          nullable: true
+          description: Desired feature specification (what the feature SHOULD be). Non-null indicates pending changes.
+        state:
+          $ref: '#/components/schemas/FeatureState'
+        priority:
+          type: integer
+          default: 0
+          description: Priority for ordering within parent (lower values first)
+        target_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Target version ID for release planning
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FeatureState:
+      type: string
+      enum: [proposed, specified, implemented, deprecated]
+      description: |
+        - proposed: Initial state, idea captured
+        - specified: Requirements defined
+        - implemented: Feature is live in codebase
+        - deprecated: Feature marked for removal
+
+    FeatureSummary:
+      type: object
+      description: Lightweight feature summary without details (used for list operations)
+      required: [id, project_id, title, state, priority]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent feature ID (null for root features)
+        title:
+          type: string
+          example: "User Authentication"
+        state:
+          $ref: '#/components/schemas/FeatureState'
+        priority:
+          type: integer
+          default: 0
+          description: Priority for ordering within parent (lower values first)
+        target_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Target version ID for release planning
+
+    CreateFeatureInput:
+      type: object
+      required: [title]
+      properties:
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+        details:
+          type: string
+          nullable: true
+          description: Feature specification including user stories, implementation notes, and technical context
+        state:
+          $ref: '#/components/schemas/FeatureState'
+        target_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Target version for release planning
+
+    UpdateFeatureInput:
+      type: object
+      properties:
+        title:
+          type: string
+        details:
+          type: string
+          nullable: true
+          description: Current feature specification (what the feature IS)
+        desired_details:
+          type: string
+          nullable: true
+          description: Desired feature specification (what the feature SHOULD be). Set to plan pending changes.
+        state:
+          $ref: '#/components/schemas/FeatureState'
+        priority:
+          type: integer
+          description: Priority for ordering within parent
+        target_version_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Target version for release planning
+
+    BulkCreateFeaturesInput:
+      type: object
+      required: [features]
+      description: Input for bulk feature creation with hierarchical structure
+      properties:
+        features:
+          type: array
+          description: The proposed feature tree to create
+          items:
+            $ref: '#/components/schemas/ProposedFeature'
+        confirm:
+          type: boolean
+          default: false
+          description: |
+            If true, creates the features in the database.
+            If false (default), returns the proposal for review without creating anything.
+
+    ProposedFeature:
+      type: object
+      required: [title]
+      description: A feature proposal for bulk creation, supporting hierarchical structure
+      properties:
+        title:
+          type: string
+          description: Short capability name (2-5 words). What users can DO.
+          example: "User Authentication"
+        details:
+          type: string
+          nullable: true
+          description: |
+            Feature details including user stories, implementation notes, and technical context.
+            User stories can use "As a [user], I can [capability] so that [benefit]" format.
+        priority:
+          type: integer
+          default: 0
+          description: Priority for ordering. Lower values = implement first.
+        children:
+          type: array
+          default: []
+          description: Child features (for hierarchical structure)
+          items:
+            $ref: '#/components/schemas/ProposedFeature'
+
+    PlanFeaturesResponse:
+      type: object
+      required: [proposed_features, created]
+      description: Response from bulk feature creation
+      properties:
+        proposed_features:
+          type: array
+          description: The proposed feature tree (same as input, for review)
+          items:
+            $ref: '#/components/schemas/ProposedFeature'
+        created:
+          type: boolean
+          description: Whether the features were created (true if confirm=true was passed)
+        created_feature_ids:
+          type: array
+          default: []
+          description: UUIDs of created features (only populated if created=true)
+          items:
+            type: string
+            format: uuid
+
+    FeatureTreeNode:
+      type: object
+      description: A feature with its children recursively nested
+      allOf:
+        - $ref: '#/components/schemas/Feature'
+        - type: object
+          required: [children]
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/FeatureTreeNode'
+
+    FeatureHistory:
+      type: object
+      required: [id, feature_id, summary, created_at]
+      description: |
+        Append-only log entry recording implementation work.
+        Similar to git log - records implementation history, not version snapshots.
+      properties:
+        id:
+          type: string
+          format: uuid
+        feature_id:
+          type: string
+          format: uuid
+        summary:
+          type: string
+          description: Summary of work completed
+        commits:
+          type: array
+          description: Git commits created during this work
+          items:
+            $ref: '#/components/schemas/CommitRef'
+        created_at:
+          type: string
+          format: date-time
+
+    FeatureDiff:
+      type: object
+      required: [has_changes]
+      description: |
+        Diff between current and desired feature details.
+        Use this to see pending changes before implementation.
+      properties:
+        has_changes:
+          type: boolean
+          description: Whether there are pending changes (desired_details differs from details)
+        current:
+          type: string
+          nullable: true
+          description: Current details (what the feature IS)
+        desired:
+          type: string
+          nullable: true
+          description: Desired details (what the feature SHOULD be)
+
+    CommitRef:
+      type: object
+      required: [sha, message]
+      description: Reference to a git commit
+      properties:
+        sha:
+          type: string
+          description: Commit SHA (short or full)
+          example: "abc123f"
+        message:
+          type: string
+          description: Commit message (first line)
+          example: "Add OAuth login flow"
+        author:
+          type: string
+          nullable: true
+          description: Commit author (if different from default)
+
+    # ============================================================
+    # Version schemas
+    # ============================================================
+    Version:
+      type: object
+      required: [id, project_id, name, created_at, updated_at]
+      description: A version for release planning
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Version name (e.g., "1.0.0", "2.0.0-beta")
+          example: "1.0.0"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the version
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this version was released (if released)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateVersionInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Version name (e.g., "1.0.0", "2.0.0-beta")
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the version
+
+    UpdateVersionInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Version name
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the version
+        released_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set to mark the version as released

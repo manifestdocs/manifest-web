@@ -1,0 +1,110 @@
+<script lang="ts">
+	import { api } from '$lib/api/client.js';
+	import type { components } from '$lib/api/schema.js';
+	import { VersionMatrixView } from '$lib/components/versions/index.js';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+
+	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
+	type Version = components['schemas']['Version'];
+
+	let featureTree = $state<FeatureTreeNode[]>([]);
+	let versions = $state<Version[]>([]);
+	let isLoadingFeatures = $state(false);
+	let isLoadingVersions = $state(false);
+
+	const projectId = $derived(page.params.projectId);
+	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
+
+	// Load features and versions when project changes
+	$effect(() => {
+		if (projectId) {
+			loadFeatureTree(projectId);
+			loadVersions(projectId);
+		}
+	});
+
+	async function loadFeatureTree(projectId: string) {
+		isLoadingFeatures = true;
+		try {
+			const { data, error } = await api.GET('/projects/{id}/features/tree', {
+				params: { path: { id: projectId } }
+			});
+			if (error) {
+				console.error('Failed to load features:', error);
+				featureTree = [];
+				return;
+			}
+			featureTree = data;
+		} finally {
+			isLoadingFeatures = false;
+		}
+	}
+
+	async function loadVersions(projectId: string) {
+		isLoadingVersions = true;
+		try {
+			const { data, error } = await api.GET('/projects/{id}/versions', {
+				params: { path: { id: projectId } }
+			});
+			if (error) {
+				console.error('Failed to load versions:', error);
+				versions = [];
+				return;
+			}
+			versions = data;
+		} finally {
+			isLoadingVersions = false;
+		}
+	}
+
+	async function handleCreateVersion(name: string, description: string | null) {
+		if (!projectId) return;
+
+		const { error } = await api.POST('/projects/{id}/versions', {
+			params: { path: { id: projectId } },
+			body: { name, description }
+		});
+		if (error) {
+			console.error('Failed to create version:', error);
+			throw new Error('Failed to create version');
+		}
+		// Refresh versions list
+		await loadVersions(projectId);
+	}
+
+	function handleSelectFeature(id: string) {
+		goto(`/${projectId}?feature=${id}`);
+	}
+</script>
+
+<section class="content-full">
+	{#if isLoadingFeatures || isLoadingVersions}
+		<div class="loading-state">Loading...</div>
+	{:else}
+		<VersionMatrixView
+			features={featureTree}
+			{versions}
+			selectedId={selectedFeatureId}
+			onSelect={handleSelectFeature}
+			onCreateVersion={handleCreateVersion}
+		/>
+	{/if}
+</section>
+
+<style>
+	.content-full {
+		flex: 1;
+		overflow: hidden;
+		background: var(--background);
+	}
+
+	.loading-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: var(--foreground-subtle);
+		font-size: 14px;
+	}
+</style>
