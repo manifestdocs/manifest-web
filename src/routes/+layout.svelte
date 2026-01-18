@@ -109,14 +109,14 @@
 						class="nav-link"
 						class:active={page.url.pathname === `/${selectedProjectId}`}
 					>
-						Features
+						Feature Editor
 					</a>
 					<a
 						href="/{selectedProjectId}/versions"
 						class="nav-link"
 						class:active={page.url.pathname === `/${selectedProjectId}/versions`}
 					>
-						Versions
+						Now, Next, Later
 					</a>
 					<a
 						href="/{selectedProjectId}/history"
