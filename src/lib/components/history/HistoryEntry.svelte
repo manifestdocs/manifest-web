@@ -161,12 +161,8 @@
 	}
 
 	.entry-body {
-		margin-top: 8px;
+		margin-top: 4px;
 		margin-left: 17px;
-		padding: 8px 12px;
-		background: var(--background-muted);
-		border-radius: 4px;
-		border-left: 2px solid var(--border-default);
 	}
 
 	.body-text {
