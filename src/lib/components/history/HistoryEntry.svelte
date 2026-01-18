@@ -50,20 +50,21 @@
 			<StateIcon state={entry.feature_state} size={12} />
 			<span class="feature-title">{entry.feature_title}</span>
 		</button>
-		<span class="separator">—</span>
+		{#if body}
+			<span class="twirl" class:expanded={isExpanded}>
+				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M3 2L7 5L3 8" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</span>
+		{:else}
+			<span class="separator">—</span>
+		{/if}
 		<span class="headline">{headline}</span>
 		{#if entry.commits && entry.commits.length > 0}
 			<span class="commits">
 				{#each entry.commits as commit, i}
 					<code class="sha">{commit.sha.slice(0, 7)}</code>{#if i < entry.commits.length - 1},&nbsp;{/if}
 				{/each}
-			</span>
-		{/if}
-		{#if body}
-			<span class="expand-indicator" class:rotated={isExpanded}>
-				<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M3 4.5L6 7.5L9 4.5" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
 			</span>
 		{/if}
 	</div>
@@ -147,17 +148,16 @@
 		color: var(--accent-blue);
 	}
 
-	.expand-indicator {
+	.twirl {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		padding: 2px;
 		color: var(--foreground-subtle);
 		transition: transform 0.15s ease;
 	}
 
-	.expand-indicator.rotated {
-		transform: rotate(180deg);
+	.twirl.expanded {
+		transform: rotate(90deg);
 	}
 
 	.entry-body {
