@@ -81,11 +81,17 @@
 <style>
 	.history-entry {
 		display: flex;
-		align-items: baseline;
-		gap: 6px;
+		flex-direction: column;
+		gap: 0;
 		padding: 4px 0;
 		font-size: 13px;
 		line-height: 1.4;
+	}
+
+	.entry-header {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
 		flex-wrap: wrap;
 	}
 
@@ -116,7 +122,7 @@
 		opacity: 0.5;
 	}
 
-	.summary {
+	.headline {
 		color: var(--foreground-muted);
 	}
 
@@ -132,5 +138,50 @@
 		background: var(--background-muted);
 		border-radius: 3px;
 		color: var(--accent-blue);
+	}
+
+	.expand-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: none;
+		border: none;
+		padding: 2px;
+		cursor: pointer;
+		color: var(--foreground-subtle);
+		border-radius: 3px;
+		transition: background-color 0.15s ease;
+	}
+
+	.expand-toggle:hover {
+		background: var(--background-muted);
+		color: var(--foreground);
+	}
+
+	.expand-toggle svg {
+		transition: transform 0.15s ease;
+	}
+
+	.expand-toggle svg.rotated {
+		transform: rotate(180deg);
+	}
+
+	.entry-body {
+		margin-top: 8px;
+		margin-left: 17px;
+		padding: 8px 12px;
+		background: var(--background-muted);
+		border-radius: 4px;
+		border-left: 2px solid var(--border-default);
+	}
+
+	.body-text {
+		margin: 0;
+		font-family: var(--font-mono, monospace);
+		font-size: 12px;
+		line-height: 1.5;
+		color: var(--foreground-muted);
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 </style>
