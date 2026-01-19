@@ -2,6 +2,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
 	import { StateIcon } from '$lib/components/icons/index.js';
+	import { InfoBanner } from '$lib/components/ui/index.js';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 	import DraggableDot from './DraggableDot.svelte';
 
@@ -15,11 +16,13 @@
 		onSelect: (id: string) => void;
 		onCreateVersion: (name: string, description: string | null) => Promise<void>;
 		onUpdateFeatureVersion?: (featureId: string, versionId: string | null) => Promise<void>;
+		onCompleteVersion?: (versionId: string) => Promise<void>;
 	}
 
-	let { features, versions, selectedId, onSelect, onCreateVersion, onUpdateFeatureVersion }: Props = $props();
+	let { features, versions, selectedId, onSelect, onCreateVersion, onUpdateFeatureVersion, onCompleteVersion }: Props = $props();
 
 	let showCreateDialog = $state(false);
+	let isCompleting = $state(false);
 	let expandedIds = $state(new Set<string>());
 
 	// Drag state for drop zone indicator
@@ -64,6 +67,52 @@
 
 		return groups;
 	});
+
+	// Get the "Now" version (first unreleased)
+	let nowVersion = $derived.by(() => {
+		const unreleased = versions.filter((v) => !v.released_at);
+		return unreleased.length > 0 ? unreleased[0] : null;
+	});
+
+	// Get features targeting the "Now" version
+	let nowVersionFeatures = $derived.by(() => {
+		if (!nowVersion) return [];
+		const result: FeatureTreeNode[] = [];
+
+		function collectTargetedFeatures(nodes: FeatureTreeNode[]) {
+			for (const node of nodes) {
+				const isLeaf = !node.children || node.children.length === 0;
+				if (isLeaf && node.target_version_id === nowVersion!.id) {
+					result.push(node);
+				}
+				if (node.children) {
+					collectTargetedFeatures(node.children);
+				}
+			}
+		}
+
+		collectTargetedFeatures(features);
+		return result;
+	});
+
+	// Check if the "Now" version is feature complete
+	let isNowFeatureComplete = $derived.by(() => {
+		if (!nowVersion || nowVersionFeatures.length === 0) return false;
+		return nowVersionFeatures.every((f) => f.state === 'implemented');
+	});
+
+	// Handle completing the Now version
+	async function handleCompleteNow() {
+		if (!nowVersion || !onCompleteVersion || isCompleting) return;
+		isCompleting = true;
+		try {
+			await onCompleteVersion(nowVersion.id);
+		} catch (error) {
+			console.error('Failed to complete version:', error);
+		} finally {
+			isCompleting = false;
+		}
+	}
 
 	// Flatten features with visibility based on expanded state
 	type FlatFeature = {
@@ -175,7 +224,7 @@
 	</div>
 
 	<!-- Sub-header with version names -->
-	<div class="matrix-subheader">
+	<div class="matrix-subheader" class:has-complete-banner={isNowFeatureComplete && onCompleteVersion}>
 		<div class="subheader-cell feature-subheader"></div>
 		{#each groupedVersions as group, groupIndex}
 			{#each group.versions as version, versionIndex}
@@ -184,6 +233,7 @@
 					class="subheader-cell version-name"
 					class:group-start={versionIndex === 0}
 					class:zebra={colIndex % 2 === 0}
+					class:feature-complete={isNowFeatureComplete && group.label === 'Now'}
 					title={version.description || ''}
 				>
 					{version.name}
@@ -191,6 +241,26 @@
 			{/each}
 		{/each}
 	</div>
+
+	<!-- Feature complete banner -->
+	{#if isNowFeatureComplete && onCompleteVersion && nowVersion}
+		<InfoBanner spacerWidth="280px">
+			{#snippet icon()}
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+					<path d="M6 2L6 10M6 2L2 6M6 2L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			{/snippet}
+			<strong>{nowVersion.name}</strong> is feature complete. Close and advance planning?
+			<button
+				type="button"
+				class="banner-btn"
+				onclick={handleCompleteNow}
+				disabled={isCompleting}
+			>
+				{isCompleting ? 'Closing...' : 'Close'}
+			</button>
+		</InfoBanner>
+	{/if}
 
 	<!-- Body -->
 	<div class="matrix-body">
@@ -347,11 +417,40 @@
 		color: var(--foreground);
 	}
 
+	.banner-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 4px 10px;
+		font-size: 12px;
+		font-weight: 500;
+		border-radius: 4px;
+		border: 1px solid var(--background);
+		background: transparent;
+		color: var(--background);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.banner-btn:hover:not(:disabled) {
+		background: var(--background);
+		color: var(--state-implemented);
+	}
+
+	.banner-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
 	.matrix-subheader {
 		display: flex;
 		height: 27px;
 		background: var(--background);
 		border-bottom: 1px solid var(--border-default);
+	}
+
+	.matrix-subheader.has-complete-banner {
+		border-bottom: none;
 	}
 
 	.subheader-cell {
@@ -387,6 +486,12 @@
 
 	.version-name.zebra {
 		background: rgba(128, 128, 128, 0.04);
+	}
+
+	.version-name.feature-complete {
+		background: var(--state-implemented);
+		color: var(--background);
+		border-bottom: 1px solid var(--state-implemented);
 	}
 
 	.matrix-body {

@@ -108,6 +108,21 @@
 		await loadFeatureTree(projectId);
 	}
 
+	async function handleCompleteVersion(versionId: string) {
+		if (!projectId) return;
+
+		const { error } = await api.PUT('/versions/{id}', {
+			params: { path: { id: versionId } },
+			body: { released_at: new Date().toISOString() }
+		});
+		if (error) {
+			console.error('Failed to complete version:', error);
+			throw new Error('Failed to complete version');
+		}
+		// Refresh both versions and features
+		await Promise.all([loadVersions(projectId), loadFeatureTree(projectId)]);
+	}
+
 	function handleSelectFeature(id: string) {
 		goto(`/${projectId}/versions?feature=${id}`);
 	}
@@ -124,6 +139,7 @@
 			onSelect={handleSelectFeature}
 			onCreateVersion={handleCreateVersion}
 			onUpdateFeatureVersion={handleUpdateFeatureVersion}
+			onCompleteVersion={handleCompleteVersion}
 		/>
 	{/if}
 </section>
