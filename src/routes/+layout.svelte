@@ -65,6 +65,8 @@
 
 	const selectedProjectId = $derived(page.params.projectId || null);
 	const selectedProject = $derived(projects.find((p) => p.id === selectedProjectId));
+	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
+	const featureQueryParam = $derived(selectedFeatureId ? `?feature=${selectedFeatureId}` : '');
 
 	// Provide projects context to child routes
 	setContext('projects', {
@@ -112,14 +114,14 @@
 				<nav class="view-nav">
 					<div class="nav-group">
 						<a
-							href="/{selectedProjectId}"
+							href="/{selectedProjectId}{featureQueryParam}"
 							class="nav-link"
 							class:active={page.url.pathname === `/${selectedProjectId}`}
 						>
 							Edit
 						</a>
 						<a
-							href="/{selectedProjectId}/versions"
+							href="/{selectedProjectId}/versions{featureQueryParam}"
 							class="nav-link"
 							class:active={page.url.pathname === `/${selectedProjectId}/versions`}
 						>
