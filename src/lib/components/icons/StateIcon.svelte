@@ -13,7 +13,7 @@
 </script>
 
 {#if state === 'proposed'}
-	<!-- Small solid amber circle -->
+	<!-- Diamond (◇) -->
 	<svg
 		width={size}
 		height={size}
@@ -23,7 +23,7 @@
 		class={className}
 		aria-label="Proposed"
 	>
-		<circle cx="8" cy="8" r="3" fill="var(--state-proposed)" />
+		<path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
 	</svg>
 {:else if state === 'specified'}
 	<!-- Ring with dot in center (green) -->
