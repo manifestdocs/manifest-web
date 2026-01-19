@@ -136,8 +136,9 @@
 					title="Bold (Ctrl+B)"
 					onclick={() => insertAtCursor('**', '**')}
 				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-						<path d="M4 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h5.5a3.5 3.5 0 0 0 1.852-6.47A3.5 3.5 0 0 0 8.5 2H4Zm4.5 5a1.5 1.5 0 1 0 0-3H5v3h3.5ZM5 9v3h4.5a1.5 1.5 0 0 0 0-3H5Z"/>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M4 2.5h4.5a2.5 2.5 0 0 1 0 5H4V2.5Z"/>
+						<path d="M4 7.5h5.5a2.5 2.5 0 0 1 0 5H4V7.5Z"/>
 					</svg>
 				</button>
 				<button
@@ -212,9 +213,13 @@
 					title="Task list"
 					onclick={() => insertLinePrefix('- [ ] ')}
 				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-						<path d="M6 8a.75.75 0 0 0-.75.75v4.5c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-4.5a.75.75 0 0 0-.75-.75h-4.5Zm.75 4.5v-3h3v3h-3Z"/>
-						<path d="M2 1.75C2 .784 2.784 0 3.75 0h8.5C13.216 0 14 .784 14 1.75v12.5A1.75 1.75 0 0 1 12.25 16h-8.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5Z"/>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+						<rect x="1.5" y="2" width="3" height="3" rx="0.5"/>
+						<path d="M6.5 3.5h8"/>
+						<rect x="1.5" y="6.5" width="3" height="3" rx="0.5"/>
+						<path d="M6.5 8h8"/>
+						<path d="M2 12l1 1 2-2"/>
+						<path d="M6.5 12.5h8"/>
 					</svg>
 				</button>
 			</div>
@@ -252,6 +257,11 @@
 		border-radius: 6px;
 		background: var(--background-subtle);
 		overflow: hidden;
+		transition: border-color 0.15s ease;
+	}
+
+	.markdown-editor:focus-within {
+		border-color: var(--accent-blue);
 	}
 
 	.editor-header {
