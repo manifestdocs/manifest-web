@@ -81,7 +81,9 @@
 
 <div class="feature-tree">
 	<!-- Header row (matches matrix header) -->
-	<div class="tree-header"></div>
+	<div class="tree-header">
+		<span class="tree-title">Features</span>
+	</div>
 
 	<!-- Subheader row (matches matrix subheader) -->
 	<div class="tree-subheader">
@@ -131,9 +133,20 @@
 
 	/* Matches matrix-header height */
 	.tree-header {
+		display: flex;
+		align-items: center;
 		height: 36px;
+		padding: 0 12px;
 		background: var(--background-subtle);
 		border-bottom: 1px solid var(--border-default);
+	}
+
+	.tree-title {
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
 	}
 
 	/* Matches matrix-subheader height */

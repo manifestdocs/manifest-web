@@ -57,7 +57,7 @@
 	.feature-row {
 		flex: 0 0 280px;
 		min-width: 200px;
-		height: 32px;
+		height: 25px;
 		display: flex;
 		align-items: center;
 		gap: 6px;
