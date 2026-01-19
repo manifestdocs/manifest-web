@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
-	import FeatureTreeItem from './FeatureTreeItem.svelte';
+	import FeatureRow from './FeatureRow.svelte';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
@@ -14,22 +14,41 @@
 
 	let expandedIds = $state(new Set<string>());
 
-	// Auto-expand parent features on initial load
+	// Auto-expand all on load
 	$effect(() => {
 		if (features.length > 0 && expandedIds.size === 0) {
 			const newExpanded = new Set<string>();
-			function expandParents(nodes: FeatureTreeNode[]) {
+			function expandAll(nodes: FeatureTreeNode[]) {
 				for (const node of nodes) {
 					if (node.children && node.children.length > 0) {
 						newExpanded.add(node.id);
-						expandParents(node.children);
+						expandAll(node.children);
 					}
 				}
 			}
-			expandParents(features);
+			expandAll(features);
 			expandedIds = newExpanded;
 		}
 	});
+
+	// Flatten features with visibility based on expanded state
+	type FlatFeature = {
+		feature: FeatureTreeNode;
+		depth: number;
+	};
+
+	function getVisibleFeatures(nodes: FeatureTreeNode[], depth = 0): FlatFeature[] {
+		const result: FlatFeature[] = [];
+		for (const node of nodes) {
+			result.push({ feature: node, depth });
+			if (node.children && node.children.length > 0 && expandedIds.has(node.id)) {
+				result.push(...getVisibleFeatures(node.children, depth + 1));
+			}
+		}
+		return result;
+	}
+
+	let visibleFeatures = $derived(getVisibleFeatures(features));
 
 	function handleToggle(id: string) {
 		const newExpanded = new Set(expandedIds);
@@ -61,8 +80,11 @@
 </script>
 
 <div class="feature-tree">
-	<div class="tree-header">
-		<span class="tree-title">Features</span>
+	<!-- Header row (matches matrix header) -->
+	<div class="tree-header"></div>
+
+	<!-- Subheader row (matches matrix subheader) -->
+	<div class="tree-subheader">
 		<div class="tree-actions">
 			<button class="action-btn" onclick={expandAll} title="Expand all" type="button">
 				<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -78,17 +100,22 @@
 	</div>
 
 	<div class="tree-content">
-		{#if features.length === 0}
+		{#if visibleFeatures.length === 0}
 			<div class="empty-state">No features yet</div>
 		{:else}
-			{#each features as feature (feature.id)}
-				<FeatureTreeItem
-					{feature}
-					{selectedId}
-					{expandedIds}
-					{onSelect}
-					onToggle={handleToggle}
-				/>
+			{#each visibleFeatures as { feature, depth } (feature.id)}
+				{@const isLeaf = !feature.children || feature.children.length === 0}
+				<div class="tree-row">
+					<FeatureRow
+						{feature}
+						{depth}
+						isSelected={selectedId === feature.id}
+						isExpanded={expandedIds.has(feature.id)}
+						showTrack={isLeaf && !!feature.target_version_id}
+						{onSelect}
+						onToggle={handleToggle}
+					/>
+				</div>
 			{/each}
 		{/if}
 	</div>
@@ -102,20 +129,22 @@
 		overflow: hidden;
 	}
 
+	/* Matches matrix-header height */
 	.tree-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 12px 12px 8px;
+		height: 36px;
+		background: var(--background-subtle);
 		border-bottom: 1px solid var(--border-default);
 	}
 
-	.tree-title {
-		font-size: 12px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		color: var(--foreground-muted);
+	/* Matches matrix-subheader height */
+	.tree-subheader {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		height: 27px;
+		padding: 0 12px;
+		background: var(--background);
+		border-bottom: 1px solid var(--border-default);
 	}
 
 	.tree-actions {
@@ -146,7 +175,11 @@
 	.tree-content {
 		flex: 1;
 		overflow-y: auto;
-		padding: 8px 4px;
+	}
+
+	.tree-row {
+		display: flex;
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.empty-state {
