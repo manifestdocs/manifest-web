@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
+	import { StateIcon } from '$lib/components/icons/index.js';
 
 	type FeatureState = components['schemas']['FeatureState'];
 
@@ -12,8 +13,7 @@
 
 	let { featureId, featureState = 'implemented', onDrop, onHover }: Props = $props();
 
-	const isDiamond = $derived(featureState === 'proposed');
-	const isRing = $derived(featureState === 'specified');
+	const isDraggable = $derived(featureState === 'proposed');
 
 	let isDragging = $state(false);
 	let dragX = $state(0);
@@ -22,6 +22,7 @@
 	let lastHoveredVersion: string | null = $state(null);
 
 	function handlePointerDown(e: PointerEvent) {
+		if (!isDraggable) return;
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging = true;
@@ -82,82 +83,60 @@
 <!-- Ghost (original position, faded when dragging) -->
 <span
 	bind:this={ghostElement}
-	class="marker ghost"
-	class:diamond={isDiamond}
-	class:ring={isRing}
+	class="ghost"
 	class:dragging={isDragging}
-	role="button"
-	tabindex="0"
-	aria-label="Drag to change target version"
+	class:draggable={isDraggable}
+	role={isDraggable ? 'button' : undefined}
+	tabindex={isDraggable ? 0 : undefined}
+	aria-label={isDraggable ? 'Drag to change target version' : undefined}
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
 	onpointerup={handlePointerUp}
 	onpointercancel={handlePointerUp}
-></span>
+>
+	<StateIcon state={featureState} size={14} />
+</span>
 
 <!-- Drag preview (follows cursor horizontally, locked to row) -->
 {#if isDragging}
 	<span
-		class="marker preview"
-		class:diamond={isDiamond}
-		class:ring={isRing}
+		class="preview"
 		style:left="{dragX}px"
 		style:top="{rowY}px"
-	></span>
+	>
+		<StateIcon state={featureState} size={16} />
+	</span>
 {/if}
 
 <style>
-	.marker {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--accent-blue);
-		cursor: grab;
-		touch-action: none;
-	}
-
-	.marker.diamond {
-		border-radius: 0;
-		transform: rotate(45deg);
-		background: var(--state-proposed);
-	}
-
-	.marker.ring {
-		background: transparent;
-		border: 1.5px solid var(--state-specified);
-	}
-
-	.marker.ghost {
+	.ghost {
 		position: relative;
 		z-index: 1;
-		transition: opacity 0.1s ease, box-shadow 0.1s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		touch-action: none;
+		transition: opacity 0.1s ease, filter 0.1s ease;
 	}
 
-	.marker.ghost:hover {
-		box-shadow: 0 0 0 2px white;
+	.ghost.draggable {
+		cursor: grab;
 	}
 
-	.marker.ghost.dragging {
+	.ghost.draggable:hover {
+		filter: brightness(1.2);
+	}
+
+	.ghost.dragging {
 		opacity: 0.3;
 		cursor: grabbing;
 	}
 
-	.marker.preview {
+	.preview {
 		position: fixed;
 		z-index: 1000;
 		pointer-events: none;
-		width: 12px;
-		height: 12px;
-		box-shadow: 0 0 0 2px white;
 		transform: translate(-50%, -50%);
-	}
-
-	.marker.preview.diamond {
-		border-radius: 0;
-		transform: translate(-50%, -50%) rotate(45deg);
-	}
-
-	.marker.preview.ring {
-		border-width: 2px;
+		filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
 	}
 </style>

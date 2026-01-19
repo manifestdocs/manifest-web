@@ -215,7 +215,8 @@
 			{#each visibleFeatures as { feature, depth } (feature.id)}
 				{@const hasChildren = feature.children && feature.children.length > 0}
 				{@const isLeaf = !hasChildren}
-				<div class="matrix-row" class:is-group={hasChildren} class:is-leaf={isLeaf}>
+				{@const isSelected = selectedId === feature.id}
+				<div class="matrix-row" class:is-group={hasChildren} class:is-leaf={isLeaf} class:is-selected={isSelected}>
 					<FeatureRow
 						{feature}
 						{depth}
@@ -252,7 +253,9 @@
 									/>
 								{/if}
 								{#if isDropZone}
-									<span class="drop-indicator" class:diamond={feature.state === 'proposed'}></span>
+									<span class="drop-indicator">
+										<StateIcon state={feature.state} size={14} />
+									</span>
 								{/if}
 							</div>
 						{/each}
@@ -268,8 +271,8 @@
 			<span>Proposed</span>
 		</div>
 		<div class="legend-item">
-			<StateIcon state="specified" size={12} />
-			<span>Specified</span>
+			<StateIcon state="in_progress" size={12} />
+			<span>In Progress</span>
 		</div>
 		<div class="legend-item">
 			<StateIcon state="implemented" size={12} />
@@ -412,7 +415,7 @@
 
 	.col-bg.version-col {
 		width: 80px;
-		border-left: 1px solid var(--border-subtle);
+		border-left: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
 	}
 
 	.col-bg.version-col.group-start {
@@ -447,13 +450,17 @@
 		background: var(--background-muted);
 	}
 
+	.matrix-row.is-selected {
+		background: var(--background-muted);
+	}
+
 	.version-cell {
 		flex: 0 0 80px;
 		min-height: 25px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-left: 1px solid var(--border-subtle);
+		border-left: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
 		position: relative;
 	}
 
@@ -484,17 +491,7 @@
 
 	/* Drop zone indicator */
 	.drop-indicator {
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		border: 2px solid var(--accent-blue);
 		opacity: 0.5;
-	}
-
-	.drop-indicator.diamond {
-		border-radius: 0;
-		transform: rotate(45deg);
-		border-color: var(--state-proposed);
 	}
 
 	.version-cell.drop-zone {
