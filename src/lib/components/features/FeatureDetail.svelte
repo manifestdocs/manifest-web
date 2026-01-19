@@ -104,7 +104,27 @@
 		</div>
 	{:else}
 		<div class="detail-header">
-			<div class="header-top">
+			<div class="title-row">
+				{#if activeTab === 'view'}
+					<h1 class="feature-title">{feature.title}</h1>
+					<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
+				{:else}
+					<input
+						type="text"
+						class="title-input"
+						bind:value={editTitle}
+						placeholder="Feature title"
+					/>
+					<div class="title-actions">
+						<button class="btn btn-secondary" onclick={handleCancel} disabled={isSaving} type="button">Cancel</button>
+						<button class="btn btn-primary" onclick={handleSave} disabled={isSaving} type="button">
+							{isSaving ? 'Saving...' : 'Save'}
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<div class="meta">
 				{#if isGroup}
 					<div class="group-badge">
 						<GroupIcon size={14} />
@@ -125,35 +145,6 @@
 						</select>
 					</div>
 				{/if}
-
-				<div class="header-actions">
-					{#if activeTab === 'view'}
-						<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">
-							Edit
-						</button>
-					{:else}
-						<button class="btn btn-secondary" onclick={handleCancel} disabled={isSaving} type="button">
-							Cancel
-						</button>
-						<button class="btn btn-primary" onclick={handleSave} disabled={isSaving} type="button">
-							{isSaving ? 'Saving...' : 'Save'}
-						</button>
-					{/if}
-				</div>
-			</div>
-
-			{#if activeTab === 'view'}
-				<h1 class="feature-title">{feature.title}</h1>
-			{:else}
-				<input
-					type="text"
-					class="title-input"
-					bind:value={editTitle}
-					placeholder="Feature title"
-				/>
-			{/if}
-
-			<div class="meta">
 				<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
 			</div>
 		</div>
@@ -205,13 +196,6 @@
 	.detail-header {
 		padding: 20px 24px 16px;
 		border-bottom: 1px solid var(--border-default);
-	}
-
-	.header-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 12px;
 	}
 
 	.state-badge {
@@ -271,7 +255,42 @@
 		outline: none;
 	}
 
-	.header-actions {
+	.title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 8px;
+		max-width: 800px;
+	}
+
+	.feature-title {
+		margin: 0;
+		font-size: 24px;
+		font-weight: 600;
+		line-height: 1.25;
+		color: var(--foreground);
+	}
+
+	.title-input {
+		flex: 1;
+		padding: 6px 10px;
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 1.4;
+		background: var(--background-subtle);
+		border: 1px solid var(--border-default);
+		border-radius: 4px;
+		color: var(--foreground);
+	}
+
+	.title-input:focus {
+		outline: none;
+		border-color: var(--accent-blue);
+	}
+
+	.title-actions {
 		display: flex;
 		gap: 8px;
 	}
@@ -280,7 +299,7 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		padding: 6px 14px;
+		padding: 6px 12px;
 		font-size: 13px;
 		font-weight: 500;
 		border-radius: 6px;
@@ -314,36 +333,13 @@
 		background: var(--background-muted);
 	}
 
-	.feature-title {
-		margin: 0 0 8px;
-		font-size: 24px;
-		font-weight: 600;
-		line-height: 1.25;
-		color: var(--foreground);
-	}
-
-	.title-input {
-		width: 100%;
-		padding: 8px 12px;
-		font-size: 24px;
-		font-weight: 600;
-		background: var(--background-subtle);
-		border: 1px solid var(--border-default);
-		border-radius: 6px;
-		color: var(--foreground);
-		margin-bottom: 8px;
-	}
-
-	.title-input:focus {
-		outline: none;
-		border-color: var(--accent-blue);
-	}
-
 	.meta {
 		display: flex;
-		gap: 16px;
+		align-items: center;
+		gap: 12px;
 		font-size: 12px;
 		color: var(--foreground-subtle);
+		max-width: 800px;
 	}
 
 	.detail-content {
@@ -362,6 +358,6 @@
 	}
 
 	.details-edit {
-		height: 100%;
+		max-width: 800px;
 	}
 </style>
