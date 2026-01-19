@@ -26,7 +26,7 @@
 		<path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
 	</svg>
 {:else if state === 'specified'}
-	<!-- Ring with dot in center (green) -->
+	<!-- Ring (green) -->
 	<svg
 		width={size}
 		height={size}
@@ -36,12 +36,7 @@
 		class={className}
 		aria-label="Specified"
 	>
-		<path
-			fill-rule="evenodd"
-			clip-rule="evenodd"
-			d="M8 1C11.866 1 15 4.134 15 8C15 11.866 11.866 15 8 15C4.134 15 1 11.866 1 8C1 4.134 4.134 1 8 1ZM8 5C6.343 5 5 6.343 5 8C5 9.657 6.343 11 8 11C9.657 11 11 9.657 11 8C11 6.343 9.657 5 8 5Z"
-			fill="var(--state-specified)"
-		/>
+		<circle cx="8" cy="8" r="5.5" stroke="var(--state-specified)" stroke-width="1.5" fill="none" />
 	</svg>
 {:else if state === 'implemented'}
 	<!-- Filled circle with checkmark -->

@@ -13,6 +13,7 @@
 	let { featureId, featureState = 'implemented', onDrop, onHover }: Props = $props();
 
 	const isDiamond = $derived(featureState === 'proposed');
+	const isRing = $derived(featureState === 'specified');
 
 	let isDragging = $state(false);
 	let dragX = $state(0);
@@ -83,6 +84,7 @@
 	bind:this={ghostElement}
 	class="marker ghost"
 	class:diamond={isDiamond}
+	class:ring={isRing}
 	class:dragging={isDragging}
 	role="button"
 	tabindex="0"
@@ -98,6 +100,7 @@
 	<span
 		class="marker preview"
 		class:diamond={isDiamond}
+		class:ring={isRing}
 		style:left="{dragX}px"
 		style:top="{rowY}px"
 	></span>
@@ -117,6 +120,11 @@
 		border-radius: 0;
 		transform: rotate(45deg);
 		background: var(--state-proposed);
+	}
+
+	.marker.ring {
+		background: transparent;
+		border: 1.5px solid var(--state-specified);
 	}
 
 	.marker.ghost {
@@ -147,5 +155,9 @@
 	.marker.preview.diamond {
 		border-radius: 0;
 		transform: translate(-50%, -50%) rotate(45deg);
+	}
+
+	.marker.preview.ring {
+		border-width: 2px;
 	}
 </style>

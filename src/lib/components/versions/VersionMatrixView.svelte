@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
+	import { StateIcon } from '$lib/components/icons/index.js';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 	import DraggableDot from './DraggableDot.svelte';
 
@@ -260,6 +261,21 @@
 			{/each}
 		{/if}
 	</div>
+
+	<div class="matrix-legend">
+		<div class="legend-item">
+			<StateIcon state="proposed" size={12} />
+			<span>Proposed</span>
+		</div>
+		<div class="legend-item">
+			<StateIcon state="specified" size={12} />
+			<span>Specified</span>
+		</div>
+		<div class="legend-item">
+			<StateIcon state="implemented" size={12} />
+			<span>Implemented</span>
+		</div>
+	</div>
 </div>
 
 <CreateVersionDialog
@@ -483,5 +499,21 @@
 
 	.version-cell.drop-zone {
 		background: rgba(59, 130, 246, 0.08);
+	}
+
+	.matrix-legend {
+		display: flex;
+		gap: 16px;
+		padding: 8px 12px;
+		border-top: 1px solid var(--border-default);
+		background: var(--background-subtle);
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 11px;
+		color: var(--foreground-subtle);
 	}
 </style>

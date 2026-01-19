@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from './FeatureRow.svelte';
+	import { StateIcon } from '$lib/components/icons/index.js';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
@@ -121,6 +122,21 @@
 			{/each}
 		{/if}
 	</div>
+
+	<div class="tree-legend">
+		<div class="legend-item">
+			<StateIcon state="proposed" size={12} />
+			<span>Proposed</span>
+		</div>
+		<div class="legend-item">
+			<StateIcon state="specified" size={12} />
+			<span>Specified</span>
+		</div>
+		<div class="legend-item">
+			<StateIcon state="implemented" size={12} />
+			<span>Implemented</span>
+		</div>
+	</div>
 </div>
 
 <style>
@@ -200,5 +216,21 @@
 		text-align: center;
 		color: var(--foreground-subtle);
 		font-size: 13px;
+	}
+
+	.tree-legend {
+		display: flex;
+		gap: 16px;
+		padding: 8px 12px;
+		border-top: 1px solid var(--border-default);
+		background: var(--background-subtle);
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 11px;
+		color: var(--foreground-subtle);
 	}
 </style>
