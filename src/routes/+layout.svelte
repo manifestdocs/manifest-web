@@ -228,7 +228,7 @@
 		padding: 5px 10px;
 		font-size: 13px;
 		font-weight: 500;
-		color: var(--foreground-subtle);
+		color: var(--foreground-muted);
 		text-decoration: none;
 		border-radius: 4px;
 		transition:

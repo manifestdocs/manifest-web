@@ -162,11 +162,7 @@
 	<div class="matrix-header">
 		<!-- Feature column header -->
 		<div class="header-cell feature-header">
-			<button class="add-btn" onclick={() => (showCreateDialog = true)} type="button" title="Add version">
-				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-					<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-				</svg>
-			</button>
+			<span class="feature-title">Features</span>
 		</div>
 
 		<!-- Version group headers -->
@@ -302,7 +298,16 @@
 		flex: 0 0 280px;
 		min-width: 200px;
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		padding: 0 12px;
+	}
+
+	.feature-title {
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
 	}
 
 	.group-header {
@@ -321,26 +326,6 @@
 	.group-label {
 		font-weight: 600;
 		color: var(--foreground);
-	}
-
-	.add-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		padding: 0;
-		color: var(--foreground-subtle);
-		background: transparent;
-		border: 1px dashed var(--border-default);
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.add-btn:hover {
-		color: var(--foreground);
-		border-color: var(--foreground-subtle);
-		background: var(--background-muted);
 	}
 
 	.matrix-subheader {
