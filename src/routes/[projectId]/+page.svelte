@@ -143,7 +143,7 @@
 
 <style>
 	.sidebar {
-		background: var(--background-subtle);
+		background: var(--background);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
