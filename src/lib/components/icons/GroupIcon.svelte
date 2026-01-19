@@ -7,7 +7,7 @@
 	let { size = 16, class: className = '' }: Props = $props();
 </script>
 
-<!-- 2x2 grid of squares -->
+<!-- 2x2 grid of circles -->
 <svg
 	width={size}
 	height={size}
@@ -17,8 +17,8 @@
 	class={className}
 	aria-label="Feature group"
 >
-	<rect x="2" y="2" width="5" height="5" rx="1" fill="var(--foreground-muted)" />
-	<rect x="9" y="2" width="5" height="5" rx="1" fill="var(--foreground-muted)" />
-	<rect x="2" y="9" width="5" height="5" rx="1" fill="var(--foreground-muted)" />
-	<rect x="9" y="9" width="5" height="5" rx="1" fill="var(--foreground-muted)" />
+	<circle cx="4.5" cy="4.5" r="2.5" fill="var(--foreground-muted)" />
+	<circle cx="11.5" cy="4.5" r="2.5" fill="var(--foreground-muted)" />
+	<circle cx="4.5" cy="11.5" r="2.5" fill="var(--foreground-muted)" />
+	<circle cx="11.5" cy="11.5" r="2.5" fill="var(--foreground-muted)" />
 </svg>
