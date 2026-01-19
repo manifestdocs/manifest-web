@@ -10,32 +10,9 @@
 
 ## Vision
 
-Manifest Web is the browser-based companion to the Manifest desktop application. It provides project and feature management for teams and individuals who need to plan, review, and collaborate on features without being at their development machine.
+Manifest Web provides project and feature management for teams and individuals building software with AI agents. It's the planning and collaboration layer where feature specifications are written, reviewed, and tracked.
 
-**One-liner:** The planning layer for Manifest—features in, clarity out.
-
----
-
-## Relationship to Desktop App
-
-Manifest exists as two complementary applications:
-
-| Capability | Desktop (GPUI/Rust) | Web (SvelteKit) |
-|------------|---------------------|-----------------|
-| Feature tree navigation | ✓ | ✓ |
-| Feature editing | ✓ | ✓ |
-| Feature diff computation | ✓ | Read-only |
-| Session execution | ✓ | — |
-| Multi-agent orchestration | ✓ | — |
-| Terminal multiplexer | ✓ | — |
-| Session history viewing | ✓ | ✓ |
-| Project management | Basic | Full |
-| Team collaboration | Future | ✓ |
-| Mobile/tablet access | — | ✓ |
-
-**The mental model:**
-- **Desktop:** Where you *execute*—agents running, terminals active, real-time work
-- **Web:** Where you *plan and review*—feature specs, history, team coordination
+**One-liner:** Living documentation for AI-assisted development—features in, clarity out.
 
 ---
 
@@ -47,10 +24,10 @@ Not every moment of product work happens at a development machine. Product-engin
 
 - Sketch features on the train
 - Review session history in meetings
-- Collaborate with teammates who don't have the desktop app
-- Need to check feature state from a phone
+- Collaborate with teammates remotely
+- Need to check feature state from any device
 
-The desktop app is optimized for execution. The web app is optimized for access.
+The web app provides universal access to feature specifications and project planning.
 
 ### Teams Need a Shared View
 
@@ -63,11 +40,11 @@ Even solo developers eventually collaborate—with contractors, advisors, or fut
 
 ### The API Already Exists
 
-The Manifest desktop app exposes a Rust HTTP API for its core operations. The web app is a natural consumer of this API, enabling:
+The Manifest server exposes a Rust HTTP API for its core operations. The web app consumes this API, enabling:
 
-- Consistent data model across platforms
+- Consistent data model
 - Single source of truth
-- Offline-capable desktop with sync to web
+- MCP integration for AI agents
 
 ---
 
@@ -179,7 +156,7 @@ Rich editing experience for feature specifications.
 
 ### 4. Session History
 
-Read-only view of execution history from the desktop app.
+View of execution history from AI agent sessions.
 
 **Session List:**
 ```
@@ -273,16 +250,9 @@ The web app consumes the existing Manifest HTTP API:
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser   │────▶│  SvelteKit  │────▶│  Rust API   │
-│             │     │   Server    │     │  (Desktop)  │
+│   Browser   │────▶│  SvelteKit  │────▶│  Manifest   │
+│             │     │   Server    │     │  Server     │
 └─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │  Manifest   │
-                    │   Cloud     │
-                    │  (Future)   │
-                    └─────────────┘
 ```
 
 **API Endpoints (consumed):**
@@ -316,14 +286,9 @@ History
 ### Data Flow
 
 **Online Mode:**
-- Direct API calls to desktop app or cloud service
+- Direct API calls to Manifest server
 - Real-time updates via WebSocket (for session status)
 - Optimistic UI with server reconciliation
-
-**Offline Mode (Future):**
-- IndexedDB for local feature cache
-- Queue mutations for sync
-- Conflict resolution UI
 
 ---
 
@@ -378,11 +343,11 @@ History
 
 ## UI/UX Principles
 
-### 1. Desktop App Familiarity
+### 1. Modern Developer Tools Aesthetic
 
-The web app should feel like a sibling of the desktop app:
-- Same color palette and typography
-- Similar tree navigation patterns
+The web app should feel familiar to developers:
+- Clean, dark-theme color palette
+- Tree navigation patterns (like VS Code, Linear)
 - Consistent iconography for states
 - Keyboard shortcuts where applicable
 
@@ -464,7 +429,7 @@ These components from shadcn-svelte form our foundation:
 
 ### Theming
 
-CSS variables will be customized to match the desktop app's dark theme:
+CSS variables customized for a modern dark theme:
 
 ```css
 :root {
@@ -519,7 +484,6 @@ Clerk provides OAuth, session management, and future API key support without bui
 
 - Clerk Organizations for team management
 - API tokens via Clerk for CI/CD integration
-- Desktop app authentication handoff (shared Clerk session or token exchange)
 
 ---
 
@@ -601,8 +565,3 @@ Clerk provides OAuth, session management, and future API key support without bui
 - **Notion:** Flexible document editing, tree structure
 - **GitHub:** Session/commit history patterns
 - **Figma:** Real-time collaboration indicators
-- **Manifest Desktop:** Color palette, typography, state iconography (source of truth for visual consistency)
-
----
-
-*This specification covers the Manifest Web application. For the desktop application specification, see `manifest-product-spec.md`.*

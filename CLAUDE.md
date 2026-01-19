@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-ManifestWeb is the browser-based companion to the Manifest desktop application. It provides project and feature management for teams who need to plan, review, and collaborate on features outside their development machine. The desktop app is for *execution* (agents, terminals, real-time work); the web app is for *planning and review* (specs, history, team coordination).
+ManifestWeb provides project and feature management for teams building software with AI agents. It's the planning and collaboration layer where feature specifications are written, reviewed, and tracked.
 
 ## Tech Stack
 
