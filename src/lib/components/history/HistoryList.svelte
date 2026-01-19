@@ -22,18 +22,21 @@
 		const diffMs = now.getTime() - date.getTime();
 		const diffMins = Math.floor(diffMs / 60000);
 		const diffHours = Math.floor(diffMs / 3600000);
-		const diffDays = Math.floor(diffMs / 86400000);
-		const diffWeeks = Math.floor(diffDays / 7);
+
+		// Compare calendar days, not just time difference
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const entryDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+		const diffCalendarDays = Math.floor((today.getTime() - entryDay.getTime()) / 86400000);
 
 		if (diffMins < 5) return 'just now';
 		if (diffMins < 60) return `${Math.floor(diffMins / 15) * 15 || 15} mins ago`;
-		if (diffHours === 1) return '1 hour ago';
-		if (diffHours < 4) return `${diffHours} hours ago`;
-		if (diffHours < 24) return 'earlier today';
-		if (diffDays === 1) return 'yesterday';
-		if (diffDays < 7) return `${diffDays} days ago`;
-		if (diffWeeks === 1) return '1 week ago';
-		if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
+		if (diffCalendarDays === 0 && diffHours === 1) return '1 hour ago';
+		if (diffCalendarDays === 0 && diffHours < 4) return `${diffHours} hours ago`;
+		if (diffCalendarDays === 0) return 'earlier today';
+		if (diffCalendarDays === 1) return 'yesterday';
+		if (diffCalendarDays < 7) return `${diffCalendarDays} days ago`;
+		if (diffCalendarDays < 14) return '1 week ago';
+		if (diffCalendarDays < 28) return `${Math.floor(diffCalendarDays / 7)} weeks ago`;
 		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
 
@@ -170,31 +173,41 @@
 	.timeline {
 		display: flex;
 		flex-direction: column;
-		position: relative;
-		padding-left: 50px;
-	}
-
-	.timeline::before {
-		content: '';
-		position: absolute;
-		left: 50px;
-		top: 10px;
-		bottom: 10px;
-		width: 1px;
-		background: var(--border-default);
 	}
 
 	.time-group {
 		display: grid;
-		grid-template-columns: auto 1fr;
+		grid-template-columns: 100px 1fr;
 		gap: 16px;
+		position: relative;
+	}
+
+	/* Vertical connecting line - centered in the marker column */
+	.time-group::before {
+		content: '';
+		position: absolute;
+		left: 50px;
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		background: var(--border-default);
+	}
+
+	/* Hide line at the very top and bottom */
+	.time-group:first-child::before {
+		top: 12px;
+	}
+
+	.time-group:last-child::before {
+		bottom: 16px;
 	}
 
 	.time-marker {
 		display: flex;
+		justify-content: center;
 		align-items: flex-start;
 		position: relative;
-		margin-left: -50px;
+		z-index: 1;
 	}
 
 	.pill {
