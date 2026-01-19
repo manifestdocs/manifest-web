@@ -86,7 +86,13 @@
 	<div class="app-layout">
 		<header class="app-header">
 			<div class="header-left">
-				<span class="logo">Manifest</span>
+				<div class="logo">
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+						<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+					</svg>
+					<span>MANIFEST</span>
+				</div>
 				<select
 					class="project-select"
 					value={selectedProjectId}
@@ -104,20 +110,22 @@
 					{/if}
 				</select>
 				<nav class="view-nav">
-					<a
-						href="/{selectedProjectId}"
-						class="nav-link"
-						class:active={page.url.pathname === `/${selectedProjectId}`}
-					>
-						Feature Editor
-					</a>
-					<a
-						href="/{selectedProjectId}/versions"
-						class="nav-link"
-						class:active={page.url.pathname === `/${selectedProjectId}/versions`}
-					>
-						Now, Next, Later
-					</a>
+					<div class="nav-group">
+						<a
+							href="/{selectedProjectId}"
+							class="nav-link"
+							class:active={page.url.pathname === `/${selectedProjectId}`}
+						>
+							Edit
+						</a>
+						<a
+							href="/{selectedProjectId}/versions"
+							class="nav-link"
+							class:active={page.url.pathname === `/${selectedProjectId}/versions`}
+						>
+							Plan
+						</a>
+					</div>
 					<a
 						href="/{selectedProjectId}/history"
 						class="nav-link"
@@ -165,10 +173,17 @@
 	}
 
 	.logo {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		font-size: 16px;
-		font-weight: 600;
+		font-weight: 700;
 		color: var(--foreground);
-		letter-spacing: -0.5px;
+		letter-spacing: 0.5px;
+	}
+
+	.logo svg {
+		margin-top: 2px;
 	}
 
 	.project-select {
@@ -197,14 +212,20 @@
 
 	.view-nav {
 		display: flex;
-		gap: 4px;
-		padding: 4px;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.nav-group {
+		display: flex;
+		gap: 2px;
+		padding: 3px;
 		background: var(--background-muted);
 		border-radius: 6px;
 	}
 
 	.nav-link {
-		padding: 6px 12px;
+		padding: 5px 10px;
 		font-size: 13px;
 		font-weight: 500;
 		color: var(--foreground-subtle);
@@ -223,6 +244,20 @@
 		background: var(--background);
 		color: var(--foreground);
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+
+	.view-nav > .nav-link {
+		padding: 8px 10px;
+		background: var(--background-muted);
+		border-radius: 6px;
+	}
+
+	.view-nav > .nav-link:hover {
+		background: var(--background-emphasis);
+	}
+
+	.view-nav > .nav-link.active {
+		background: var(--background);
 	}
 
 	.project-description {
