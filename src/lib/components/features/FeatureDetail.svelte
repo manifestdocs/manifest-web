@@ -2,6 +2,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import { GroupIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
+	import { InfoBanner } from '$lib/components/ui/index.js';
 
 	type Feature = components['schemas']['Feature'];
 	type FeatureState = components['schemas']['FeatureState'];
@@ -182,17 +183,13 @@
 			</div>
 		</div>
 
+		{#if isGroup}
+			<InfoBanner>
+				Content here provides shared context for all child features in this group.
+			</InfoBanner>
+		{/if}
+
 		<div class="detail-content">
-			{#if isGroup}
-				<div class="group-info-banner">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="10"/>
-						<path d="M12 16v-4"/>
-						<path d="M12 8h.01"/>
-					</svg>
-					<span>Content here provides shared context for all child features in this group.</span>
-				</div>
-			{/if}
 			{#if activeTab === 'view'}
 				<div class="details-view">
 					{#if feature.details}
@@ -417,28 +414,6 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 20px 24px;
-	}
-
-	.group-info-banner {
-		display: flex;
-		align-items: flex-start;
-		gap: 10px;
-		padding: 12px 14px;
-		margin-bottom: 20px;
-		max-width: 800px;
-		background: rgba(156, 220, 254, 0.08);
-		border: 1px solid rgba(156, 220, 254, 0.2);
-		border-radius: 6px;
-		font-size: 13px;
-		line-height: 1.5;
-		color: var(--foreground-muted);
-	}
-
-	.group-info-banner svg {
-		flex-shrink: 0;
-		margin-top: 2px;
-		color: var(--accent-blue);
-		opacity: 0.8;
 	}
 
 	.details-view {
