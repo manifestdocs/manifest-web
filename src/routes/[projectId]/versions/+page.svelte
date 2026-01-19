@@ -73,6 +73,21 @@
 		await loadVersions(projectId);
 	}
 
+	async function handleUpdateFeatureVersion(featureId: string, versionId: string | null) {
+		if (!projectId) return;
+
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { target_version_id: versionId }
+		});
+		if (error) {
+			console.error('Failed to update feature version:', error);
+			throw new Error('Failed to update feature version');
+		}
+		// Refresh feature tree
+		await loadFeatureTree(projectId);
+	}
+
 	function handleSelectFeature(id: string) {
 		goto(`/${projectId}?feature=${id}`);
 	}
@@ -88,6 +103,7 @@
 			selectedId={selectedFeatureId}
 			onSelect={handleSelectFeature}
 			onCreateVersion={handleCreateVersion}
+			onUpdateFeatureVersion={handleUpdateFeatureVersion}
 		/>
 	{/if}
 </section>

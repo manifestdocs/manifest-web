@@ -2,6 +2,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
+	import DraggableDot from './DraggableDot.svelte';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 	type Version = components['schemas']['Version'];
@@ -12,12 +13,16 @@
 		selectedId: string | null;
 		onSelect: (id: string) => void;
 		onCreateVersion: (name: string, description: string | null) => Promise<void>;
+		onUpdateFeatureVersion?: (featureId: string, versionId: string | null) => Promise<void>;
 	}
 
-	let { features, versions, selectedId, onSelect, onCreateVersion }: Props = $props();
+	let { features, versions, selectedId, onSelect, onCreateVersion, onUpdateFeatureVersion }: Props = $props();
 
 	let showCreateDialog = $state(false);
 	let expandedIds = $state(new Set<string>());
+
+	// Drag state for drop zone indicator
+	let dragHover = $state<{ featureId: string; versionId: string } | null>(null);
 
 	// Auto-expand all on load
 	$effect(() => {
@@ -109,6 +114,47 @@
 		}
 		return idx + versionIndex;
 	}
+
+	// Handle hover during drag for drop zone indicator
+	function handleDotHover(featureId: string, versionId: string | null) {
+		if (versionId) {
+			dragHover = { featureId, versionId };
+		} else {
+			dragHover = null;
+		}
+	}
+
+	// Handle dot drop to update feature's target version
+	async function handleDotDrop(featureId: string, newVersionId: string | null) {
+		// Clear hover state
+		dragHover = null;
+		// Find the feature's current target version
+		function findFeature(nodes: FeatureTreeNode[]): FeatureTreeNode | null {
+			for (const node of nodes) {
+				if (node.id === featureId) return node;
+				if (node.children) {
+					const found = findFeature(node.children);
+					if (found) return found;
+				}
+			}
+			return null;
+		}
+
+		const feature = findFeature(features);
+		if (!feature) return;
+
+		// Skip if dropped on same column
+		if (feature.target_version_id === newVersionId) return;
+
+		// Call the update handler if provided
+		if (onUpdateFeatureVersion) {
+			try {
+				await onUpdateFeatureVersion(featureId, newVersionId);
+			} catch (error) {
+				console.error('Failed to update feature version:', error);
+			}
+		}
+	}
 </script>
 
 <div class="matrix-container">
@@ -151,6 +197,21 @@
 
 	<!-- Body -->
 	<div class="matrix-body">
+		<!-- Full-height column backgrounds -->
+		<div class="column-backgrounds">
+			<div class="col-bg feature-col"></div>
+			{#each groupedVersions as group, groupIndex}
+				{#each group.versions as version, versionIndex}
+					{@const colIndex = getFlatIndex(groupIndex, versionIndex)}
+					<div
+						class="col-bg version-col"
+						class:group-start={versionIndex === 0}
+						class:zebra={colIndex % 2 === 0}
+					></div>
+				{/each}
+			{/each}
+		</div>
+
 		{#if visibleFeatures.length === 0}
 			<div class="empty-state">No features yet</div>
 		{:else}
@@ -175,15 +236,26 @@
 							{@const targetIdx = getVersionFlatIndex(feature.target_version_id)}
 							{@const currentIdx = getFlatIndex(groupIndex, versionIndex)}
 							{@const showTrack = isLeaf && targetIdx >= 0 && currentIdx < targetIdx}
+							{@const isDropZone = dragHover?.featureId === feature.id && dragHover?.versionId === version.id && !isTarget}
 							<div
 								class="version-cell"
 								class:group-start={versionIndex === 0}
 								class:show-track={showTrack}
 								class:has-dot={isTarget}
+								class:drop-zone={isDropZone}
 								class:zebra={currentIdx % 2 === 0}
+								data-version-id={version.id}
 							>
 								{#if isTarget}
-									<span class="dot"></span>
+									<DraggableDot
+										featureId={feature.id}
+										featureState={feature.state}
+										onDrop={handleDotDrop}
+										onHover={handleDotHover}
+									/>
+								{/if}
+								{#if isDropZone}
+									<span class="drop-indicator" class:diamond={feature.state === 'proposed'}></span>
 								{/if}
 							</div>
 						{/each}
@@ -309,14 +381,49 @@
 		border-right: 1px solid var(--border-default);
 	}
 
-	.version-name.zebra,
-	.version-cell.zebra {
+	.version-name.zebra {
 		background: rgba(128, 128, 128, 0.04);
 	}
 
 	.matrix-body {
 		flex: 1;
 		overflow: auto;
+		position: relative;
+	}
+
+	.column-backgrounds {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		display: flex;
+		pointer-events: none;
+	}
+
+	.col-bg {
+		height: 100%;
+	}
+
+	.col-bg.feature-col {
+		width: 280px;
+		min-width: 200px;
+	}
+
+	.col-bg.version-col {
+		width: 80px;
+		border-left: 1px solid var(--border-subtle);
+	}
+
+	.col-bg.version-col.group-start {
+		border-left: 1px solid var(--border-default);
+	}
+
+	.col-bg.version-col.zebra {
+		background: rgba(128, 128, 128, 0.04);
+	}
+
+	.col-bg.version-col:last-child {
+		border-right: 1px solid var(--border-default);
 	}
 
 	.empty-state {
@@ -339,14 +446,9 @@
 		background: var(--background-muted);
 	}
 
-	.matrix-row:hover .version-cell.zebra {
-		background: transparent;
-	}
-
-
 	.version-cell {
 		flex: 0 0 80px;
-		min-height: 32px;
+		min-height: 25px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -379,12 +481,22 @@
 		right: 50%;
 	}
 
-	.dot {
-		width: 8px;
-		height: 8px;
+	/* Drop zone indicator */
+	.drop-indicator {
+		width: 16px;
+		height: 16px;
 		border-radius: 50%;
-		background: var(--accent-blue);
-		position: relative;
-		z-index: 1;
+		border: 2px solid var(--accent-blue);
+		opacity: 0.5;
+	}
+
+	.drop-indicator.diamond {
+		border-radius: 0;
+		transform: rotate(45deg);
+		border-color: var(--state-proposed);
+	}
+
+	.version-cell.drop-zone {
+		background: rgba(59, 130, 246, 0.08);
 	}
 </style>
