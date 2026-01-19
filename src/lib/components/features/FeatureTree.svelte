@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from './FeatureRow.svelte';
-	import { StateIcon } from '$lib/components/icons/index.js';
+	import FeatureContextMenu from './FeatureContextMenu.svelte';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
@@ -9,11 +9,18 @@
 		features: FeatureTreeNode[];
 		selectedId: string | null;
 		onSelect: (id: string) => void;
+		onAddFeature?: (parentId: string | null) => void;
 	}
 
-	let { features, selectedId, onSelect }: Props = $props();
+	let { features, selectedId, onSelect, onAddFeature }: Props = $props();
 
 	let expandedIds = $state(new Set<string>());
+
+	// Context menu state
+	let contextMenuOpen = $state(false);
+	let contextMenuX = $state(0);
+	let contextMenuY = $state(0);
+	let contextMenuFeatureId = $state<string | null>(null);
 
 	// Auto-expand all on load
 	$effect(() => {
@@ -78,6 +85,51 @@
 	function collapseAll() {
 		expandedIds = new Set<string>();
 	}
+
+	function handleAddFeature() {
+		// If a feature is selected, add as child; otherwise add at root
+		onAddFeature?.(selectedId);
+	}
+
+	// Find a feature by ID in the tree
+	function findFeature(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
+		for (const node of nodes) {
+			if (node.id === id) return node;
+			const found = findFeature(node.children, id);
+			if (found) return found;
+		}
+		return null;
+	}
+
+	const contextMenuFeatureTitle = $derived(
+		contextMenuFeatureId ? findFeature(features, contextMenuFeatureId)?.title ?? null : null
+	);
+
+	function handleRowContextMenu(id: string, x: number, y: number) {
+		contextMenuFeatureId = id;
+		contextMenuX = x;
+		contextMenuY = y;
+		contextMenuOpen = true;
+	}
+
+	function handleContextMenuClose() {
+		contextMenuOpen = false;
+	}
+
+	function handleContextMenuAddChild() {
+		onAddFeature?.(contextMenuFeatureId);
+	}
+
+	function handleTreeContextMenu(e: MouseEvent) {
+		// Only trigger if clicking on the tree background (empty space)
+		if (e.target === e.currentTarget) {
+			e.preventDefault();
+			contextMenuFeatureId = null;
+			contextMenuX = e.clientX;
+			contextMenuY = e.clientY;
+			contextMenuOpen = true;
+		}
+	}
 </script>
 
 <div class="feature-tree">
@@ -89,6 +141,13 @@
 	<!-- Subheader row (matches matrix subheader) -->
 	<div class="tree-subheader">
 		<div class="tree-actions">
+			{#if onAddFeature}
+				<button class="action-btn" onclick={handleAddFeature} title="Add feature" type="button">
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+				</button>
+			{/if}
 			<button class="action-btn" onclick={expandAll} title="Expand all" type="button">
 				<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
 					<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -102,7 +161,8 @@
 		</div>
 	</div>
 
-	<div class="tree-content">
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="tree-content" oncontextmenu={handleTreeContextMenu}>
 		{#if visibleFeatures.length === 0}
 			<div class="empty-state">No features yet</div>
 		{:else}
@@ -117,27 +177,22 @@
 						showTrack={isLeaf && !!feature.target_version_id}
 						{onSelect}
 						onToggle={handleToggle}
+						onContextMenu={handleRowContextMenu}
 					/>
 				</div>
 			{/each}
 		{/if}
 	</div>
-
-	<div class="tree-legend">
-		<div class="legend-item">
-			<StateIcon state="proposed" size={12} />
-			<span>Proposed</span>
-		</div>
-		<div class="legend-item">
-			<StateIcon state="specified" size={12} />
-			<span>Specified</span>
-		</div>
-		<div class="legend-item">
-			<StateIcon state="implemented" size={12} />
-			<span>Implemented</span>
-		</div>
-	</div>
 </div>
+
+<FeatureContextMenu
+	open={contextMenuOpen}
+	x={contextMenuX}
+	y={contextMenuY}
+	featureTitle={contextMenuFeatureTitle}
+	onClose={handleContextMenuClose}
+	onAddChild={handleContextMenuAddChild}
+/>
 
 <style>
 	.feature-tree {
@@ -216,21 +271,5 @@
 		text-align: center;
 		color: var(--foreground-subtle);
 		font-size: 13px;
-	}
-
-	.tree-legend {
-		display: flex;
-		gap: 16px;
-		padding: 8px 12px;
-		border-top: 1px solid var(--border-default);
-		background: var(--background-subtle);
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 11px;
-		color: var(--foreground-subtle);
 	}
 </style>

@@ -12,15 +12,21 @@
 		showTrack?: boolean;
 		onSelect: (id: string) => void;
 		onToggle: (id: string) => void;
+		onContextMenu?: (id: string, x: number, y: number) => void;
 	}
 
-	let { feature, depth, isSelected, isExpanded, showTrack = false, onSelect, onToggle }: Props = $props();
+	let { feature, depth, isSelected, isExpanded, showTrack = false, onSelect, onToggle, onContextMenu }: Props = $props();
 
 	const hasChildren = $derived(feature.children && feature.children.length > 0);
 
 	function handleToggleClick(e: MouseEvent) {
 		e.stopPropagation();
 		onToggle(feature.id);
+	}
+
+	function handleContextMenu(e: MouseEvent) {
+		e.preventDefault();
+		onContextMenu?.(feature.id, e.clientX, e.clientY);
 	}
 </script>
 
@@ -30,6 +36,7 @@
 	class:selected={isSelected}
 	style="padding-left: {depth * 16 + 8}px"
 	onclick={() => onSelect(feature.id)}
+	oncontextmenu={handleContextMenu}
 >
 	{#if hasChildren}
 		<button
