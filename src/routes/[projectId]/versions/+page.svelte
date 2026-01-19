@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$lib/api/client.js';
+	import { api, subscribeToProject } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
 	import { VersionMatrixView } from '$lib/components/versions/index.js';
 	import { page } from '$app/state';
@@ -22,6 +22,26 @@
 			loadFeatureTree(projectId);
 			loadVersions(projectId);
 		}
+	});
+
+	// Subscribe to SSE for real-time updates from other clients/agents
+	$effect(() => {
+		if (!projectId) return;
+
+		const source = subscribeToProject(projectId);
+
+		source.addEventListener('change', () => {
+			// Refetch the feature tree when any feature changes
+			loadFeatureTree(projectId);
+		});
+
+		source.onerror = () => {
+			console.debug('SSE connection closed or failed');
+		};
+
+		return () => {
+			source.close();
+		};
 	});
 
 	async function loadFeatureTree(projectId: string) {
@@ -89,7 +109,7 @@
 	}
 
 	function handleSelectFeature(id: string) {
-		goto(`/${projectId}?feature=${id}`);
+		goto(`/${projectId}/versions?feature=${id}`);
 	}
 </script>
 
