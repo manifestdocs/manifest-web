@@ -30,9 +30,11 @@
 		}
 	});
 
+	let isLocked = $derived(feature?.state === 'in_progress');
+
 	const stateOptions: { value: FeatureState; label: string }[] = [
 		{ value: 'proposed', label: 'Proposed' },
-		{ value: 'specified', label: 'Specified' },
+		{ value: 'in_progress', label: 'In Progress' },
 		{ value: 'implemented', label: 'Implemented' },
 		{ value: 'deprecated', label: 'Deprecated' }
 	];
@@ -104,52 +106,93 @@
 		</div>
 	{:else}
 		<div class="detail-header">
-			<div class="title-row">
+			<div class="header-content">
 				{#if activeTab === 'view'}
-					<h1 class="feature-title">{feature.title}</h1>
-					<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
+					<div class="header-left">
+						<h1 class="feature-title">{feature.title}</h1>
+						<div class="meta">
+							{#if isGroup}
+								<div class="group-badge">
+									<GroupIcon size={14} />
+									<span>Group</span>
+								</div>
+							{:else}
+								<div class="state-badge" data-state={feature.state}>
+									<StateIcon state={feature.state} size={14} />
+									<select
+										class="state-select"
+										value={feature.state}
+										onchange={(e) => handleStateChange(e.currentTarget.value as FeatureState)}
+										disabled={isSaving}
+									>
+										{#each stateOptions as opt}
+											<option value={opt.value}>{opt.label}</option>
+										{/each}
+									</select>
+								</div>
+							{/if}
+							<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
+						</div>
+					</div>
+					<div class="header-right">
+						{#if isLocked}
+							<div class="locked-indicator">
+								<svg class="lock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+									<rect x="3" y="11" width="18" height="11" rx="2" />
+									<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+								</svg>
+								<span class="locked-text">in progress features can't be edited</span>
+							</div>
+						{:else}
+							<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
+						{/if}
+					</div>
 				{:else}
-					<input
-						type="text"
-						class="title-input"
-						bind:value={editTitle}
-						placeholder="Feature title"
-					/>
-					<div class="title-actions">
-						<button class="btn btn-secondary" onclick={handleCancel} disabled={isSaving} type="button">Cancel</button>
-						<button class="btn btn-primary" onclick={handleSave} disabled={isSaving} type="button">
-							{isSaving ? 'Saving...' : 'Save'}
-						</button>
+					<div class="header-left">
+						<input
+							type="text"
+							class="title-input"
+							bind:value={editTitle}
+							placeholder="Feature title"
+						/>
+						<div class="meta">
+							{#if isGroup}
+								<div class="group-badge">
+									<GroupIcon size={14} />
+									<span>Group</span>
+								</div>
+							{:else}
+								<div class="state-badge" data-state={feature.state}>
+									<StateIcon state={feature.state} size={14} />
+									<span class="state-label">{stateOptions.find(o => o.value === feature.state)?.label}</span>
+								</div>
+							{/if}
+							<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
+						</div>
+					</div>
+					<div class="header-right">
+						<div class="title-actions">
+							<button class="btn btn-secondary" onclick={handleCancel} disabled={isSaving} type="button">Cancel</button>
+							<button class="btn btn-primary" onclick={handleSave} disabled={isSaving} type="button">
+								{isSaving ? 'Saving...' : 'Save'}
+							</button>
+						</div>
 					</div>
 				{/if}
-			</div>
-
-			<div class="meta">
-				{#if isGroup}
-					<div class="group-badge">
-						<GroupIcon size={14} />
-						<span>Group</span>
-					</div>
-				{:else}
-					<div class="state-badge" data-state={feature.state}>
-						<StateIcon state={feature.state} size={14} />
-						<select
-							class="state-select"
-							value={feature.state}
-							onchange={(e) => handleStateChange(e.currentTarget.value as FeatureState)}
-							disabled={isSaving}
-						>
-							{#each stateOptions as opt}
-								<option value={opt.value}>{opt.label}</option>
-							{/each}
-						</select>
-					</div>
-				{/if}
-				<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
 			</div>
 		</div>
 
 		<div class="detail-content">
+			{#if isGroup}
+				<div class="group-info-banner">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"/>
+						<path d="M12 16v-4"/>
+						<path d="M12 8h.01"/>
+					</svg>
+					<span>Content here provides shared context for all child features in this group.</span>
+				</div>
+			{/if}
 			{#if activeTab === 'view'}
 				<div class="details-view">
 					{#if feature.details}
@@ -198,6 +241,23 @@
 		border-bottom: 1px solid var(--border-default);
 	}
 
+	.header-content {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 24px;
+		max-width: 800px;
+	}
+
+	.header-left {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.header-right {
+		flex-shrink: 0;
+	}
+
 	.state-badge {
 		display: inline-flex;
 		align-items: center;
@@ -214,9 +274,9 @@
 		color: var(--state-proposed);
 	}
 
-	.state-badge[data-state="specified"] {
+	.state-badge[data-state="in_progress"] {
 		background: rgba(137, 209, 133, 0.15);
-		color: var(--state-specified);
+		color: var(--state-in-progress);
 	}
 
 	.state-badge[data-state="implemented"] {
@@ -255,15 +315,6 @@
 		outline: none;
 	}
 
-	.title-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		margin-bottom: 8px;
-		max-width: 800px;
-	}
-
 	.feature-title {
 		margin: 0;
 		font-size: 24px;
@@ -273,7 +324,7 @@
 	}
 
 	.title-input {
-		flex: 1;
+		width: 100%;
 		padding: 6px 10px;
 		font-family: 'IBM Plex Mono', monospace;
 		font-size: 14px;
@@ -333,19 +384,61 @@
 		background: var(--background-muted);
 	}
 
+	.locked-indicator {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 2px;
+		color: var(--foreground-subtle);
+		flex-shrink: 0;
+	}
+
+	.lock-icon {
+		opacity: 0.7;
+	}
+
+	.locked-text {
+		font-size: 11px;
+		text-align: right;
+		max-width: 100px;
+		line-height: 1.3;
+	}
+
 	.meta {
 		display: flex;
 		align-items: center;
 		gap: 12px;
+		margin-top: 8px;
 		font-size: 12px;
 		color: var(--foreground-subtle);
-		max-width: 800px;
 	}
 
 	.detail-content {
 		flex: 1;
 		overflow-y: auto;
 		padding: 20px 24px;
+	}
+
+	.group-info-banner {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 12px 14px;
+		margin-bottom: 20px;
+		max-width: 800px;
+		background: rgba(156, 220, 254, 0.08);
+		border: 1px solid rgba(156, 220, 254, 0.2);
+		border-radius: 6px;
+		font-size: 13px;
+		line-height: 1.5;
+		color: var(--foreground-muted);
+	}
+
+	.group-info-banner svg {
+		flex-shrink: 0;
+		margin-top: 2px;
+		color: var(--accent-blue);
+		opacity: 0.8;
 	}
 
 	.details-view {
