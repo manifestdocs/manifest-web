@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
-	import { GroupIcon, StateIcon } from '$lib/components/icons/index.js';
+	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
@@ -87,6 +87,28 @@
 		}
 		expandedIds = newExpanded;
 	}
+
+	// Get flat index for a version ID (for determining track visibility)
+	function getVersionFlatIndex(versionId: string | null | undefined): number {
+		if (!versionId) return -1;
+		let idx = 0;
+		for (const group of groupedVersions) {
+			for (const version of group.versions) {
+				if (version.id === versionId) return idx;
+				idx++;
+			}
+		}
+		return -1;
+	}
+
+	// Get flat index for group/version position
+	function getFlatIndex(groupIndex: number, versionIndex: number): number {
+		let idx = 0;
+		for (let g = 0; g < groupIndex; g++) {
+			idx += groupedVersions[g].versions.length;
+		}
+		return idx + versionIndex;
+	}
 </script>
 
 <div class="matrix-container">
@@ -94,36 +116,37 @@
 	<div class="matrix-header">
 		<!-- Feature column header -->
 		<div class="header-cell feature-header">
-			<span>Features</span>
-		</div>
-
-		<!-- Version group headers -->
-		{#each groupedVersions as group}
-			<div class="header-cell group-header" style="flex: 0 0 {group.versions.length * 80}px">
-				<span class="group-label">{group.label}</span>
-			</div>
-		{/each}
-
-		<div class="header-cell add-header">
 			<button class="add-btn" onclick={() => (showCreateDialog = true)} type="button" title="Add version">
 				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 				</svg>
 			</button>
 		</div>
+
+		<!-- Version group headers -->
+		{#each groupedVersions as group}
+			<div class="header-cell group-header" style="width: {group.versions.length * 80}px">
+				<span class="group-label">{group.label}</span>
+			</div>
+		{/each}
 	</div>
 
 	<!-- Sub-header with version names -->
 	<div class="matrix-subheader">
 		<div class="subheader-cell feature-subheader"></div>
-		{#each groupedVersions as group}
-			{#each group.versions as version}
-				<div class="subheader-cell version-name" title={version.description || ''}>
+		{#each groupedVersions as group, groupIndex}
+			{#each group.versions as version, versionIndex}
+				{@const colIndex = getFlatIndex(groupIndex, versionIndex)}
+				<div
+					class="subheader-cell version-name"
+					class:group-start={versionIndex === 0}
+					class:zebra={colIndex % 2 === 0}
+					title={version.description || ''}
+				>
 					{version.name}
 				</div>
 			{/each}
 		{/each}
-		<div class="subheader-cell add-subheader"></div>
 	</div>
 
 	<!-- Body -->
@@ -133,47 +156,38 @@
 		{:else}
 			{#each visibleFeatures as { feature, depth } (feature.id)}
 				{@const hasChildren = feature.children && feature.children.length > 0}
-				{@const isExpanded = expandedIds.has(feature.id)}
 				{@const isLeaf = !hasChildren}
-				<div class="matrix-row" class:is-group={hasChildren}>
-					<!-- Feature cell -->
-					<button
-						type="button"
-						class="feature-cell"
-						class:selected={selectedId === feature.id}
-						style="padding-left: {depth * 16 + 8}px"
-						onclick={() => onSelect(feature.id)}
-					>
-						{#if hasChildren}
-							<button
-								type="button"
-								class="toggle-btn"
-								onclick={(e) => { e.stopPropagation(); toggleExpand(feature.id); }}
-							>
-								<svg class="chevron" class:expanded={isExpanded} width="14" height="14" viewBox="0 0 16 16" fill="none">
-									<path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-								</svg>
-							</button>
-							<GroupIcon size={14} />
-						{:else}
-							<span class="toggle-spacer"></span>
-							<StateIcon state={feature.state} size={14} />
-						{/if}
-						<span class="feature-title">{feature.title}</span>
-					</button>
+				<div class="matrix-row" class:is-group={hasChildren} class:is-leaf={isLeaf}>
+					<FeatureRow
+						{feature}
+						{depth}
+						isSelected={selectedId === feature.id}
+						isExpanded={expandedIds.has(feature.id)}
+						showTrack={isLeaf && !!feature.target_version_id}
+						{onSelect}
+						onToggle={toggleExpand}
+					/>
 
 					<!-- Version cells -->
-					{#each groupedVersions as group}
-						{#each group.versions as version}
-							<div class="version-cell" class:targeted={isLeaf && feature.target_version_id === version.id}>
-								{#if isLeaf && feature.target_version_id === version.id}
+					{#each groupedVersions as group, groupIndex}
+						{#each group.versions as version, versionIndex}
+							{@const isTarget = isLeaf && feature.target_version_id === version.id}
+							{@const targetIdx = getVersionFlatIndex(feature.target_version_id)}
+							{@const currentIdx = getFlatIndex(groupIndex, versionIndex)}
+							{@const showTrack = isLeaf && targetIdx >= 0 && currentIdx < targetIdx}
+							<div
+								class="version-cell"
+								class:group-start={versionIndex === 0}
+								class:show-track={showTrack}
+								class:has-dot={isTarget}
+								class:zebra={currentIdx % 2 === 0}
+							>
+								{#if isTarget}
 									<span class="dot"></span>
 								{/if}
 							</div>
 						{/each}
 					{/each}
-
-					<div class="add-cell"></div>
 				</div>
 			{/each}
 		{/if}
@@ -196,12 +210,15 @@
 
 	.matrix-header {
 		display: flex;
+		height: 36px;
 		background: var(--background-subtle);
 		border-bottom: 1px solid var(--border-default);
 	}
 
 	.header-cell {
-		padding: 10px 12px;
+		display: flex;
+		align-items: center;
+		padding: 0 12px;
 		font-size: 12px;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -212,28 +229,26 @@
 	.feature-header {
 		flex: 0 0 280px;
 		min-width: 200px;
+		display: flex;
+		justify-content: flex-end;
 	}
 
 	.group-header {
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		text-align: center;
 		border-left: 1px solid var(--border-default);
+		flex: none;
+	}
+
+	.group-header:last-child {
+		border-right: 1px solid var(--border-default);
 	}
 
 	.group-label {
 		font-weight: 600;
 		color: var(--foreground);
-	}
-
-	.add-header {
-		flex: 1;
-		min-width: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		padding-left: 8px;
-		border-left: 1px solid var(--border-default);
 	}
 
 	.add-btn {
@@ -258,12 +273,15 @@
 
 	.matrix-subheader {
 		display: flex;
+		height: 27px;
 		background: var(--background);
 		border-bottom: 1px solid var(--border-default);
 	}
 
 	.subheader-cell {
-		padding: 6px 12px;
+		display: flex;
+		align-items: center;
+		padding: 0 12px;
 		font-size: 11px;
 		font-weight: 500;
 		color: var(--foreground-muted);
@@ -276,17 +294,24 @@
 
 	.version-name {
 		flex: 0 0 80px;
-		text-align: center;
-		border-left: 1px solid var(--border-default);
+		justify-content: center;
+		border-left: 1px solid var(--border-subtle);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.add-subheader {
-		flex: 1;
-		min-width: 40px;
+	.version-name.group-start {
 		border-left: 1px solid var(--border-default);
+	}
+
+	.version-name:last-child {
+		border-right: 1px solid var(--border-default);
+	}
+
+	.version-name.zebra,
+	.version-cell.zebra {
+		background: rgba(128, 128, 128, 0.04);
 	}
 
 	.matrix-body {
@@ -306,70 +331,18 @@
 	.matrix-row {
 		display: flex;
 		border-bottom: 1px solid var(--border-subtle);
+		position: relative;
+		width: fit-content;
 	}
 
-	.matrix-row.is-group {
-		background: var(--background-subtle);
-	}
-
-	.feature-cell {
-		flex: 0 0 280px;
-		min-width: 200px;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		padding: 6px 8px;
-		font-size: 13px;
-		color: var(--foreground);
-		background: transparent;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-	}
-
-	.feature-cell:hover {
+	.matrix-row:hover {
 		background: var(--background-muted);
 	}
 
-	.feature-cell.selected {
-		background: var(--background-emphasis);
-	}
-
-	.toggle-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 16px;
-		height: 16px;
-		padding: 0;
-		border: none;
+	.matrix-row:hover .version-cell.zebra {
 		background: transparent;
-		cursor: pointer;
-		color: var(--foreground-subtle);
 	}
 
-	.toggle-btn:hover {
-		color: var(--foreground);
-	}
-
-	.toggle-spacer {
-		width: 16px;
-		flex-shrink: 0;
-	}
-
-	.chevron {
-		transition: transform 0.15s ease;
-	}
-
-	.chevron.expanded {
-		transform: rotate(90deg);
-	}
-
-	.feature-title {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
 
 	.version-cell {
 		flex: 0 0 80px;
@@ -378,10 +351,32 @@
 		align-items: center;
 		justify-content: center;
 		border-left: 1px solid var(--border-subtle);
+		position: relative;
 	}
 
-	.version-cell.targeted {
-		background: var(--background-emphasis);
+	.version-cell.group-start {
+		border-left: 1px solid var(--border-default);
+	}
+
+	.version-cell:last-child {
+		border-right: 1px solid var(--border-default);
+	}
+
+	.version-cell.show-track::before,
+	.version-cell.has-dot::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: -1px;
+		border-top: 1px dashed var(--border-default);
+	}
+
+	.version-cell.show-track::before {
+		right: 0;
+	}
+
+	.version-cell.has-dot::before {
+		right: 50%;
 	}
 
 	.dot {
@@ -389,11 +384,7 @@
 		height: 8px;
 		border-radius: 50%;
 		background: var(--accent-blue);
-	}
-
-	.add-cell {
-		flex: 1;
-		min-width: 40px;
-		border-left: 1px solid var(--border-subtle);
+		position: relative;
+		z-index: 1;
 	}
 </style>
