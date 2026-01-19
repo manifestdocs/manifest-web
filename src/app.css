@@ -14,7 +14,7 @@
 
 	/* Feature state colors */
 	--state-proposed: #cca700;
-	--state-specified: #89d185;
+	--state-in-progress: #89d185;
 	--state-implemented: #9cdcfe;
 	--state-deprecated: #6e6e6e;
 

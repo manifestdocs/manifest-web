@@ -25,7 +25,7 @@
 	>
 		<path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
 	</svg>
-{:else if state === 'specified'}
+{:else if state === 'in_progress'}
 	<!-- Ring (green) -->
 	<svg
 		width={size}
@@ -34,9 +34,9 @@
 		fill="none"
 		xmlns="http://www.w3.org/2000/svg"
 		class={className}
-		aria-label="Specified"
+		aria-label="In Progress"
 	>
-		<circle cx="8" cy="8" r="5.5" stroke="var(--state-specified)" stroke-width="1.5" fill="none" />
+		<circle cx="8" cy="8" r="5.5" stroke="var(--state-in-progress)" stroke-width="1.5" fill="none" />
 	</svg>
 {:else if state === 'implemented'}
 	<!-- Filled circle with checkmark -->

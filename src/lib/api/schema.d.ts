@@ -573,12 +573,12 @@ export interface components {
         };
         /**
          * @description - proposed: Initial state, idea captured
-         *     - specified: Requirements defined
+         *     - in_progress: Work is actively being done
          *     - implemented: Feature is live in codebase
          *     - deprecated: Feature marked for removal
          * @enum {string}
          */
-        FeatureState: "proposed" | "specified" | "implemented" | "deprecated";
+        FeatureState: "proposed" | "in_progress" | "implemented" | "deprecated";
         /** @description Lightweight feature summary without details (used for list operations) */
         FeatureSummary: {
             /** Format: uuid */
