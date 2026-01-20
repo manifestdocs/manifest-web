@@ -124,7 +124,7 @@
 	}
 
 	function handleSelectFeature(id: string) {
-		goto(`/${projectId}/versions?feature=${id}`);
+		goto(`/app/${projectId}/versions?feature=${id}`);
 	}
 </script>
 

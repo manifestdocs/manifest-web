@@ -102,7 +102,7 @@
 
 			// Auto-select first feature if none selected
 			if (!selectedFeatureId && data.length > 0) {
-				goto(`/${projectId}?feature=${data[0].id}`, { replaceState: true });
+				goto(`/app/${projectId}?feature=${data[0].id}`, { replaceState: true });
 			}
 		} finally {
 			isLoadingFeatures = false;
@@ -148,7 +148,7 @@
 	}
 
 	function handleSelectFeature(id: string) {
-		goto(`/${projectId}?feature=${id}`);
+		goto(`/app/${projectId}?feature=${id}`);
 	}
 
 	function handleResize(deltaX: number) {
@@ -179,7 +179,7 @@
 
 		// Refresh tree and select the new feature
 		await loadFeatureTree(projectId);
-		goto(`/${projectId}?feature=${data.id}`);
+		goto(`/app/${projectId}?feature=${data.id}`);
 	}
 </script>
 

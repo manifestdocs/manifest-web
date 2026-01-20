@@ -38,7 +38,7 @@
 
 	function handleFeatureClick(featureId: string) {
 		// Navigate to tree view with feature selected
-		goto(`/${projectId}?feature=${featureId}`);
+		goto(`/app/${projectId}?feature=${featureId}`);
 	}
 </script>
 
