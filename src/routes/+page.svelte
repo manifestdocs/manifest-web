@@ -102,7 +102,10 @@
                     </div>
                 </div>
                 <div class="install-option">
-                    <span class="install-label">or in Claude Code...</span>
+                    <span class="install-label"
+                        >or in <span class="claude-code-text">Claude Code</span
+                        >...</span
+                    >
                     <div class="install-wrapper">
                         <code class="install-command">{claudeCommand}</code>
                         <button
@@ -196,8 +199,8 @@
                     </div>
                     <h3>Lost agentic cowboys</h3>
                     <p>
-                        Projects that start strong quickly deteriorate without a
-                        trail of past work to inform the path ahead.
+                        Projects start strong then deteriorate. Agents flail
+                        around without a trail of past work or a future roadmap.
                     </p>
                 </div>
             </div>
@@ -505,6 +508,37 @@
     .install-label {
         color: var(--foreground-muted);
         font-size: 0.875em;
+    }
+
+    .claude-code-text {
+        position: relative;
+        background: linear-gradient(
+            90deg,
+            var(--foreground-muted) 0%,
+            var(--foreground-muted) 40%,
+            #e07a3e 50%,
+            var(--foreground-muted) 60%,
+            var(--foreground-muted) 100%
+        );
+        background-size: 300% 100%;
+        background-position: 100% 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: claude-flash 8s ease-in-out infinite;
+    }
+
+    @keyframes claude-flash {
+        0%,
+        70% {
+            background-position: 100% 0;
+        }
+        95% {
+            background-position: 0% 0;
+        }
+        100% {
+            background-position: 0% 0;
+        }
     }
 
     /* Pain Points */
