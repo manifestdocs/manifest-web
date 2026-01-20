@@ -9,6 +9,18 @@
 
     let copiedBrew = $state(false);
     let copiedClaude = $state(false);
+    let highlightInstall = $state(false);
+
+    function scrollToInstall() {
+        const topSection = document.getElementById("top");
+        if (topSection) {
+            topSection.scrollIntoView({ behavior: "smooth" });
+            setTimeout(() => {
+                highlightInstall = true;
+                setTimeout(() => (highlightInstall = false), 2000);
+            }, 500);
+        }
+    }
 
     async function copyBrewCommand() {
         await navigator.clipboard.writeText(brewCommand);
@@ -25,21 +37,21 @@
 
 <div class="marketing-page">
     <main>
-        <section class="hero">
+        <section id="top" class="hero">
             <img src={logotype} alt="Manifest" class="hero-logotype" />
             <h1>
-                Living Documentation for Feature-Driven <span class="nowrap"
-                    >Product Engineering</span
+                Living documentation for feature-driven <span class="nowrap"
+                    >product engineering</span
                 >
             </h1>
             <p class="hero-subheadline">
-                No vibes. No out of date specs. Up-to-date documentation for
+                No vibes. No stale specs. Just up-to-date documentation for
                 humans and AI agents.
             </p>
         </section>
 
         <section class="install-section">
-            <div class="install-options">
+            <div class="install-options" class:highlight={highlightInstall}>
                 <div class="install-option">
                     <span class="install-label">Install via brew</span>
                     <div class="install-wrapper">
@@ -143,7 +155,7 @@
 
         <section id="pain-points" class="pain-points">
             <h2 class="section-title">
-                Traditional PM Tools Aren't Designed for AI Agents
+                Traditional PM tools aren't designed for AI agents
             </h2>
             <div class="pain-cards">
                 <div class="pain-card">
@@ -154,10 +166,10 @@
                             class="pain-card-illustration pain-card-illustration--spec"
                         />
                     </div>
-                    <h3>Specs Die on Day One</h3>
+                    <h3>Specs die on day one</h3>
                     <p>
-                        Your PRD was accurate for about 24 hours. Now it's a
-                        historical artifact buried in Confluence.
+                        Your PRD was accurate for about 24 hours. Now it's just
+                        polluting your repo or buried in Confluence.
                     </p>
                 </div>
                 <div class="pain-card">
@@ -168,7 +180,7 @@
                             class="pain-card-illustration pain-card-illustration--robot"
                         />
                     </div>
-                    <h3>Too Fast to Track</h3>
+                    <h3>Changes happen too fast</h3>
                     <p>
                         Agents ship changes faster than you can update Jira.
                         Your tracking system is already behind.
@@ -182,7 +194,7 @@
                             class="pain-card-illustration pain-card-illustration--cowboy"
                         />
                     </div>
-                    <h3>Lost Agentic Cowboys</h3>
+                    <h3>Lost agentic cowboys</h3>
                     <p>
                         Agents at full gallop get lost. No trail of where
                         they've been, no map for where they're going.
@@ -193,7 +205,7 @@
 
         <section class="solution">
             <h2 class="section-title">
-                A Better Way to Track Coding Agent's Work
+                A better way to track coding agents' work
             </h2>
             <div class="value-props">
                 <div class="value-prop">
@@ -222,7 +234,7 @@
                                 />
                             </svg>
                         </span>
-                        Features, Not Tickets
+                        Features, not tickets
                     </h3>
                     <p>
                         Features describe what your system <strong
@@ -249,7 +261,7 @@
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
                         </span>
-                        Product History Linked to Code
+                        Product history linked to code
                     </h3>
                     <p>
                         Every feature has a history: who worked on it, what was
@@ -285,23 +297,23 @@
                                 <path d="M9 13v2" />
                             </svg>
                         </span>
-                        Built for AI Agents
+                        Built for AI agents
                     </h3>
                     <p>
-                        MCP server integration means Claude, Cursor, and other
-                        AI agents can read and update features directly.
+                        MCP server integration means both CLI and IDE based
+                        agents can read and update features directly.
                     </p>
                 </div>
             </div>
         </section>
 
         <section class="comparison">
-            <h2 class="section-title">Traditional Tools vs Manifest</h2>
+            <h2 class="section-title">Traditional tools vs Manifest</h2>
             <div class="comparison-table-wrapper">
                 <table class="comparison-table">
                     <thead>
                         <tr>
-                            <th>Traditional PM Tools</th>
+                            <th>Traditional PM tools</th>
                             <th>Manifest</th>
                         </tr>
                     </thead>
@@ -344,108 +356,9 @@
         </section>
 
         <section class="cta-section">
-            <h2>Ready to try living documentation?</h2>
-            <div class="install-options">
-                <div class="install-option">
-                    <span class="install-label">Install via brew</span>
-                    <div class="install-wrapper">
-                        <code class="install-command">{brewCommand}</code>
-                        <button
-                            class="copy-button"
-                            onclick={copyBrewCommand}
-                            aria-label="Copy brew command"
-                        >
-                            {#if copiedBrew}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            {:else}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect
-                                        width="14"
-                                        height="14"
-                                        x="8"
-                                        y="8"
-                                        rx="2"
-                                        ry="2"
-                                    />
-                                    <path
-                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                                    />
-                                </svg>
-                            {/if}
-                        </button>
-                    </div>
-                </div>
-                <div class="install-option">
-                    <span class="install-label">or in Claude Code...</span>
-                    <div class="install-wrapper">
-                        <code class="install-command">{claudeCommand}</code>
-                        <button
-                            class="copy-button"
-                            onclick={copyClaudeCommand}
-                            aria-label="Copy Claude command"
-                        >
-                            {#if copiedClaude}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            {:else}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect
-                                        width="14"
-                                        height="14"
-                                        x="8"
-                                        y="8"
-                                        rx="2"
-                                        ry="2"
-                                    />
-                                    <path
-                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                                    />
-                                </svg>
-                            {/if}
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <p class="cta-tagline">Free and open source</p>
+            <button class="cta-button" onclick={scrollToInstall}
+                >Install Now</button
+            >
         </section>
     </main>
 
@@ -475,7 +388,7 @@
     }
 
     section {
-        padding: 48px 24px;
+        padding: 50px 24px;
     }
 
     .section-title {
@@ -493,7 +406,7 @@
     /* Hero */
     .hero {
         text-align: center;
-        padding: 21px 24px 16px;
+        padding: 22px 24px 17px;
         max-width: 1100px;
         margin: 0 auto;
     }
@@ -503,13 +416,11 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 16px 24px 21px;
-        flex: 1;
-        min-height: 80px;
+        padding: 10px 24px 16px;
     }
 
     .hero-logotype {
-        width: 360px;
+        width: 324px;
         height: auto;
         margin: 0 auto 12px;
         display: block;
@@ -527,7 +438,7 @@
         font-size: 16px;
         line-height: 1.5;
         color: var(--foreground-muted);
-        margin: 8px 0 16px;
+        margin: 0 0 8px;
     }
 
     .hero-subheadline strong {
@@ -574,6 +485,13 @@
         justify-content: center;
         gap: 24px;
         flex-wrap: wrap;
+        padding: 16px;
+        border: 2px solid transparent;
+        transition: border-color 0.3s ease;
+    }
+
+    .install-options.highlight {
+        border-color: var(--accent-green);
     }
 
     .install-option {
@@ -591,8 +509,8 @@
     /* Pain Points */
     .pain-points {
         background: var(--background);
-        padding-top: 42px;
-        padding-bottom: 24px;
+        padding-top: 44px;
+        padding-bottom: 25px;
     }
 
     .pain-cards {
@@ -639,7 +557,7 @@
         display: flex;
         align-items: flex-end;
         justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
     }
 
     .pain-card-illustration {
@@ -666,7 +584,8 @@
     /* Solution / Value Props */
     .solution {
         background: var(--background);
-        padding-top: 24px;
+        padding-top: 25px;
+        padding-bottom: 52px;
     }
 
     .value-props {
@@ -711,12 +630,14 @@
         padding: 2px 6px;
         font-size: 13px;
         border: 1px solid var(--border-muted);
+        white-space: nowrap;
     }
 
     /* Comparison */
     .comparison {
         background: var(--background);
-        padding-top: 24px;
+        padding-top: 25px;
+        padding-bottom: 52px;
     }
 
     .comparison-table-wrapper {
@@ -733,7 +654,7 @@
 
     .comparison-table th,
     .comparison-table td {
-        padding: 16px 20px;
+        padding: 12px 20px;
         text-align: left;
         border: 1px solid var(--border-default);
     }
@@ -762,19 +683,25 @@
     .cta-section {
         text-align: center;
         background: var(--background);
+        padding: 24px 24px 64px;
     }
 
-    .cta-section h2 {
-        font-size: 28px;
-        font-weight: 600;
-        margin: 0 0 24px;
-        color: var(--foreground);
+    .cta-button {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--accent-green);
+        background: transparent;
+        border: 2px solid var(--accent-green);
+        padding: 12px 32px;
+        cursor: pointer;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
     }
 
-    .cta-tagline {
-        margin: 16px 0 0;
-        font-size: 14px;
-        color: var(--foreground-subtle);
+    .cta-button:hover {
+        background: var(--accent-green);
+        color: var(--background);
     }
 
     /* Footer */
