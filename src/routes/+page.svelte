@@ -196,8 +196,8 @@
                     </div>
                     <h3>Lost agentic cowboys</h3>
                     <p>
-                        Agents at full gallop get lost. No trail of where
-                        they've been, no map for where they're going.
+                        Projects that start strong quickly deteriorate without a
+                        trail of past work to inform the path ahead.
                     </p>
                 </div>
             </div>
@@ -374,6 +374,7 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+        font-size: 107%;
     }
 
     .nowrap {
@@ -388,26 +389,26 @@
     }
 
     section {
-        padding: 50px 24px;
+        padding: 3em 1.5em;
     }
 
     .section-title {
-        font-size: 24px;
+        font-size: 1.5em;
         font-weight: 600;
         text-align: center;
-        margin: 0 0 24px;
+        margin: 0 0 1.5em;
         color: var(--foreground);
     }
 
     .pain-points .section-title {
-        margin-bottom: 12px;
+        margin-bottom: 0.75em;
     }
 
     /* Hero */
     .hero {
         text-align: center;
-        padding: 22px 24px 17px;
-        max-width: 1100px;
+        padding: 1.375em 1.5em 1em;
+        max-width: 68.75em;
         margin: 0 auto;
     }
 
@@ -416,29 +417,29 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 10px 24px 16px;
+        padding: 0.625em 1.5em 1em;
     }
 
     .hero-logotype {
-        width: 324px;
+        width: 20.25em;
         height: auto;
-        margin: 0 auto 12px;
+        margin: 0 auto 0.75em;
         display: block;
     }
 
     .hero h1 {
-        font-size: 32px;
+        font-size: 2em;
         font-weight: 700;
         line-height: 1.2;
-        margin: 0 0 8px;
+        margin: 0 0 0.5em;
         color: var(--foreground);
     }
 
     .hero-subheadline {
-        font-size: 16px;
+        font-size: 1em;
         line-height: 1.5;
         color: var(--foreground-muted);
-        margin: 0 0 8px;
+        margin: 0 0 0.5em;
     }
 
     .hero-subheadline strong {
@@ -453,9 +454,9 @@
 
     .install-command {
         display: inline-block;
-        padding: 10px 20px;
+        padding: 0.625em 1.25em;
         font-family: "IBM Plex Mono", ui-monospace, monospace;
-        font-size: 14px;
+        font-size: 0.875em;
         color: var(--foreground);
         background: var(--background);
         user-select: all;
@@ -466,7 +467,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 12px;
+        padding: 0 0.75em;
         background: var(--background);
         border: none;
         border-left: 1px solid var(--border-muted);
@@ -483,9 +484,9 @@
         display: flex;
         align-items: stretch;
         justify-content: center;
-        gap: 24px;
+        gap: 1.5em;
         flex-wrap: wrap;
-        padding: 16px;
+        padding: 1em;
         border: 2px solid transparent;
         transition: border-color 0.3s ease;
     }
@@ -498,23 +499,23 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 6px;
+        gap: 0.375em;
     }
 
     .install-label {
         color: var(--foreground-muted);
-        font-size: 14px;
+        font-size: 0.875em;
     }
 
     /* Pain Points */
     .pain-points {
         background: var(--background);
-        padding-top: 44px;
-        padding-bottom: 25px;
+        padding-top: 2.75em;
+        padding-bottom: 1.5em;
     }
 
     .pain-cards {
-        max-width: 1000px;
+        max-width: 62.5em;
         margin: 0 auto;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -523,7 +524,7 @@
 
     .pain-card {
         background: var(--background);
-        padding: 24px;
+        padding: 1em;
         text-align: center;
         position: relative;
     }
@@ -532,68 +533,68 @@
         content: "";
         position: absolute;
         right: 0;
-        top: 20px;
+        top: 1.25em;
         bottom: 0;
         width: 1px;
         background: var(--border-muted);
     }
 
     .pain-card h3 {
-        font-size: 18px;
+        font-size: 1.125em;
         font-weight: 600;
-        margin: 0 0 8px;
+        margin: 0 0 0.5em;
         color: var(--foreground);
     }
 
     .pain-card p {
-        font-size: 14px;
+        font-size: 0.875em;
         line-height: 1.5;
         color: var(--foreground-muted);
         margin: 0;
     }
 
     .pain-card-illustration-container {
-        height: 140px;
+        height: 8.75em;
         display: flex;
         align-items: flex-end;
         justify-content: center;
-        margin-bottom: 10px;
+        margin-bottom: 0.625em;
     }
 
     .pain-card-illustration {
-        max-width: 160px;
+        max-width: 10em;
         height: auto;
         display: block;
     }
 
     .pain-card-illustration--spec {
-        max-width: 190px;
-        transform: translateY(15px);
+        max-width: 11.875em;
+        transform: translateY(0.9375em);
     }
 
     .pain-card-illustration--robot {
-        max-width: 190px;
-        transform: translateY(8px);
+        max-width: 11.875em;
+        transform: translateY(0.5em);
     }
 
     .pain-card-illustration--cowboy {
-        max-width: 175px;
-        transform: translateY(-4px);
+        max-width: 10.9375em;
+        transform: translateY(-0.25em);
     }
 
     /* Solution / Value Props */
     .solution {
         background: var(--background);
-        padding-top: 25px;
-        padding-bottom: 52px;
+        padding-top: 1.5em;
+        padding-bottom: 3.25em;
     }
 
     .value-props {
-        max-width: 1000px;
+        max-width: 62.5em;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 32px;
+        grid-template-columns: repeat(auto-fit, minmax(18.75em, 1fr));
+        gap: 2em;
     }
 
     .value-prop {
@@ -601,13 +602,13 @@
     }
 
     .value-prop h3 {
-        font-size: 18px;
+        font-size: 1.125em;
         font-weight: 600;
-        margin: 0 0 12px;
+        margin: 0 0 0.75em;
         color: var(--foreground);
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 0.5em;
     }
 
     .value-prop h3 .value-icon {
@@ -616,7 +617,7 @@
     }
 
     .value-prop p {
-        font-size: 15px;
+        font-size: 0.9375em;
         line-height: 1.6;
         color: var(--foreground-muted);
         margin: 0;
@@ -627,8 +628,8 @@
     }
 
     .value-prop p code {
-        padding: 2px 6px;
-        font-size: 13px;
+        padding: 0.125em 0.375em;
+        font-size: 0.8125em;
         border: 1px solid var(--border-muted);
         white-space: nowrap;
     }
@@ -636,12 +637,12 @@
     /* Comparison */
     .comparison {
         background: var(--background);
-        padding-top: 25px;
-        padding-bottom: 52px;
+        padding-top: 1.5em;
+        padding-bottom: 3.25em;
     }
 
     .comparison-table-wrapper {
-        max-width: 1000px;
+        max-width: 62.5em;
         margin: 0 auto;
         overflow-x: auto;
     }
@@ -649,12 +650,12 @@
     .comparison-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 15px;
+        font-size: 0.9375em;
     }
 
     .comparison-table th,
     .comparison-table td {
-        padding: 12px 20px;
+        padding: 0.75em 1.25em;
         text-align: left;
         border: 1px solid var(--border-default);
     }
@@ -676,23 +677,23 @@
 
     .comparison-table .check {
         font-weight: 700;
-        margin-right: 4px;
+        margin-right: 0.25em;
     }
 
     /* CTA Section */
     .cta-section {
         text-align: center;
         background: var(--background);
-        padding: 24px 24px 64px;
+        padding: 1.5em 1.5em 4em;
     }
 
     .cta-button {
-        font-size: 16px;
+        font-size: 1em;
         font-weight: 500;
         color: var(--accent-green);
         background: transparent;
         border: 2px solid var(--accent-green);
-        padding: 12px 32px;
+        padding: 0.75em 2em;
         cursor: pointer;
         transition:
             background 0.15s ease,
@@ -708,46 +709,46 @@
     .site-footer {
         background: var(--background);
         border-top: 1px solid var(--border-muted);
-        padding: 24px;
+        padding: 1.5em;
     }
 
     .footer-content {
-        max-width: 1000px;
+        max-width: 62.5em;
         margin: 0 auto;
         text-align: center;
     }
 
     .footer-content p {
         margin: 0;
-        font-size: 14px;
+        font-size: 0.875em;
         color: var(--foreground-subtle);
     }
 
     /* Responsive */
-    @media (max-width: 768px) {
+    @media (max-width: 48em) {
         section {
-            padding: 32px 16px;
+            padding: 2em 1em;
         }
 
         .hero {
-            padding: 16px 16px 32px;
+            padding: 1em 1em 2em;
         }
 
         .hero-logotype {
-            width: 280px;
+            width: 17.5em;
         }
 
         .hero h1 {
-            font-size: 24px;
+            font-size: 1.5em;
         }
 
         .hero-subheadline {
-            font-size: 15px;
+            font-size: 0.9375em;
         }
 
         .section-title {
-            font-size: 22px;
-            margin-bottom: 24px;
+            font-size: 1.375em;
+            margin-bottom: 1.5em;
         }
 
         .pain-cards {
@@ -755,7 +756,7 @@
         }
 
         .pain-card {
-            padding: 20px;
+            padding: 1.25em;
             border-right: none;
             border-bottom: 1px solid var(--border-muted);
         }
@@ -765,7 +766,7 @@
         }
 
         .value-prop {
-            padding: 20px;
+            padding: 1.25em;
         }
     }
 </style>
