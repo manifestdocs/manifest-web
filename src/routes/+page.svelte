@@ -591,7 +591,7 @@
     /* Pain Points */
     .pain-points {
         background: var(--background);
-        padding-top: 32px;
+        padding-top: 42px;
         padding-bottom: 24px;
     }
 
