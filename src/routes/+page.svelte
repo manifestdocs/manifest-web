@@ -607,11 +607,17 @@
         background: var(--background);
         padding: 24px;
         text-align: center;
-        border-right: 1px solid var(--border-muted);
+        position: relative;
     }
 
-    .pain-card:last-child {
-        border-right: none;
+    .pain-card:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 20px;
+        bottom: 0;
+        width: 1px;
+        background: var(--border-muted);
     }
 
     .pain-card h3 {
