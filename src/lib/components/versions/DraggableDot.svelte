@@ -137,6 +137,12 @@
 		z-index: 1000;
 		pointer-events: none;
 		transform: translate(-50%, -50%);
-		filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+	}
+
+	.preview :global(svg path),
+	.preview :global(svg circle) {
+		stroke: white;
+		stroke-width: 3px;
+		paint-order: stroke fill;
 	}
 </style>
