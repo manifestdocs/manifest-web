@@ -141,7 +141,7 @@
 					class:active={activeTab === 'general'}
 					onclick={() => (activeTab = 'general')}
 				>
-					General
+					Project Wide Context
 				</button>
 				<button
 					type="button"
@@ -149,7 +149,7 @@
 					class:active={activeTab === 'directories'}
 					onclick={() => (activeTab = 'directories')}
 				>
-					Directories
+					Working Directories
 				</button>
 			</div>
 
