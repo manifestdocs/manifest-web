@@ -5,6 +5,8 @@
 	import { page } from '$app/state';
 	import { setContext } from 'svelte';
 	import headerLogotype from '$lib/assets/manifest_header_logotype.png';
+	import { NewProjectWizard, ProjectSettingsDialog } from '$lib/components/projects/index.js';
+	import { SettingsIcon, PlusIcon } from '$lib/components/icons/index.js';
 
 	type Project = components['schemas']['Project'];
 
@@ -12,6 +14,10 @@
 
 	let projects = $state<Project[]>([]);
 	let isLoadingProjects = $state(true);
+
+	// Dialog state
+	let newProjectWizardOpen = $state(false);
+	let settingsDialogOpen = $state(false);
 
 	// Load projects on mount
 	$effect(() => {
@@ -42,13 +48,6 @@
 			);
 
 			projects = uniqueProjects.sort((a, b) => a.name.localeCompare(b.name));
-
-			// If on /app root with no project, redirect to first project
-			if (page.url.pathname === '/app' && projects.length > 0) {
-				const realProject = projects.find((p) => p.description);
-				const targetProject = realProject || projects[0];
-				goto(`/app/${targetProject.id}`, { replaceState: true });
-			}
 		} finally {
 			isLoadingProjects = false;
 		}
@@ -74,7 +73,8 @@
 		},
 		get isLoading() {
 			return isLoadingProjects;
-		}
+		},
+		refresh: loadProjects
 	});
 </script>
 
@@ -101,6 +101,20 @@
 						{/each}
 					{/if}
 				</select>
+				<button
+					class="icon-btn"
+					onclick={() => (settingsDialogOpen = true)}
+					title="Project settings"
+				>
+					<SettingsIcon size={16} />
+				</button>
+				<button
+					class="icon-btn"
+					onclick={() => (newProjectWizardOpen = true)}
+					title="New project"
+				>
+					<PlusIcon size={16} />
+				</button>
 				<nav class="view-nav">
 					<div class="nav-group">
 						<a
@@ -138,6 +152,21 @@
 	</div>
 {:else}
 	{@render children()}
+{/if}
+
+<NewProjectWizard
+	open={newProjectWizardOpen}
+	onOpenChange={(open) => (newProjectWizardOpen = open)}
+	onCreated={loadProjects}
+/>
+
+{#if selectedProject}
+	<ProjectSettingsDialog
+		open={settingsDialogOpen}
+		onOpenChange={(open) => (settingsDialogOpen = open)}
+		project={selectedProject}
+		onUpdated={loadProjects}
+	/>
 {/if}
 
 <style>
@@ -202,6 +231,26 @@
 	.project-select:focus {
 		outline: none;
 		border-color: var(--accent-blue);
+	}
+
+	.icon-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		background: var(--background-muted);
+		border: 1px solid var(--border-default);
+		border-radius: 6px;
+		color: var(--foreground-muted);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.icon-btn:hover {
+		background: var(--background-emphasis);
+		color: var(--foreground);
+		border-color: var(--foreground-subtle);
 	}
 
 	.view-nav {

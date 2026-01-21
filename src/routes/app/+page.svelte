@@ -1,11 +1,47 @@
 <script lang="ts">
-	// App root page - shows loading while layout redirects to first project
+	import { getContext } from 'svelte';
+	import { WelcomeScreen, NewProjectWizard } from '$lib/components/projects/index.js';
+	import type { components } from '$lib/api/schema.js';
+
+	type Project = components['schemas']['Project'];
+
+	interface ProjectsContext {
+		readonly projects: Project[];
+		readonly isLoading: boolean;
+		refresh: () => Promise<void>;
+	}
+
+	const projectsContext = getContext<ProjectsContext>('projects');
+
+	let wizardOpen = $state(false);
+
+	function handleCreateProject() {
+		wizardOpen = true;
+	}
+
+	async function handleProjectCreated() {
+		await projectsContext.refresh();
+	}
 </script>
 
-<div class="loading-container">
-	<div class="spinner"></div>
-	<span>Loading projects...</span>
-</div>
+{#if projectsContext.isLoading}
+	<div class="loading-container">
+		<div class="spinner"></div>
+		<span>Loading projects...</span>
+	</div>
+{:else if projectsContext.projects.length === 0}
+	<WelcomeScreen onCreateProject={handleCreateProject} />
+	<NewProjectWizard
+		open={wizardOpen}
+		onOpenChange={(open) => (wizardOpen = open)}
+		onCreated={handleProjectCreated}
+	/>
+{:else}
+	<div class="loading-container">
+		<div class="spinner"></div>
+		<span>Loading projects...</span>
+	</div>
+{/if}
 
 <style>
 	.loading-container {

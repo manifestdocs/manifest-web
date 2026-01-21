@@ -3,6 +3,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import { FeatureTree, FeatureDetail, CreateFeatureDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
+	import { EmptyProjectGuide } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
@@ -46,6 +47,9 @@
 		const node = findInTree(featureTree, createDialogParentId);
 		return node?.title ?? null;
 	});
+
+	// Check if the project is empty (no features)
+	const isProjectEmpty = $derived(!isLoadingFeatures && featureTree.length === 0);
 
 	// Load features when project changes
 	$effect(() => {
@@ -193,7 +197,9 @@
 		<ResizeDivider onResize={handleResize} />
 
 		<section class="content">
-			{#if isLoadingFeature}
+			{#if isProjectEmpty}
+				<EmptyProjectGuide onCreateFeature={() => handleOpenCreateDialog(null)} />
+			{:else if isLoadingFeature}
 				<div class="loading-state">Loading...</div>
 			{:else}
 				<FeatureDetail feature={selectedFeature} isGroup={selectedFeatureIsGroup} onSave={handleSaveFeature} />
