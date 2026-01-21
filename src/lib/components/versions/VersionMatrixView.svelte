@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
+	import FeatureDragPreview from '$lib/components/features/FeatureDragPreview.svelte';
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import { InfoBanner, ResizeDivider } from '$lib/components/ui/index.js';
 	import { featureExpansion } from '$lib/stores/index.js';
@@ -33,18 +34,24 @@
 	let matrixBodyRef = $state<HTMLElement | null>(null);
 	let containerHeight = $state(0);
 	let initialized = $state(false);
-	let previousFeaturesJson = $state('');
+	let previousFeatureVersion = $state(0);
 
 	// Drag state for version drop zone indicator
 	let dragHover = $state<{ featureId: string; versionId: string } | null>(null);
 
-	// Drag state for feature reparenting
+	// Drag state for feature reparenting (centralized like FeatureTree)
 	let reparentDragState = $state<{
 		featureId: string;
+		feature: FeatureTreeNode;
 		parentId: string | null;
 		descendantIds: Set<string>;
+		pointerId: number;
 	} | null>(null);
+	let reparentDragPosition = $state({ x: 0, y: 0 });
 	let reparentDropTargetId = $state<string | null>(null);
+
+	// Layout constant (matches FeatureTree)
+	const ROW_HEIGHT = 25;
 
 	// Measure container height with ResizeObserver
 	$effect(() => {
@@ -61,7 +68,7 @@
 	$effect(() => {
 		if (projectId && features.length > 0 && containerHeight > 0 && !initialized) {
 			expandedIds = featureExpansion.init(projectId, features, containerHeight);
-			previousFeaturesJson = JSON.stringify(features);
+			previousFeatureVersion = computeFeatureVersion(features);
 			initialized = true;
 		}
 	});
@@ -75,13 +82,24 @@
 	// Handle tree updates (e.g., from SSE) - detect newly-complete groups
 	$effect(() => {
 		if (!initialized) return;
-
-		const currentJson = JSON.stringify(features);
-		if (currentJson !== previousFeaturesJson) {
+		const currentVersion = computeFeatureVersion(features);
+		if (currentVersion !== previousFeatureVersion) {
 			expandedIds = featureExpansion.handleTreeUpdate(features, expandedIds);
-			previousFeaturesJson = currentJson;
+			previousFeatureVersion = currentVersion;
 		}
 	});
+
+	// Hash-based version computation (like FeatureTree)
+	function computeFeatureVersion(nodes: FeatureTreeNode[]): number {
+		let hash = 0;
+		function traverse(n: FeatureTreeNode) {
+			hash = (hash * 31 + n.state.charCodeAt(0)) >>> 0;
+			hash = (hash * 31 + n.children.length) >>> 0;
+			for (const child of n.children) traverse(child);
+		}
+		for (const node of nodes) traverse(node);
+		return hash;
+	}
 
 	// Group versions into Now, Next, Later
 	type VersionGroup = {
@@ -186,6 +204,28 @@
 
 	let visibleFeatures = $derived(getVisibleFeatures(features));
 
+	// Build feature positions for drop detection (like FeatureTree)
+	type FeaturePosition = { id: string; top: number; bottom: number; isGroup: boolean; isRoot: boolean };
+	let featurePositions = $derived.by(() => {
+		if (!matrixBodyRef) return [];
+		const positions: FeaturePosition[] = [];
+		let y = 0;
+
+		function traverse(nodes: FeatureTreeNode[]) {
+			for (const node of sortFeatures(nodes)) {
+				const isGroup = node.children.length > 0;
+				const isRoot = node.is_root ?? false;
+				positions.push({ id: node.id, top: y, bottom: y + ROW_HEIGHT, isGroup, isRoot });
+				y += ROW_HEIGHT;
+				if ((isRoot || expandedIds.has(node.id)) && node.children.length > 0) {
+					traverse(node.children);
+				}
+			}
+		}
+		traverse(features);
+		return positions;
+	});
+
 	function toggleExpand(id: string) {
 		expandedIds = featureExpansion.toggle(id, expandedIds);
 	}
@@ -274,40 +314,75 @@
 		return true;
 	}
 
-	// Reparent drag handlers
-	function handleReparentDragStart(featureId: string) {
+	// Find drop target from mouse position (using tree structure, not DOM)
+	function findDropTarget(clientY: number): string | null {
+		if (!matrixBodyRef || !reparentDragState) return null;
+
+		const rect = matrixBodyRef.getBoundingClientRect();
+		const scrollTop = matrixBodyRef.scrollTop;
+		const relativeY = clientY - rect.top + scrollTop;
+
+		// Find which feature row we're over
+		for (const pos of featurePositions) {
+			if (relativeY >= pos.top && relativeY < pos.bottom) {
+				// Only groups and root can be drop targets
+				if ((pos.isGroup || pos.isRoot) && isValidReparentTarget(pos.id)) {
+					return pos.id;
+				}
+				return null;
+			}
+		}
+		return null;
+	}
+
+	// Reparent drag handlers (pointer-event based like FeatureTree)
+	function handleReparentDragStart(featureId: string, e: PointerEvent) {
 		const node = findFeature(features, featureId);
 		if (!node) return;
+
 		reparentDragState = {
 			featureId,
+			feature: node,
 			parentId: node.parent_id ?? null,
-			descendantIds: getDescendantIds(node)
+			descendantIds: getDescendantIds(node),
+			pointerId: e.pointerId
 		};
+		reparentDragPosition = { x: e.clientX, y: e.clientY };
+
+		// Capture pointer on the target element for move/up events
+		(e.target as HTMLElement).setPointerCapture(e.pointerId);
 	}
 
-	function handleReparentDragHover(targetId: string | null) {
-		reparentDropTargetId = targetId;
+	function handlePointerMove(e: PointerEvent) {
+		if (!reparentDragState || e.pointerId !== reparentDragState.pointerId) return;
+
+		reparentDragPosition = { x: e.clientX, y: e.clientY };
+		reparentDropTargetId = findDropTarget(e.clientY);
 	}
 
-	function handleReparentDragEnd() {
+	function handlePointerUp(e: PointerEvent) {
+		if (!reparentDragState || e.pointerId !== reparentDragState.pointerId) return;
+
+		const targetId = findDropTarget(e.clientY);
+
+		if (targetId && isValidReparentTarget(targetId)) {
+			// Expand target group to show dropped item
+			if (!expandedIds.has(targetId)) {
+				expandedIds = new Set([...expandedIds, targetId]);
+			}
+			onReparent?.(reparentDragState.featureId, targetId);
+		}
+
+		// Reset drag state
+		(e.target as HTMLElement).releasePointerCapture(e.pointerId);
 		reparentDragState = null;
 		reparentDropTargetId = null;
 	}
 
-	function handleReparentDrop(featureId: string, newParentId: string | null) {
-		if (newParentId !== null && newParentId !== 'root') {
-			if (!isValidReparentTarget(newParentId)) {
-				handleReparentDragEnd();
-				return;
-			}
-			// Expand the target group
-			if (!expandedIds.has(newParentId)) {
-				expandedIds = new Set([...expandedIds, newParentId]);
-			}
-		}
-		// For 'root' drops, set parent to null (true root-level)
-		onReparent?.(featureId, newParentId === 'root' ? null : newParentId);
-		handleReparentDragEnd();
+	function handlePointerCancel(e: PointerEvent) {
+		if (!reparentDragState || e.pointerId !== reparentDragState.pointerId) return;
+		reparentDragState = null;
+		reparentDropTargetId = null;
 	}
 
 	// Sort features: groups alphabetically, leaves by state
@@ -404,7 +479,14 @@
 	{/if}
 
 	<!-- Body -->
-	<div class="matrix-body" bind:this={matrixBodyRef} data-root-drop-zone="true" class:drop-hover={reparentDropTargetId === 'root'}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="matrix-body"
+		bind:this={matrixBodyRef}
+		onpointermove={handlePointerMove}
+		onpointerup={handlePointerUp}
+		onpointercancel={handlePointerCancel}
+	>
 		<!-- Full-height column backgrounds -->
 		<div class="column-backgrounds">
 			<div class="col-bg feature-col"></div>
@@ -451,16 +533,15 @@
 	{@const isLeaf = !hasChildren}
 	{@const isSelected = selectedId === feature.id}
 	{@const isDragging = reparentDragState?.featureId === feature.id}
-	{@const canBeDropTarget = hasChildren && reparentDragState !== null && isValidReparentTarget(feature.id)}
 	{@const isDropHovered = reparentDropTargetId === feature.id}
 	{@const isExpanded = expandedIds.has(feature.id)}
+	{@const isRoot = feature.is_root ?? false}
 	{@const sortedChildren = sortFeatures(feature.children)}
 
 	{#if hasChildren}
 		<!-- Group container -->
 		<div
 			class="group-container"
-			class:drop-target={canBeDropTarget}
 			class:drop-hover={isDropHovered}
 			class:is-dragging={isDragging}
 			data-feature-group-id={feature.id}
@@ -475,14 +556,9 @@
 					hasFutureWork={featureExpansion.getGroupMetadata(feature).hasFutureWork}
 					isDraggable={!!onReparent}
 					{isDragging}
-					isDropTarget={false}
-					isDropHovered={false}
 					{onSelect}
 					onToggle={toggleExpand}
 					onDragStart={handleReparentDragStart}
-					onDragHover={handleReparentDragHover}
-					onDragEnd={handleReparentDragEnd}
-					onDrop={handleReparentDrop}
 				/>
 				<!-- Version cells for group -->
 				{#each groupedVersions as group}
@@ -512,14 +588,9 @@
 				hasFutureWork={false}
 				isDraggable={!!onReparent}
 				{isDragging}
-				isDropTarget={false}
-				isDropHovered={false}
 				{onSelect}
 				onToggle={toggleExpand}
 				onDragStart={handleReparentDragStart}
-				onDragHover={handleReparentDragHover}
-				onDragEnd={handleReparentDragEnd}
-				onDrop={handleReparentDrop}
 			/>
 			<!-- Version cells for leaf -->
 			{#each groupedVersions as group, groupIndex}
@@ -556,6 +627,10 @@
 		</div>
 	{/if}
 {/snippet}
+
+{#if reparentDragState}
+	<FeatureDragPreview feature={reparentDragState.feature} x={reparentDragPosition.x} y={reparentDragPosition.y} />
+{/if}
 
 <CreateVersionDialog
 	open={showCreateDialog}
@@ -809,10 +884,6 @@
 		opacity: 0.3;
 	}
 
-	.matrix-body.drop-hover {
-		background: rgba(107, 142, 95, 0.08);
-	}
-
 	.group-container {
 		border-radius: 4px;
 		margin: 0;
@@ -820,16 +891,11 @@
 	}
 
 	.group-container.is-dragging {
-		opacity: 0.3;
-	}
-
-	.group-container.drop-target {
-		box-shadow: inset 0 0 0 2px rgba(107, 142, 95, 0.3);
+		opacity: 0.5;
 	}
 
 	.group-container.drop-hover {
-		box-shadow: inset 0 0 0 2px rgba(107, 142, 95, 0.7);
-		background: rgba(107, 142, 95, 0.06);
+		background: rgba(107, 142, 95, 0.25);
 	}
 
 	.version-cell {

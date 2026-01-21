@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from './FeatureRow.svelte';
+	import FeatureDragPreview from './FeatureDragPreview.svelte';
 	import FeatureContextMenu from './FeatureContextMenu.svelte';
 	import { featureExpansion } from '$lib/stores/index.js';
 
@@ -18,25 +19,54 @@
 
 	let { features, selectedId, projectId, featureColumnWidth = 350, onSelect, onAddFeature, onReparent }: Props = $props();
 
-	// Drag state
+	// Layout constant (matches CSS)
+	const ROW_HEIGHT = 25;
+
+	// Drag state - all centralized here
 	let dragState = $state<{
 		featureId: string;
+		feature: FeatureTreeNode;
 		parentId: string | null;
 		descendantIds: Set<string>;
+		pointerId: number;
 	} | null>(null);
+	let dragPosition = $state({ x: 0, y: 0 });
 	let dropTargetId = $state<string | null>(null);
 
+	// Expansion state
 	let expandedIds = $state(new Set<string>());
 	let treeContentRef = $state<HTMLElement | null>(null);
 	let containerHeight = $state(0);
 	let initialized = $state(false);
-	let previousFeaturesJson = $state('');
+	let previousFeatureVersion = $state(0);
 
 	// Context menu state
 	let contextMenuOpen = $state(false);
 	let contextMenuX = $state(0);
 	let contextMenuY = $state(0);
 	let contextMenuFeatureId = $state<string | null>(null);
+
+	// Build a map of feature positions for drop detection
+	type FeaturePosition = { id: string; top: number; bottom: number; isGroup: boolean; isRoot: boolean };
+	let featurePositions = $derived.by(() => {
+		if (!treeContentRef) return [];
+		const positions: FeaturePosition[] = [];
+		let y = 0;
+
+		function traverse(nodes: FeatureTreeNode[]) {
+			for (const node of sortFeatures(nodes)) {
+				const isGroup = node.children.length > 0;
+				const isRoot = node.is_root ?? false;
+				positions.push({ id: node.id, top: y, bottom: y + ROW_HEIGHT, isGroup, isRoot });
+				y += ROW_HEIGHT;
+				if ((isRoot || expandedIds.has(node.id)) && node.children.length > 0) {
+					traverse(node.children);
+				}
+			}
+		}
+		traverse(features);
+		return positions;
+	});
 
 	// Measure container height with ResizeObserver
 	$effect(() => {
@@ -53,46 +83,38 @@
 	$effect(() => {
 		if (projectId && features.length > 0 && containerHeight > 0 && !initialized) {
 			expandedIds = featureExpansion.init(projectId, features, containerHeight);
-			previousFeaturesJson = JSON.stringify(features);
+			previousFeatureVersion = computeFeatureVersion(features);
 			initialized = true;
 		}
 	});
 
 	// Reset initialized flag when project changes
 	$effect(() => {
-		projectId; // Track projectId changes
+		projectId;
 		initialized = false;
 	});
 
 	// Handle tree updates (e.g., from SSE) - detect newly-complete groups
 	$effect(() => {
 		if (!initialized) return;
-
-		const currentJson = JSON.stringify(features);
-		if (currentJson !== previousFeaturesJson) {
+		const currentVersion = computeFeatureVersion(features);
+		if (currentVersion !== previousFeatureVersion) {
 			expandedIds = featureExpansion.handleTreeUpdate(features, expandedIds);
-			previousFeaturesJson = currentJson;
+			previousFeatureVersion = currentVersion;
 		}
 	});
 
-	// Flatten features with visibility based on expanded state
-	type FlatFeature = {
-		feature: FeatureTreeNode;
-		depth: number;
-	};
-
-	function getVisibleFeatures(nodes: FeatureTreeNode[], depth = 0): FlatFeature[] {
-		const result: FlatFeature[] = [];
-		for (const node of nodes) {
-			result.push({ feature: node, depth });
-			if (node.children && node.children.length > 0 && expandedIds.has(node.id)) {
-				result.push(...getVisibleFeatures(node.children, depth + 1));
-			}
+	// Simple version computation based on feature states and structure
+	function computeFeatureVersion(nodes: FeatureTreeNode[]): number {
+		let hash = 0;
+		function traverse(n: FeatureTreeNode) {
+			hash = (hash * 31 + n.state.charCodeAt(0)) >>> 0;
+			hash = (hash * 31 + n.children.length) >>> 0;
+			for (const child of n.children) traverse(child);
 		}
-		return result;
+		for (const node of nodes) traverse(node);
+		return hash;
 	}
-
-	let visibleFeatures = $derived(getVisibleFeatures(features));
 
 	function handleToggle(id: string) {
 		expandedIds = featureExpansion.toggle(id, expandedIds);
@@ -107,7 +129,6 @@
 	}
 
 	function handleAddFeature() {
-		// If a feature is selected, add as child; otherwise add at root
 		onAddFeature?.(selectedId);
 	}
 
@@ -121,7 +142,7 @@
 		return null;
 	}
 
-	// Get all descendant IDs of a feature (for circular reference prevention)
+	// Get all descendant IDs of a feature
 	function getDescendantIds(node: FeatureTreeNode): Set<string> {
 		const ids = new Set<string>();
 		function collect(n: FeatureTreeNode) {
@@ -135,54 +156,86 @@
 	}
 
 	// Check if a feature is a valid drop target
-	function isValidDropTarget(featureId: string): boolean {
+	function isValidDropTarget(targetId: string): boolean {
 		if (!dragState) return false;
-		// Can't drop on self
-		if (featureId === dragState.featureId) return false;
-		// Can't drop on current parent (already there)
-		if (featureId === dragState.parentId) return false;
-		// Can't drop on descendants (would create circular reference)
-		if (dragState.descendantIds.has(featureId)) return false;
+		if (targetId === dragState.featureId) return false;
+		if (targetId === dragState.parentId) return false;
+		if (dragState.descendantIds.has(targetId)) return false;
 		return true;
 	}
 
-	// Drag handlers passed to FeatureRow
-	function handleDragStart(featureId: string) {
+	// Find drop target from mouse position (using tree structure, not DOM)
+	function findDropTarget(clientY: number): string | null {
+		if (!treeContentRef || !dragState) return null;
+
+		const rect = treeContentRef.getBoundingClientRect();
+		const scrollTop = treeContentRef.scrollTop;
+		const relativeY = clientY - rect.top + scrollTop;
+
+		// Find which feature row we're over
+		for (const pos of featurePositions) {
+			if (relativeY >= pos.top && relativeY < pos.bottom) {
+				// Only groups and root can be drop targets
+				if ((pos.isGroup || pos.isRoot) && isValidDropTarget(pos.id)) {
+					return pos.id;
+				}
+				return null;
+			}
+		}
+		return null;
+	}
+
+	// Drag handlers
+	function handleDragStart(featureId: string, e: PointerEvent) {
 		const node = findFeature(features, featureId);
 		if (!node) return;
+
 		dragState = {
 			featureId,
+			feature: node,
 			parentId: node.parent_id ?? null,
-			descendantIds: getDescendantIds(node)
+			descendantIds: getDescendantIds(node),
+			pointerId: e.pointerId
 		};
+		dragPosition = { x: e.clientX, y: e.clientY };
+
+		// Capture pointer on the tree content for move/up events
+		(e.target as HTMLElement).setPointerCapture(e.pointerId);
 	}
 
-	function handleDragHover(targetId: string | null) {
-		dropTargetId = targetId;
+	function handlePointerMove(e: PointerEvent) {
+		if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+		dragPosition = { x: e.clientX, y: e.clientY };
+		dropTargetId = findDropTarget(e.clientY);
 	}
 
-	function handleDragEnd() {
+	function handlePointerUp(e: PointerEvent) {
+		if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+		const targetId = findDropTarget(e.clientY);
+
+		if (targetId && isValidDropTarget(targetId)) {
+			// Expand target group to show dropped item
+			if (!expandedIds.has(targetId)) {
+				expandedIds = new Set([...expandedIds, targetId]);
+			}
+			onReparent?.(dragState.featureId, targetId);
+		}
+
+		// Reset drag state
+		(e.target as HTMLElement).releasePointerCapture(e.pointerId);
 		dragState = null;
 		dropTargetId = null;
 	}
 
-	function handleDrop(featureId: string, newParentId: string | null) {
-		// Validate the drop
-		if (newParentId !== null && newParentId !== 'root') {
-			if (!isValidDropTarget(newParentId)) {
-				handleDragEnd();
-				return;
-			}
-			// Expand the target group to show the dropped item
-			if (!expandedIds.has(newParentId)) {
-				expandedIds = new Set([...expandedIds, newParentId]);
-			}
-		}
-		// For 'root' drops, set parent to null (true root-level)
-		onReparent?.(featureId, newParentId === 'root' ? null : newParentId);
-		handleDragEnd();
+	function handlePointerCancel(e: PointerEvent) {
+		if (!dragState || e.pointerId !== dragState.pointerId) return;
+		dragState = null;
+		dropTargetId = null;
 	}
 
+	// Context menu handlers
 	const contextMenuFeatureTitle = $derived(
 		contextMenuFeatureId ? findFeature(features, contextMenuFeatureId)?.title ?? null : null
 	);
@@ -203,7 +256,6 @@
 	}
 
 	function handleTreeContextMenu(e: MouseEvent) {
-		// Only trigger if clicking on the tree background (empty space)
 		if (e.target === e.currentTarget) {
 			e.preventDefault();
 			contextMenuFeatureId = null;
@@ -213,7 +265,7 @@
 		}
 	}
 
-	// Sort features: groups alphabetically, leaves by state
+	// Sort features: groups alphabetically first, then leaves by state
 	const stateOrder: Record<string, number> = {
 		implemented: 0,
 		in_progress: 1,
@@ -225,10 +277,7 @@
 		const groups = nodes.filter(n => n.children.length > 0);
 		const leaves = nodes.filter(n => n.children.length === 0);
 
-		// Groups: alphabetical
 		groups.sort((a, b) => a.title.localeCompare(b.title));
-
-		// Leaves: by state, then priority, then title
 		leaves.sort((a, b) => {
 			const aOrder = stateOrder[a.state] ?? 99;
 			const bOrder = stateOrder[b.state] ?? 99;
@@ -237,18 +286,15 @@
 			return a.title.localeCompare(b.title);
 		});
 
-		// Groups first, then leaves
 		return [...groups, ...leaves];
 	}
 </script>
 
 <div class="feature-tree" style="--feature-col-width: {featureColumnWidth}px">
-	<!-- Header row (matches matrix header) -->
 	<div class="tree-header">
 		<span class="tree-title">Feature Tree</span>
 	</div>
 
-	<!-- Subheader row (matches matrix subheader) -->
 	<div class="tree-subheader">
 		<div class="tree-actions">
 			{#if onAddFeature}
@@ -276,6 +322,9 @@
 		class="tree-content"
 		bind:this={treeContentRef}
 		oncontextmenu={handleTreeContextMenu}
+		onpointermove={handlePointerMove}
+		onpointerup={handlePointerUp}
+		onpointercancel={handlePointerCancel}
 	>
 		{#if features.length === 0}
 			<div class="empty-state">No features yet</div>
@@ -288,75 +337,46 @@
 </div>
 
 {#snippet renderNode(feature: FeatureTreeNode, depth: number)}
-	{@const hasChildren = feature.children && feature.children.length > 0}
+	{@const hasChildren = feature.children.length > 0}
 	{@const isRoot = feature.is_root ?? false}
 	{@const groupMeta = hasChildren ? featureExpansion.getGroupMetadata(feature) : null}
 	{@const isDragging = dragState?.featureId === feature.id}
 	{@const isDropHovered = dropTargetId === feature.id}
 	{@const isExpanded = isRoot || expandedIds.has(feature.id)}
-	{@const sortedChildren = sortFeatures(feature.children)}
 
-	{#if hasChildren || isRoot}
-		<!-- Group container wraps header + children for drop zone -->
-		<div
-			class="group-container"
-			class:drop-hover={isDropHovered}
-			class:is-dragging={isDragging}
-			class:is-root={isRoot}
-			data-feature-group-id={feature.id}
-		>
-			<div class="tree-row">
-				<FeatureRow
-					{feature}
-					{depth}
-					isSelected={selectedId === feature.id}
-					{isExpanded}
-					showTrack={false}
-					hasFutureWork={groupMeta?.hasFutureWork ?? false}
-					isDraggable={!!onReparent && !isRoot}
-					{isDragging}
-					isDropTarget={false}
-					isDropHovered={false}
-					{onSelect}
-					onToggle={handleToggle}
-					onContextMenu={handleRowContextMenu}
-					onDragStart={handleDragStart}
-					onDragHover={handleDragHover}
-					onDragEnd={handleDragEnd}
-					onDrop={handleDrop}
-				/>
-			</div>
-			{#if isExpanded}
-				{#each sortedChildren as child (child.id)}
-					{@render renderNode(child, depth + 1)}
-				{/each}
-			{/if}
-		</div>
-	{:else}
-		<!-- Leaf node -->
-		<div class="tree-row" class:is-dragging={isDragging}>
-			<FeatureRow
-				{feature}
-				{depth}
-				isSelected={selectedId === feature.id}
-				isExpanded={false}
-				showTrack={!!feature.target_version_id}
-				hasFutureWork={false}
-				isDraggable={!!onReparent}
-				{isDragging}
-				isDropTarget={false}
-				isDropHovered={false}
-				{onSelect}
-				onToggle={handleToggle}
-				onContextMenu={handleRowContextMenu}
-				onDragStart={handleDragStart}
-				onDragHover={handleDragHover}
-				onDragEnd={handleDragEnd}
-				onDrop={handleDrop}
-			/>
-		</div>
+	<div
+		class="tree-row"
+		class:is-group={hasChildren || isRoot}
+		class:drop-hover={isDropHovered}
+		class:is-dragging={isDragging}
+		data-feature-id={feature.id}
+	>
+		<FeatureRow
+			{feature}
+			{depth}
+			isSelected={selectedId === feature.id}
+			{isExpanded}
+			showTrack={!hasChildren && !!feature.target_version_id}
+			hasFutureWork={groupMeta?.hasFutureWork ?? false}
+			isDraggable={!!onReparent && !isRoot}
+			{isDragging}
+			{onSelect}
+			onToggle={handleToggle}
+			onContextMenu={handleRowContextMenu}
+			onDragStart={handleDragStart}
+		/>
+	</div>
+
+	{#if (hasChildren || isRoot) && isExpanded}
+		{#each sortFeatures(feature.children) as child (child.id)}
+			{@render renderNode(child, depth + 1)}
+		{/each}
 	{/if}
 {/snippet}
+
+{#if dragState}
+	<FeatureDragPreview feature={dragState.feature} x={dragPosition.x} y={dragPosition.y} />
+{/if}
 
 <FeatureContextMenu
 	open={contextMenuOpen}
@@ -376,7 +396,6 @@
 		overflow: hidden;
 	}
 
-	/* Matches matrix-header height */
 	.tree-header {
 		display: flex;
 		align-items: center;
@@ -394,7 +413,6 @@
 		color: var(--foreground-muted);
 	}
 
-	/* Matches matrix-subheader height */
 	.tree-subheader {
 		display: flex;
 		align-items: center;
@@ -441,30 +459,15 @@
 	.tree-row {
 		display: flex;
 		border-bottom: 1px solid var(--border-subtle);
+		transition: background-color 0.1s ease;
 	}
 
 	.tree-row.is-dragging {
 		opacity: 0.5;
 	}
 
-	.group-container {
-		border-radius: 4px;
-		margin: 2px 4px 2px 0;
-		transition: box-shadow 0.1s ease, background-color 0.1s ease;
-	}
-
-	.group-container.is-dragging {
-		opacity: 0.5;
-	}
-
-	.group-container.drop-hover {
-		box-shadow: inset 0 0 0 2px rgba(107, 142, 95, 0.7);
-		background: rgba(107, 142, 95, 0.06);
-	}
-
-	.group-container.is-root {
-		margin: 0;
-		border-radius: 0;
+	.tree-row.is-group.drop-hover {
+		background: rgba(107, 142, 95, 0.25);
 	}
 
 	.empty-state {
