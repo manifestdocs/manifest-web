@@ -16,11 +16,16 @@
 
 	let wizardOpen = $state(false);
 
-	// Redirect to first project when projects are loaded
+	// Redirect to last viewed project (or first project) when projects are loaded
 	$effect(() => {
 		if (!projectsContext.isLoading && projectsContext.projects.length > 0) {
-			const realProject = projectsContext.projects.find((p) => p.description);
-			const targetProject = realProject || projectsContext.projects[0];
+			const lastProjectId = typeof localStorage !== 'undefined'
+				? localStorage.getItem('manifest_last_project')
+				: null;
+			const lastProject = lastProjectId
+				? projectsContext.projects.find((p) => p.id === lastProjectId)
+				: null;
+			const targetProject = lastProject || projectsContext.projects[0];
 			goto(`/app/${targetProject.id}`, { replaceState: true });
 		}
 	});

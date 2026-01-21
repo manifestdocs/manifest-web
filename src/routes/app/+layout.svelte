@@ -66,6 +66,13 @@
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
 	const featureQueryParam = $derived(selectedFeatureId ? `?feature=${selectedFeatureId}` : '');
 
+	// Remember last viewed project
+	$effect(() => {
+		if (selectedProjectId && typeof localStorage !== 'undefined') {
+			localStorage.setItem('manifest_last_project', selectedProjectId);
+		}
+	});
+
 	// Provide projects context to child routes
 	setContext('projects', {
 		get projects() {
