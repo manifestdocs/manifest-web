@@ -1,16 +1,18 @@
 <script lang="ts">
+	import { api } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
 	import { GroupIcon, StateIcon } from '$lib/components/icons/index.js';
-	import { MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
+	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
 	import { InfoBanner } from '$lib/components/ui/index.js';
 
 	type Feature = components['schemas']['Feature'];
 	type FeatureState = components['schemas']['FeatureState'];
+	type FeatureDiff = components['schemas']['FeatureDiff'];
 
 	interface Props {
 		feature: Feature | null;
 		isGroup?: boolean;
-		onSave: (id: string, updates: { title?: string; details?: string | null; state?: FeatureState }) => Promise<void>;
+		onSave: (id: string, updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }) => Promise<void>;
 	}
 
 	let { feature, isGroup = false, onSave }: Props = $props();
@@ -19,7 +21,11 @@
 	let isSaving = $state(false);
 	let editTitle = $state('');
 	let editDetails = $state('');
-	let activeTab = $state<'view' | 'edit'>('view');
+	let activeTab = $state<'view' | 'edit' | 'diff'>('view');
+	let diffData = $state<FeatureDiff | null>(null);
+	let isLoadingDiff = $state(false);
+
+	const hasPendingChanges = $derived(!!feature?.desired_details);
 
 	// Reset editing state when feature changes
 	$effect(() => {
@@ -84,6 +90,57 @@
 		activeTab = 'view';
 	}
 
+	async function loadDiff() {
+		if (!feature) return;
+		isLoadingDiff = true;
+		try {
+			const { data, error } = await api.GET('/features/{id}/diff', {
+				params: { path: { id: feature.id } }
+			});
+			if (error || !data) {
+				console.error('Failed to load diff:', error);
+				return;
+			}
+			diffData = data;
+		} finally {
+			isLoadingDiff = false;
+		}
+	}
+
+	function handleViewDiff() {
+		activeTab = 'diff';
+		loadDiff();
+	}
+
+	async function handleApplyChanges() {
+		if (!feature || !feature.desired_details) return;
+
+		isSaving = true;
+		try {
+			await onSave(feature.id, {
+				details: feature.desired_details,
+				desired_details: null
+			});
+			activeTab = 'view';
+			diffData = null;
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function handleDiscardChanges() {
+		if (!feature) return;
+
+		isSaving = true;
+		try {
+			await onSave(feature.id, { desired_details: null });
+			activeTab = 'view';
+			diffData = null;
+		} finally {
+			isSaving = false;
+		}
+	}
+
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
 			year: 'numeric',
@@ -145,10 +202,15 @@
 								<span class="locked-text">in progress features can't be edited</span>
 							</div>
 						{:else}
-							<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
+							<div class="header-actions">
+								{#if hasPendingChanges}
+									<button class="btn btn-warning" onclick={handleViewDiff} type="button">Review Changes</button>
+								{/if}
+								<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
+							</div>
 						{/if}
 					</div>
-				{:else}
+				{:else if activeTab === 'edit'}
 					<div class="header-left">
 						<input
 							type="text"
@@ -179,17 +241,41 @@
 							</button>
 						</div>
 					</div>
+				{:else}
+					<!-- Diff tab header -->
+					<div class="header-left">
+						<h1 class="feature-title">{feature.title}</h1>
+						<div class="meta">
+							<span class="diff-badge">Reviewing Changes</span>
+							<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
+						</div>
+					</div>
+					<div class="header-right">
+						<div class="title-actions">
+							<button class="btn btn-secondary" onclick={() => (activeTab = 'view')} disabled={isSaving} type="button">Cancel</button>
+							<button class="btn btn-danger" onclick={handleDiscardChanges} disabled={isSaving} type="button">Discard</button>
+							<button class="btn btn-primary" onclick={handleApplyChanges} disabled={isSaving} type="button">
+								{isSaving ? 'Applying...' : 'Apply Changes'}
+							</button>
+						</div>
+					</div>
 				{/if}
 			</div>
 		</div>
 
-		{#if isGroup}
-			<InfoBanner>
-				Content here provides shared context for all child features in this group.
-			</InfoBanner>
-		{/if}
-
 		<div class="detail-content">
+			{#if isGroup}
+				<InfoBanner class="content-banner">
+					Content here provides shared context for all child features in this group.
+				</InfoBanner>
+			{/if}
+
+			{#if hasPendingChanges && activeTab === 'view'}
+				<InfoBanner variant="warning" class="content-banner">
+					This feature has proposed changes. <button class="banner-link" onclick={handleViewDiff} type="button">Review changes</button> to apply or discard them.
+				</InfoBanner>
+			{/if}
+
 			{#if activeTab === 'view'}
 				<div class="details-view">
 					{#if feature.details}
@@ -198,13 +284,23 @@
 						<p class="no-details">No details yet. Click Edit to add a description.</p>
 					{/if}
 				</div>
-			{:else}
+			{:else if activeTab === 'edit'}
 				<div class="details-edit">
 					<MarkdownEditor
 						bind:value={editDetails}
 						placeholder="Add feature details, user stories, technical notes..."
 						rows={20}
 					/>
+				</div>
+			{:else}
+				<div class="details-diff">
+					{#if isLoadingDiff}
+						<p class="loading-text">Loading diff...</p>
+					{:else if diffData}
+						<DiffView current={diffData.current ?? null} desired={diffData.desired ?? null} />
+					{:else}
+						<p class="no-details">No diff data available.</p>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -381,6 +477,31 @@
 		background: var(--background-muted);
 	}
 
+	.btn-warning {
+		background: rgba(204, 167, 0, 0.2);
+		color: var(--state-proposed);
+		border-color: var(--state-proposed);
+	}
+
+	.btn-warning:hover:not(:disabled) {
+		background: rgba(204, 167, 0, 0.3);
+	}
+
+	.btn-danger {
+		background: rgba(248, 81, 73, 0.2);
+		color: #f85149;
+		border-color: #f85149;
+	}
+
+	.btn-danger:hover:not(:disabled) {
+		background: rgba(248, 81, 73, 0.3);
+	}
+
+	.header-actions {
+		display: flex;
+		gap: 8px;
+	}
+
 	.locked-indicator {
 		display: flex;
 		flex-direction: column;
@@ -416,6 +537,13 @@
 		padding: 20px 24px;
 	}
 
+	.detail-content :global(.content-banner) {
+		max-width: 800px;
+		margin-bottom: 16px;
+		border-radius: 6px;
+		border: none;
+	}
+
 	.details-view {
 		max-width: 800px;
 	}
@@ -427,5 +555,40 @@
 
 	.details-edit {
 		max-width: 800px;
+	}
+
+	.details-diff {
+		max-width: 800px;
+	}
+
+	.diff-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		border-radius: 20px;
+		font-size: 12px;
+		font-weight: 500;
+		background: rgba(204, 167, 0, 0.15);
+		color: var(--state-proposed);
+	}
+
+	.banner-link {
+		background: none;
+		border: none;
+		color: inherit;
+		font: inherit;
+		text-decoration: underline;
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.banner-link:hover {
+		opacity: 0.8;
+	}
+
+	.loading-text {
+		color: var(--foreground-subtle);
+		font-style: italic;
 	}
 </style>
