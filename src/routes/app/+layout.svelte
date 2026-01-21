@@ -214,6 +214,8 @@
 	.logo-image {
 		height: 30px;
 		width: auto;
+		position: relative;
+		top: -1px;
 	}
 
 	.project-select {

@@ -163,7 +163,7 @@
 
         <section id="pain-points" class="pain-points">
             <h2 class="section-title">
-                Yesterday's tools weren't designed for AI's pace and complexity
+                Yesterday's workflows don't work for AI's pace and complexity
             </h2>
             <div class="pain-cards">
                 <div class="pain-card">
@@ -176,8 +176,8 @@
                     </div>
                     <h3>Specs die on day one</h3>
                     <p>
-                        Your PRD was accurate for about 24 hours. Now it's just
-                        polluting your repo or buried in Confluence.
+                        AI makes it easy to iterate... away from your spec which
+                        is already out of date.
                     </p>
                 </div>
                 <div class="pain-card">
@@ -205,8 +205,7 @@
                     <h3>Agents get confused</h3>
                     <p>
                         Without a trail of past work or a map for the future,
-                        agents become cowboy coders flailing around your
-                        codebase.
+                        agents sling code without purpose.
                     </p>
                 </div>
             </div>
@@ -608,7 +607,6 @@
 
     .pain-card-illustration--cowboy {
         max-width: 10.9375em;
-        transform: translateY(-0.25em);
     }
 
     /* Solution / Value Props */

@@ -256,11 +256,13 @@
 	}
 
 	:global(.settings-content) {
-		max-width: 520px;
-		max-height: 85vh;
+		max-width: 680px;
+		min-height: 500px;
+		max-height: 90vh;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		border-radius: 0;
 	}
 
 	:global(.dialog-title) {
@@ -400,7 +402,7 @@
 		padding: 8px 16px;
 		font-size: 13px;
 		font-weight: 500;
-		border-radius: 6px;
+		border-radius: 2px;
 		border: 1px solid transparent;
 		cursor: pointer;
 		transition: all 0.15s ease;
