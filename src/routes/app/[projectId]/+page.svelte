@@ -4,12 +4,9 @@
 	import { FeatureTree, FeatureDetail, CreateFeatureDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
+	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-
-	const MIN_SIDEBAR_WIDTH = 200;
-	const MAX_SIDEBAR_WIDTH = 500;
-	let sidebarWidth = $state(280);
 
 	type Feature = components['schemas']['Feature'];
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
@@ -128,7 +125,7 @@
 
 	async function handleSaveFeature(
 		id: string,
-		updates: { title?: string; details?: string | null; state?: FeatureState }
+		updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }
 	) {
 		const { data, error } = await api.PUT('/features/{id}', {
 			params: { path: { id } },
@@ -152,7 +149,7 @@
 	}
 
 	function handleResize(deltaX: number) {
-		sidebarWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, sidebarWidth + deltaX));
+		sidebarWidth.resize(deltaX);
 	}
 
 	function handleOpenCreateDialog(parentId: string | null) {
@@ -185,11 +182,11 @@
 
 <div class="page-container">
 	<div class="page-content">
-		<aside class="sidebar" style="width: {sidebarWidth}px">
-			{#if isLoadingFeatures}
+		<aside class="sidebar" style="width: {sidebarWidth.value}px">
+			{#if isLoadingFeatures && featureTree.length === 0}
 				<div class="loading-state">Loading features...</div>
 			{:else}
-				<FeatureTree features={featureTree} selectedId={selectedFeatureId} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} />
+				<FeatureTree features={featureTree} selectedId={selectedFeatureId} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} />
 			{/if}
 		</aside>
 

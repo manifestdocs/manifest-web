@@ -2,6 +2,7 @@
 	import { api, subscribeToProject } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
 	import { VersionMatrixView } from '$lib/components/versions/index.js';
+	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 
@@ -129,17 +130,19 @@
 </script>
 
 <section class="content-full">
-	{#if isLoadingFeatures || isLoadingVersions}
+	{#if (isLoadingFeatures && featureTree.length === 0) || (isLoadingVersions && versions.length === 0)}
 		<div class="loading-state">Loading...</div>
 	{:else}
 		<VersionMatrixView
 			features={featureTree}
 			{versions}
 			selectedId={selectedFeatureId}
+			featureColumnWidth={sidebarWidth.value}
 			onSelect={handleSelectFeature}
 			onCreateVersion={handleCreateVersion}
 			onUpdateFeatureVersion={handleUpdateFeatureVersion}
 			onCompleteVersion={handleCompleteVersion}
+			onResize={(delta) => sidebarWidth.resize(delta)}
 		/>
 	{/if}
 </section>
