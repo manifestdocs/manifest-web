@@ -51,7 +51,7 @@ function getSecurityHeaders(isCloud: boolean): Record<string, string> {
 		headers['Content-Security-Policy'] = [
 			"default-src 'self'",
 			"script-src 'self' 'unsafe-inline'", // unsafe-inline needed for SvelteKit
-			"style-src 'self' 'unsafe-inline'", // unsafe-inline needed for CSS
+			"style-src 'self' 'unsafe-inline'",
 			`connect-src 'self' ${API_BASE_URL}`,
 			"img-src 'self' data: https:",
 			"font-src 'self'",

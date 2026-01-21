@@ -1,7 +1,7 @@
 {
 	"name": "app",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.1.27",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -16,11 +16,13 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.49.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@tailwindcss/vite": "^4.1.18",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/svelte": "^5.3.1",
+		"@types/diff": "^8.0.0",
 		"jsdom": "^27.4.0",
 		"openapi-typescript": "^7.10.1",
 		"svelte": "^5.45.6",
@@ -31,8 +33,11 @@
 		"vitest": "^4.0.17"
 	},
 	"dependencies": {
+		"@fontsource/ibm-plex-mono": "^5.2.7",
+		"@fontsource/ibm-plex-sans": "^5.2.8",
 		"bits-ui": "^1.0.0-next.98",
 		"clsx": "^2.1.1",
+		"diff": "^8.0.3",
 		"dompurify": "^3.3.1",
 		"marked": "^17.0.1",
 		"openapi-fetch": "^0.15.0",
