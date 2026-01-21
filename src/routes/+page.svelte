@@ -36,6 +36,10 @@
 </script>
 
 <div class="marketing-page">
+    <nav class="top-nav">
+        <a href="/docs/" class="nav-button nav-button--docs">Docs</a>
+        <a href="/app" class="nav-button nav-button--app">App →</a>
+    </nav>
     <main>
         <section id="top" class="hero">
             <img src={logotype} alt="Manifest" class="hero-logotype" />
@@ -53,58 +57,10 @@
         <section class="install-section">
             <div class="install-options" class:highlight={highlightInstall}>
                 <div class="install-option">
-                    <span class="install-label">Install via brew</span>
-                    <div class="install-wrapper">
-                        <code class="install-command">{brewCommand}</code>
-                        <button
-                            class="copy-button"
-                            onclick={copyBrewCommand}
-                            aria-label="Copy brew command"
-                        >
-                            {#if copiedBrew}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            {:else}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect
-                                        width="14"
-                                        height="14"
-                                        x="8"
-                                        y="8"
-                                        rx="2"
-                                        ry="2"
-                                    />
-                                    <path
-                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                                    />
-                                </svg>
-                            {/if}
-                        </button>
-                    </div>
-                </div>
-                <div class="install-option">
                     <span class="install-label"
-                        >or in <span class="claude-code-text">Claude Code</span
-                        >...</span
+                        >Install via <span class="claude-code-text"
+                            >Claude Code plugin</span
+                        ></span
                     >
                     <div class="install-wrapper">
                         <code class="install-command">{claudeCommand}</code>
@@ -153,12 +109,61 @@
                         </button>
                     </div>
                 </div>
+                <div class="install-option">
+                    <span class="install-label">or brew</span>
+                    <div class="install-wrapper">
+                        <code class="install-command">{brewCommand}</code>
+                        <button
+                            class="copy-button"
+                            onclick={copyBrewCommand}
+                            aria-label="Copy brew command"
+                        >
+                            {#if copiedBrew}
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            {:else}
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <rect
+                                        width="14"
+                                        height="14"
+                                        x="8"
+                                        y="8"
+                                        rx="2"
+                                        ry="2"
+                                    />
+                                    <path
+                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                                    />
+                                </svg>
+                            {/if}
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section id="pain-points" class="pain-points">
             <h2 class="section-title">
-                Traditional PM tools aren't designed for AI agents
+                Yesterday's tools weren't designed for AI's pace and complexity
             </h2>
             <div class="pain-cards">
                 <div class="pain-card">
@@ -197,10 +202,11 @@
                             class="pain-card-illustration pain-card-illustration--cowboy"
                         />
                     </div>
-                    <h3>Lost agentic cowboys</h3>
+                    <h3>Agents get confused</h3>
                     <p>
-                        Projects start strong then deteriorate. Agents flail
-                        around without a trail of past work or a future roadmap.
+                        Without a trail of past work or a map for the future,
+                        agents become cowboy coders flailing around your
+                        codebase.
                     </p>
                 </div>
             </div>
@@ -310,55 +316,10 @@
             </div>
         </section>
 
-        <section class="comparison">
-            <h2 class="section-title">Traditional tools vs Manifest</h2>
-            <div class="comparison-table-wrapper">
-                <table class="comparison-table">
-                    <thead>
-                        <tr>
-                            <th>Traditional PM tools</th>
-                            <th>Manifest</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Work items (close and forget)</td>
-                            <td
-                                ><span class="check">✓</span> Features (living documentation)</td
-                            >
-                        </tr>
-                        <tr>
-                            <td>Tickets accumulate as noise</td>
-                            <td
-                                ><span class="check">✓</span> Feature tree stays current</td
-                            >
-                        </tr>
-                        <tr>
-                            <td>"What did we ship?"</td>
-                            <td
-                                ><span class="check">✓</span> "What can our product
-                                do?"</td
-                            >
-                        </tr>
-                        <tr>
-                            <td>Spec docs rot instantly</td>
-                            <td
-                                ><span class="check">✓</span> Features evolve with
-                                code</td
-                            >
-                        </tr>
-                        <tr>
-                            <td>Manual tracking</td>
-                            <td
-                                ><span class="check">✓</span> AI agent integration</td
-                            >
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
         <section class="cta-section">
+            <a class="cta-button cta-button--secondary" href="/docs/"
+                >Read the Docs</a
+            >
             <button class="cta-button" onclick={scrollToInstall}
                 >Install Now</button
             >
@@ -378,6 +339,43 @@
         display: flex;
         flex-direction: column;
         font-size: 107%;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+        position: fixed;
+        top: 0;
+        right: 0;
+        display: flex;
+        gap: 0.5em;
+        padding: 1em;
+        z-index: 100;
+    }
+
+    .nav-button {
+        padding: 0.4em 0.9em;
+        font-size: 0.8em;
+        font-weight: 500;
+        text-decoration: none;
+        background: transparent;
+        border: 1.5px solid #fff;
+        color: #fff;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease,
+            border-color 0.15s ease;
+    }
+
+    .nav-button--docs:hover {
+        background: var(--state-implemented);
+        border-color: var(--state-implemented);
+        color: var(--background);
+    }
+
+    .nav-button--app:hover {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        color: var(--background);
     }
 
     .nowrap {
@@ -445,10 +443,6 @@
         margin: 0 0 0.5em;
     }
 
-    .hero-subheadline strong {
-        color: var(--foreground);
-    }
-
     .install-wrapper {
         display: inline-flex;
         align-items: stretch;
@@ -464,6 +458,7 @@
         background: var(--background);
         user-select: all;
         cursor: text;
+        width: 52ch;
     }
 
     .copy-button {
@@ -544,7 +539,7 @@
     /* Pain Points */
     .pain-points {
         background: var(--background);
-        padding-top: 2.75em;
+        padding-top: 2.5em;
         padding-bottom: 1.5em;
     }
 
@@ -668,60 +663,17 @@
         white-space: nowrap;
     }
 
-    /* Comparison */
-    .comparison {
-        background: var(--background);
-        padding-top: 1.5em;
-        padding-bottom: 3.25em;
-    }
-
-    .comparison-table-wrapper {
-        max-width: 62.5em;
-        margin: 0 auto;
-        overflow-x: auto;
-    }
-
-    .comparison-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9375em;
-    }
-
-    .comparison-table th,
-    .comparison-table td {
-        padding: 0.75em 1.25em;
-        text-align: left;
-        border: 1px solid var(--border-default);
-    }
-
-    .comparison-table th {
-        background: var(--background);
-        font-weight: 600;
-        color: var(--foreground);
-    }
-
-    .comparison-table td {
-        background: var(--background);
-        color: var(--foreground-muted);
-    }
-
-    .comparison-table td:last-child {
-        color: var(--accent-green);
-    }
-
-    .comparison-table .check {
-        font-weight: 700;
-        margin-right: 0.25em;
-    }
-
     /* CTA Section */
     .cta-section {
-        text-align: center;
+        display: flex;
+        justify-content: center;
+        gap: 1em;
         background: var(--background);
-        padding: 1.5em 1.5em 4em;
+        padding: 0.5em 1.5em 4em;
     }
 
     .cta-button {
+        display: inline-block;
         font-size: 1em;
         font-weight: 500;
         color: var(--accent-green);
@@ -729,6 +681,7 @@
         border: 2px solid var(--accent-green);
         padding: 0.75em 2em;
         cursor: pointer;
+        text-decoration: none;
         transition:
             background 0.15s ease,
             color 0.15s ease;
@@ -736,6 +689,16 @@
 
     .cta-button:hover {
         background: var(--accent-green);
+        color: var(--background);
+    }
+
+    .cta-button--secondary {
+        color: var(--state-implemented);
+        border-color: var(--state-implemented);
+    }
+
+    .cta-button--secondary:hover {
+        background: var(--state-implemented);
         color: var(--background);
     }
 

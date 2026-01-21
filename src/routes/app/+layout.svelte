@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { setContext } from 'svelte';
+	import headerLogotype from '$lib/assets/manifest_header_logotype.png';
 
 	type Project = components['schemas']['Project'];
 
@@ -82,11 +83,7 @@
 		<header class="app-header">
 			<div class="header-left">
 				<a href="/" class="logo">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-						<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-					</svg>
-					<span>MANIFEST</span>
+					<img src={headerLogotype} alt="Manifest" class="logo-image" />
 				</a>
 				<select
 					class="project-select"
@@ -170,11 +167,6 @@
 	.logo {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		font-size: 16px;
-		font-weight: 700;
-		color: var(--foreground);
-		letter-spacing: 0.5px;
 		text-decoration: none;
 		transition: opacity 0.15s ease;
 	}
@@ -183,8 +175,9 @@
 		opacity: 0.8;
 	}
 
-	.logo svg {
-		margin-top: 2px;
+	.logo-image {
+		height: 30px;
+		width: auto;
 	}
 
 	.project-select {
