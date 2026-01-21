@@ -7,7 +7,7 @@
 	let { size = 16, class: className = '' }: Props = $props();
 </script>
 
-<!-- 2x2 grid of circles -->
+<!-- Open book icon -->
 <svg
 	width={size}
 	height={size}
@@ -17,8 +17,11 @@
 	class={className}
 	aria-label="Feature group"
 >
-	<circle cx="4.5" cy="4.5" r="2.5" fill="var(--foreground-muted)" />
-	<circle cx="11.5" cy="4.5" r="2.5" fill="var(--foreground-muted)" />
-	<circle cx="4.5" cy="11.5" r="2.5" fill="var(--foreground-muted)" />
-	<circle cx="11.5" cy="11.5" r="2.5" fill="var(--foreground-muted)" />
+	<path
+		d="M8 3.5V13M8 3.5C7 2.5 5 2 3 2.5V12C5 11.5 7 12 8 13M8 3.5C9 2.5 11 2 13 2.5V12C11 11.5 9 12 8 13"
+		stroke="var(--foreground-muted)"
+		stroke-width="1.5"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+	/>
 </svg>

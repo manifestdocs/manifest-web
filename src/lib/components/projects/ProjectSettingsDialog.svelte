@@ -2,7 +2,6 @@
 	import { Dialog } from 'bits-ui';
 	import { api } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
-	import { MarkdownEditor } from '$lib/components/markdown/index.js';
 	import DirectoryList from './DirectoryList.svelte';
 
 	type Project = components['schemas']['Project'];
@@ -22,8 +21,6 @@
 
 	// Form state
 	let name = $state('');
-	let description = $state('');
-	let instructions = $state('');
 	let isSaving = $state(false);
 	let error = $state<string | null>(null);
 
@@ -35,8 +32,6 @@
 	$effect(() => {
 		if (open) {
 			name = project.name;
-			description = project.description || '';
-			instructions = project.instructions || '';
 			error = null;
 			activeTab = 'general';
 			loadDirectories();
@@ -70,12 +65,11 @@
 		error = null;
 
 		try {
+			// Only update the name (syncs to root feature title on server)
 			const { error: updateError } = await api.PUT('/projects/{id}', {
 				params: { path: { id: project.id } },
 				body: {
-					name: name.trim(),
-					description: description.trim() || null,
-					instructions: instructions.trim() || null
+					name: name.trim()
 				}
 			});
 
@@ -141,7 +135,7 @@
 					class:active={activeTab === 'general'}
 					onclick={() => (activeTab = 'general')}
 				>
-					Project Wide Context
+					Project Name
 				</button>
 				<button
 					type="button"
@@ -165,28 +159,14 @@
 								bind:value={name}
 								disabled={isSaving}
 							/>
+							<span class="form-hint">The project name is shown in the feature tree and synced to the root feature title.</span>
 						</div>
-						<div class="form-field">
-							<label for="project-description" class="form-label">Description</label>
-							<input
-								id="project-description"
-								type="text"
-								class="form-input"
-								placeholder="Brief description of the project"
-								bind:value={description}
-								disabled={isSaving}
-							/>
-						</div>
-						<div class="form-field form-field-grow">
-							<label class="form-label">AI Instructions</label>
-							<div class="editor-wrapper">
-								<MarkdownEditor
-									bind:value={instructions}
-									placeholder="Guidelines for AI agents working on this project..."
-									rows={12}
-								/>
-							</div>
-							<span class="form-hint">These instructions are provided to AI agents when they work on features in this project.</span>
+
+						<div class="form-field instructions-notice">
+							<p class="notice-text">
+								Project instructions are now managed through the root feature in the feature tree.
+								Select the project root (with the folder icon) to edit instructions.
+							</p>
 						</div>
 
 						{#if error}
@@ -396,6 +376,20 @@
 	.form-hint {
 		font-size: 12px;
 		color: var(--foreground-muted);
+	}
+
+	.instructions-notice {
+		padding: 16px;
+		background: var(--background-subtle);
+		border: 1px solid var(--border-default);
+		border-radius: 6px;
+	}
+
+	.notice-text {
+		margin: 0;
+		font-size: 13px;
+		color: var(--foreground-muted);
+		line-height: 1.5;
 	}
 
 	.form-error {

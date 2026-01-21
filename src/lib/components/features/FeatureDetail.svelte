@@ -1,21 +1,24 @@
 <script lang="ts">
 	import { api } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
-	import { GroupIcon, StateIcon } from '$lib/components/icons/index.js';
+	import { GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
 	import { InfoBanner } from '$lib/components/ui/index.js';
 
 	type Feature = components['schemas']['Feature'];
 	type FeatureState = components['schemas']['FeatureState'];
 	type FeatureDiff = components['schemas']['FeatureDiff'];
+	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
 	interface Props {
-		feature: Feature | null;
+		feature: (Feature & { is_root?: boolean }) | null;
 		isGroup?: boolean;
 		onSave: (id: string, updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }) => Promise<void>;
 	}
 
 	let { feature, isGroup = false, onSave }: Props = $props();
+
+	const isRoot = $derived(feature?.is_root ?? false);
 
 	let isEditing = $state(false);
 	let isSaving = $state(false);
@@ -167,9 +170,14 @@
 			<div class="header-content">
 				{#if activeTab === 'view'}
 					<div class="header-left">
-						<h1 class="feature-title">{feature.title}</h1>
+						<h1 class="feature-title">{isRoot ? 'Project Context' : feature.title}</h1>
 						<div class="meta">
-							{#if isGroup}
+							{#if isRoot}
+								<div class="project-badge">
+									<ProjectIcon size={14} />
+									<span>{feature.title}</span>
+								</div>
+							{:else if isGroup}
 								<div class="group-badge">
 									<GroupIcon size={14} />
 									<span>Group</span>
@@ -212,14 +220,23 @@
 					</div>
 				{:else if activeTab === 'edit'}
 					<div class="header-left">
-						<input
-							type="text"
-							class="title-input"
-							bind:value={editTitle}
-							placeholder="Feature title"
-						/>
+						{#if isRoot}
+							<h1 class="feature-title">Project Context</h1>
+						{:else}
+							<input
+								type="text"
+								class="title-input"
+								bind:value={editTitle}
+								placeholder="Feature title"
+							/>
+						{/if}
 						<div class="meta">
-							{#if isGroup}
+							{#if isRoot}
+								<div class="project-badge">
+									<ProjectIcon size={14} />
+									<span>{feature.title}</span>
+								</div>
+							{:else if isGroup}
 								<div class="group-badge">
 									<GroupIcon size={14} />
 									<span>Group</span>
@@ -264,7 +281,11 @@
 		</div>
 
 		<div class="detail-content">
-			{#if isGroup}
+			{#if isRoot}
+				<InfoBanner class="content-banner">
+					Project-wide instructions for AI agents. This context is provided when agents work on any feature in this project.
+				</InfoBanner>
+			{:else if isGroup}
 				<InfoBanner class="content-banner">
 					Content here provides shared context for all child features in this group.
 				</InfoBanner>
@@ -281,14 +302,20 @@
 					{#if feature.details}
 						<MarkdownView content={feature.details} />
 					{:else}
-						<p class="no-details">No details yet. Click Edit to add a description.</p>
+						<p class="no-details">
+							{isRoot
+								? 'No project instructions yet. Click Edit to add guidelines for AI agents.'
+								: 'No details yet. Click Edit to add a description.'}
+						</p>
 					{/if}
 				</div>
 			{:else if activeTab === 'edit'}
 				<div class="details-edit">
 					<MarkdownEditor
 						bind:value={editDetails}
-						placeholder="Add feature details, user stories, technical notes..."
+						placeholder={isRoot
+							? 'Project-wide instructions for AI agents. Include coding guidelines, conventions, and any context that should apply to all features...'
+							: 'Add feature details, user stories, technical notes...'}
 						rows={20}
 					/>
 				</div>
@@ -394,6 +421,18 @@
 		color: var(--foreground-muted);
 	}
 
+	.project-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px 4px 6px;
+		border-radius: 20px;
+		font-size: 12px;
+		font-weight: 500;
+		background: rgba(88, 166, 255, 0.15);
+		color: var(--accent-blue);
+	}
+
 	.state-select {
 		appearance: none;
 		background: transparent;
@@ -446,7 +485,7 @@
 		padding: 6px 12px;
 		font-size: 13px;
 		font-weight: 500;
-		border-radius: 6px;
+		border-radius: 2px;
 		border: 1px solid transparent;
 		cursor: pointer;
 		transition: all 0.15s ease;

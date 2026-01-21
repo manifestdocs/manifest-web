@@ -631,6 +631,11 @@ export interface components {
              * @description Target version for release planning
              */
             target_version_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Move feature under a different parent. Set null to make root-level.
+             */
+            parent_id?: string | null;
         };
         /** @description Input for bulk feature creation with hierarchical structure */
         BulkCreateFeaturesInput: {
@@ -681,6 +686,11 @@ export interface components {
         /** @description A feature with its children recursively nested */
         FeatureTreeNode: components["schemas"]["Feature"] & {
             children: components["schemas"]["FeatureTreeNode"][];
+            /**
+             * @description True if this is the project's root feature (contains project instructions)
+             * @default false
+             */
+            is_root: boolean;
         };
         /**
          * @description Append-only log entry recording implementation work.

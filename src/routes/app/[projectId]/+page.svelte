@@ -182,6 +182,23 @@
 		await loadFeatureTree(projectId);
 		goto(`/app/${projectId}?feature=${data.id}`);
 	}
+
+	async function handleReparentFeature(featureId: string, newParentId: string | null) {
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { parent_id: newParentId }
+		});
+
+		if (error) {
+			console.error('Failed to reparent feature:', error);
+			return;
+		}
+
+		// Refresh the tree
+		if (projectId) {
+			await loadFeatureTree(projectId);
+		}
+	}
 </script>
 
 <div class="page-container">
@@ -190,7 +207,7 @@
 			{#if isLoadingFeatures && featureTree.length === 0}
 				<div class="loading-state">Loading features...</div>
 			{:else}
-				<FeatureTree features={featureTree} selectedId={selectedFeatureId} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} />
+				<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} />
 			{/if}
 		</aside>
 
@@ -250,6 +267,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		flex-shrink: 0;
+		height: 100%;
 	}
 
 	.content {

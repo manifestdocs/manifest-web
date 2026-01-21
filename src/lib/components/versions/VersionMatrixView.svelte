@@ -3,6 +3,7 @@
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import { InfoBanner, ResizeDivider } from '$lib/components/ui/index.js';
+	import { featureExpansion } from '$lib/stores/index.js';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 	import DraggableDot from './DraggableDot.svelte';
 
@@ -13,38 +14,72 @@
 		features: FeatureTreeNode[];
 		versions: Version[];
 		selectedId: string | null;
+		projectId: string;
 		featureColumnWidth?: number;
 		onSelect: (id: string) => void;
 		onCreateVersion: (name: string, description: string | null) => Promise<void>;
 		onUpdateFeatureVersion?: (featureId: string, versionId: string | null) => Promise<void>;
 		onCompleteVersion?: (versionId: string) => Promise<void>;
 		onResize?: (deltaX: number) => void;
+		onReparent?: (featureId: string, newParentId: string | null) => void;
 	}
 
-	let { features, versions, selectedId, featureColumnWidth = 350, onSelect, onCreateVersion, onUpdateFeatureVersion, onCompleteVersion, onResize }: Props = $props();
+	let { features, versions, selectedId, projectId, featureColumnWidth = 350, onSelect, onCreateVersion, onUpdateFeatureVersion, onCompleteVersion, onResize, onReparent }: Props = $props();
 
 	let showCreateDialog = $state(false);
 	let isCompleting = $state(false);
 	let closingVersionId = $state<string | null>(null);
 	let expandedIds = $state(new Set<string>());
+	let matrixBodyRef = $state<HTMLElement | null>(null);
+	let containerHeight = $state(0);
+	let initialized = $state(false);
+	let previousFeaturesJson = $state('');
 
-	// Drag state for drop zone indicator
+	// Drag state for version drop zone indicator
 	let dragHover = $state<{ featureId: string; versionId: string } | null>(null);
 
-	// Auto-expand all on load
+	// Drag state for feature reparenting
+	let reparentDragState = $state<{
+		featureId: string;
+		parentId: string | null;
+		descendantIds: Set<string>;
+	} | null>(null);
+	let reparentDropTargetId = $state<string | null>(null);
+
+	// Measure container height with ResizeObserver
 	$effect(() => {
-		if (features.length > 0 && expandedIds.size === 0) {
-			const newExpanded = new Set<string>();
-			function expandAll(nodes: FeatureTreeNode[]) {
-				for (const node of nodes) {
-					if (node.children && node.children.length > 0) {
-						newExpanded.add(node.id);
-						expandAll(node.children);
-					}
-				}
-			}
-			expandAll(features);
-			expandedIds = newExpanded;
+		if (matrixBodyRef) {
+			const observer = new ResizeObserver((entries) => {
+				containerHeight = entries[0]?.contentRect.height ?? 0;
+			});
+			observer.observe(matrixBodyRef);
+			return () => observer.disconnect();
+		}
+	});
+
+	// Initialize expansion state once we have all required data
+	$effect(() => {
+		if (projectId && features.length > 0 && containerHeight > 0 && !initialized) {
+			expandedIds = featureExpansion.init(projectId, features, containerHeight);
+			previousFeaturesJson = JSON.stringify(features);
+			initialized = true;
+		}
+	});
+
+	// Reset initialized flag when project changes
+	$effect(() => {
+		projectId; // Track projectId changes
+		initialized = false;
+	});
+
+	// Handle tree updates (e.g., from SSE) - detect newly-complete groups
+	$effect(() => {
+		if (!initialized) return;
+
+		const currentJson = JSON.stringify(features);
+		if (currentJson !== previousFeaturesJson) {
+			expandedIds = featureExpansion.handleTreeUpdate(features, expandedIds);
+			previousFeaturesJson = currentJson;
 		}
 	});
 
@@ -152,13 +187,7 @@
 	let visibleFeatures = $derived(getVisibleFeatures(features));
 
 	function toggleExpand(id: string) {
-		const newExpanded = new Set(expandedIds);
-		if (newExpanded.has(id)) {
-			newExpanded.delete(id);
-		} else {
-			newExpanded.add(id);
-		}
-		expandedIds = newExpanded;
+		expandedIds = featureExpansion.toggle(id, expandedIds);
 	}
 
 	// Get flat index for a version ID (for determining track visibility)
@@ -197,18 +226,7 @@
 		// Clear hover state
 		dragHover = null;
 		// Find the feature's current target version
-		function findFeature(nodes: FeatureTreeNode[]): FeatureTreeNode | null {
-			for (const node of nodes) {
-				if (node.id === featureId) return node;
-				if (node.children) {
-					const found = findFeature(node.children);
-					if (found) return found;
-				}
-			}
-			return null;
-		}
-
-		const feature = findFeature(features);
+		const feature = findFeature(features, featureId);
 		if (!feature) return;
 
 		// Skip if dropped on same column
@@ -222,6 +240,99 @@
 				console.error('Failed to update feature version:', error);
 			}
 		}
+	}
+
+	// Find a feature by ID in the tree
+	function findFeature(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
+		for (const node of nodes) {
+			if (node.id === id) return node;
+			const found = findFeature(node.children, id);
+			if (found) return found;
+		}
+		return null;
+	}
+
+	// Get all descendant IDs of a feature
+	function getDescendantIds(node: FeatureTreeNode): Set<string> {
+		const ids = new Set<string>();
+		function collect(n: FeatureTreeNode) {
+			for (const child of n.children) {
+				ids.add(child.id);
+				collect(child);
+			}
+		}
+		collect(node);
+		return ids;
+	}
+
+	// Check if a feature is a valid drop target for reparenting
+	function isValidReparentTarget(featureId: string): boolean {
+		if (!reparentDragState) return false;
+		if (featureId === reparentDragState.featureId) return false;
+		if (featureId === reparentDragState.parentId) return false;
+		if (reparentDragState.descendantIds.has(featureId)) return false;
+		return true;
+	}
+
+	// Reparent drag handlers
+	function handleReparentDragStart(featureId: string) {
+		const node = findFeature(features, featureId);
+		if (!node) return;
+		reparentDragState = {
+			featureId,
+			parentId: node.parent_id ?? null,
+			descendantIds: getDescendantIds(node)
+		};
+	}
+
+	function handleReparentDragHover(targetId: string | null) {
+		reparentDropTargetId = targetId;
+	}
+
+	function handleReparentDragEnd() {
+		reparentDragState = null;
+		reparentDropTargetId = null;
+	}
+
+	function handleReparentDrop(featureId: string, newParentId: string | null) {
+		if (newParentId !== null && newParentId !== 'root') {
+			if (!isValidReparentTarget(newParentId)) {
+				handleReparentDragEnd();
+				return;
+			}
+			// Expand the target group
+			if (!expandedIds.has(newParentId)) {
+				expandedIds = new Set([...expandedIds, newParentId]);
+			}
+		}
+		// For 'root' drops, set parent to null (true root-level)
+		onReparent?.(featureId, newParentId === 'root' ? null : newParentId);
+		handleReparentDragEnd();
+	}
+
+	// Sort features: groups alphabetically, leaves by state
+	const stateOrder: Record<string, number> = {
+		implemented: 0,
+		in_progress: 1,
+		proposed: 2,
+		deprecated: 3
+	};
+
+	function sortFeatures(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
+		const groups = nodes.filter(n => n.children.length > 0);
+		const leaves = nodes.filter(n => n.children.length === 0);
+
+		groups.sort((a, b) => a.title.localeCompare(b.title));
+
+		leaves.sort((a, b) => {
+			const aOrder = stateOrder[a.state] ?? 99;
+			const bOrder = stateOrder[b.state] ?? 99;
+			if (aOrder !== bOrder) return aOrder - bOrder;
+			if (a.priority !== b.priority) return a.priority - b.priority;
+			return a.title.localeCompare(b.title);
+		});
+
+		return [...groups, ...leaves];
 	}
 </script>
 
@@ -293,7 +404,7 @@
 	{/if}
 
 	<!-- Body -->
-	<div class="matrix-body">
+	<div class="matrix-body" bind:this={matrixBodyRef} data-root-drop-zone="true" class:drop-hover={reparentDropTargetId === 'root'}>
 		<!-- Full-height column backgrounds -->
 		<div class="column-backgrounds">
 			<div class="col-bg feature-col"></div>
@@ -310,59 +421,11 @@
 			{/each}
 		</div>
 
-		{#if visibleFeatures.length === 0}
+		{#if features.length === 0}
 			<div class="empty-state">No features yet</div>
 		{:else}
-			{#each visibleFeatures as { feature, depth } (feature.id)}
-				{@const hasChildren = feature.children && feature.children.length > 0}
-				{@const isLeaf = !hasChildren}
-				{@const isSelected = selectedId === feature.id}
-				<div class="matrix-row" class:is-group={hasChildren} class:is-leaf={isLeaf} class:is-selected={isSelected}>
-					<FeatureRow
-						{feature}
-						{depth}
-						isSelected={selectedId === feature.id}
-						isExpanded={expandedIds.has(feature.id)}
-						showTrack={isLeaf && !!feature.target_version_id}
-						{onSelect}
-						onToggle={toggleExpand}
-					/>
-
-					<!-- Version cells -->
-					{#each groupedVersions as group, groupIndex}
-						{#each group.versions as version, versionIndex}
-							{@const isTarget = isLeaf && feature.target_version_id === version.id}
-							{@const targetIdx = getVersionFlatIndex(feature.target_version_id)}
-							{@const currentIdx = getFlatIndex(groupIndex, versionIndex)}
-							{@const showTrack = isLeaf && targetIdx >= 0 && currentIdx < targetIdx}
-							{@const isDropZone = dragHover?.featureId === feature.id && dragHover?.versionId === version.id && !isTarget}
-							<div
-								class="version-cell"
-								class:group-start={versionIndex === 0}
-								class:show-track={showTrack}
-								class:has-dot={isTarget}
-								class:drop-zone={isDropZone}
-								class:zebra={currentIdx % 2 === 0}
-								class:closing={version.id === closingVersionId}
-								data-version-id={version.id}
-							>
-								{#if isTarget}
-									<DraggableDot
-										featureId={feature.id}
-										featureState={feature.state}
-										onDrop={handleDotDrop}
-										onHover={handleDotHover}
-									/>
-								{/if}
-								{#if isDropZone}
-									<span class="drop-indicator">
-										<StateIcon state={feature.state} size={14} />
-									</span>
-								{/if}
-							</div>
-						{/each}
-					{/each}
-				</div>
+			{#each sortFeatures(features) as node (node.id)}
+				{@render renderMatrixNode(node, 0)}
 			{/each}
 		{/if}
 	</div>
@@ -382,6 +445,117 @@
 		</div>
 	</div>
 </div>
+
+{#snippet renderMatrixNode(feature: FeatureTreeNode, depth: number)}
+	{@const hasChildren = feature.children && feature.children.length > 0}
+	{@const isLeaf = !hasChildren}
+	{@const isSelected = selectedId === feature.id}
+	{@const isDragging = reparentDragState?.featureId === feature.id}
+	{@const canBeDropTarget = hasChildren && reparentDragState !== null && isValidReparentTarget(feature.id)}
+	{@const isDropHovered = reparentDropTargetId === feature.id}
+	{@const isExpanded = expandedIds.has(feature.id)}
+	{@const sortedChildren = sortFeatures(feature.children)}
+
+	{#if hasChildren}
+		<!-- Group container -->
+		<div
+			class="group-container"
+			class:drop-target={canBeDropTarget}
+			class:drop-hover={isDropHovered}
+			class:is-dragging={isDragging}
+			data-feature-group-id={feature.id}
+		>
+			<div class="matrix-row is-group" class:is-selected={isSelected}>
+				<FeatureRow
+					{feature}
+					{depth}
+					isSelected={isSelected}
+					{isExpanded}
+					showTrack={false}
+					hasFutureWork={featureExpansion.getGroupMetadata(feature).hasFutureWork}
+					isDraggable={!!onReparent}
+					{isDragging}
+					isDropTarget={false}
+					isDropHovered={false}
+					{onSelect}
+					onToggle={toggleExpand}
+					onDragStart={handleReparentDragStart}
+					onDragHover={handleReparentDragHover}
+					onDragEnd={handleReparentDragEnd}
+					onDrop={handleReparentDrop}
+				/>
+				<!-- Version cells for group -->
+				{#each groupedVersions as group}
+					{#each group.versions as version}
+						<div
+							class="version-cell"
+							class:closing={version.id === closingVersionId}
+						></div>
+					{/each}
+				{/each}
+			</div>
+			{#if isExpanded}
+				{#each sortedChildren as child (child.id)}
+					{@render renderMatrixNode(child, depth + 1)}
+				{/each}
+			{/if}
+		</div>
+	{:else}
+		<!-- Leaf node -->
+		<div class="matrix-row is-leaf" class:is-selected={isSelected} class:is-dragging={isDragging}>
+			<FeatureRow
+				{feature}
+				{depth}
+				isSelected={isSelected}
+				isExpanded={false}
+				showTrack={!!feature.target_version_id}
+				hasFutureWork={false}
+				isDraggable={!!onReparent}
+				{isDragging}
+				isDropTarget={false}
+				isDropHovered={false}
+				{onSelect}
+				onToggle={toggleExpand}
+				onDragStart={handleReparentDragStart}
+				onDragHover={handleReparentDragHover}
+				onDragEnd={handleReparentDragEnd}
+				onDrop={handleReparentDrop}
+			/>
+			<!-- Version cells for leaf -->
+			{#each groupedVersions as group, groupIndex}
+				{#each group.versions as version, versionIndex}
+					{@const isTarget = feature.target_version_id === version.id}
+					{@const targetIdx = getVersionFlatIndex(feature.target_version_id)}
+					{@const currentIdx = getFlatIndex(groupIndex, versionIndex)}
+					{@const showTrack = targetIdx >= 0 && currentIdx < targetIdx}
+					{@const isVersionDropZone = dragHover?.featureId === feature.id && dragHover?.versionId === version.id && !isTarget}
+					<div
+						class="version-cell"
+						class:show-track={showTrack}
+						class:has-dot={isTarget}
+						class:drop-zone={isVersionDropZone}
+						class:closing={version.id === closingVersionId}
+						data-version-id={version.id}
+					>
+						{#if isTarget}
+							<DraggableDot
+								featureId={feature.id}
+								featureState={feature.state}
+								onDrop={handleDotDrop}
+								onHover={handleDotHover}
+							/>
+						{/if}
+						{#if isVersionDropZone}
+							<span class="drop-indicator">
+								<StateIcon state={feature.state} size={14} />
+							</span>
+						{/if}
+					</div>
+				{/each}
+			{/each}
+		</div>
+	{/if}
+{/snippet}
 
 <CreateVersionDialog
 	open={showCreateDialog}
@@ -631,13 +805,39 @@
 		background: var(--background-muted);
 	}
 
+	.matrix-row.is-dragging {
+		opacity: 0.3;
+	}
+
+	.matrix-body.drop-hover {
+		background: rgba(107, 142, 95, 0.08);
+	}
+
+	.group-container {
+		border-radius: 4px;
+		margin: 0;
+		transition: box-shadow 0.1s ease, background-color 0.1s ease;
+	}
+
+	.group-container.is-dragging {
+		opacity: 0.3;
+	}
+
+	.group-container.drop-target {
+		box-shadow: inset 0 0 0 2px rgba(107, 142, 95, 0.3);
+	}
+
+	.group-container.drop-hover {
+		box-shadow: inset 0 0 0 2px rgba(107, 142, 95, 0.7);
+		background: rgba(107, 142, 95, 0.06);
+	}
+
 	.version-cell {
 		flex: 0 0 80px;
 		min-height: 25px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-left: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
 		position: relative;
 		overflow: hidden;
 		transition: flex-basis 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
@@ -646,14 +846,6 @@
 	.version-cell.closing {
 		flex-basis: 0;
 		opacity: 0;
-	}
-
-	.version-cell.group-start {
-		border-left: 1px solid var(--border-default);
-	}
-
-	.version-cell:last-child {
-		border-right: 1px solid var(--border-default);
 	}
 
 	.version-cell.show-track::before,

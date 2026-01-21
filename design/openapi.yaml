@@ -1010,6 +1010,11 @@ components:
           format: uuid
           nullable: true
           description: Target version for release planning
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Move feature under a different parent. Set null to make root-level.
 
     BulkCreateFeaturesInput:
       type: object
@@ -1087,6 +1092,10 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/FeatureTreeNode'
+            is_root:
+              type: boolean
+              default: false
+              description: True if this is the project's root feature (contains project instructions)
 
     FeatureHistory:
       type: object

@@ -92,6 +92,34 @@
 				<a href="/" class="logo">
 					<img src={headerLogotype} alt="Manifest" class="logo-image" />
 				</a>
+				<nav class="view-nav">
+					<div class="nav-group">
+						<a
+							href="/app/{selectedProjectId}{featureQueryParam}"
+							class="nav-link"
+							class:active={page.url.pathname === `/app/${selectedProjectId}`}
+						>
+							Edit
+						</a>
+						<a
+							href="/app/{selectedProjectId}/versions{featureQueryParam}"
+							class="nav-link"
+							class:active={page.url.pathname === `/app/${selectedProjectId}/versions`}
+						>
+							Plan
+						</a>
+					</div>
+					<a
+						href="/app/{selectedProjectId}/history"
+						class="nav-link"
+						class:active={page.url.pathname === `/app/${selectedProjectId}/history`}
+					>
+						History
+					</a>
+				</nav>
+			</div>
+			<div class="header-right">
+				<span class="project-label">Project</span>
 				<select
 					class="project-select"
 					value={selectedProjectId}
@@ -122,35 +150,7 @@
 				>
 					<PlusIcon size={16} />
 				</button>
-				<nav class="view-nav">
-					<div class="nav-group">
-						<a
-							href="/app/{selectedProjectId}{featureQueryParam}"
-							class="nav-link"
-							class:active={page.url.pathname === `/app/${selectedProjectId}`}
-						>
-							Edit
-						</a>
-						<a
-							href="/app/{selectedProjectId}/versions{featureQueryParam}"
-							class="nav-link"
-							class:active={page.url.pathname === `/app/${selectedProjectId}/versions`}
-						>
-							Plan
-						</a>
-					</div>
-					<a
-						href="/app/{selectedProjectId}/history"
-						class="nav-link"
-						class:active={page.url.pathname === `/app/${selectedProjectId}/history`}
-					>
-						History
-					</a>
-				</nav>
 			</div>
-			{#if selectedProject?.description}
-				<span class="project-description">{selectedProject.description}</span>
-			{/if}
 		</header>
 
 		<main class="app-main">
@@ -200,6 +200,18 @@
 		gap: 16px;
 	}
 
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.project-label {
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--foreground-muted);
+	}
+
 	.logo {
 		display: flex;
 		align-items: center;
@@ -222,7 +234,7 @@
 		padding: 6px 32px 6px 12px;
 		font-size: 14px;
 		font-weight: 500;
-		background: var(--background-muted);
+		background: var(--background);
 		border: 1px solid var(--border-default);
 		border-radius: 6px;
 		color: var(--foreground);
@@ -248,9 +260,9 @@
 		justify-content: center;
 		width: 32px;
 		height: 32px;
-		background: var(--background-muted);
+		background: var(--background);
 		border: 1px solid var(--border-default);
-		border-radius: 6px;
+		border-radius: 2px;
 		color: var(--foreground-muted);
 		cursor: pointer;
 		transition: all 0.15s ease;
@@ -272,7 +284,7 @@
 		display: flex;
 		gap: 2px;
 		padding: 3px;
-		background: var(--background-muted);
+		background: var(--background);
 		border-radius: 6px;
 	}
 
@@ -293,14 +305,13 @@
 	}
 
 	.nav-link.active {
-		background: var(--background);
-		color: var(--foreground);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+		background: rgba(156, 220, 254, 0.2);
+		color: var(--state-implemented);
 	}
 
 	.view-nav > .nav-link {
 		padding: 8px 10px;
-		background: var(--background-muted);
+		background: var(--background);
 		border-radius: 6px;
 	}
 
@@ -309,15 +320,8 @@
 	}
 
 	.view-nav > .nav-link.active {
-		background: var(--background);
-	}
-
-	.project-description {
-		font-size: 13px;
-		color: var(--foreground-subtle);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		background: rgba(156, 220, 254, 0.2);
+		color: var(--state-implemented);
 	}
 
 	.app-main {

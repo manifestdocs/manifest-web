@@ -37,8 +37,8 @@
 
 <div class="marketing-page">
     <nav class="top-nav">
-        <a href="/docs/" class="nav-button nav-button--docs">Docs</a>
-        <a href="/app" class="nav-button nav-button--app">App →</a>
+        <a href="/docs/" class="nav-button nav-button--docs">Read the Docs</a>
+        <a href="/app" class="nav-button nav-button--app">Go to App →</a>
     </nav>
     <main>
         <section id="top" class="hero">
@@ -205,7 +205,7 @@
                     <h3>Agents get confused</h3>
                     <p>
                         Without a trail of past work or a map for the future,
-                        agents sling code without purpose.
+                        agents sling the wrong thing.
                     </p>
                 </div>
             </div>

@@ -127,22 +127,41 @@
 	function handleSelectFeature(id: string) {
 		goto(`/app/${projectId}/versions?feature=${id}`);
 	}
+
+	async function handleReparentFeature(featureId: string, newParentId: string | null) {
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { parent_id: newParentId }
+		});
+
+		if (error) {
+			console.error('Failed to reparent feature:', error);
+			return;
+		}
+
+		// Refresh the tree
+		if (projectId) {
+			await loadFeatureTree(projectId);
+		}
+	}
 </script>
 
 <section class="content-full">
-	{#if (isLoadingFeatures && featureTree.length === 0) || (isLoadingVersions && versions.length === 0)}
+	{#if (isLoadingFeatures && featureTree.length === 0) || (isLoadingVersions && versions.length === 0) || !projectId}
 		<div class="loading-state">Loading...</div>
 	{:else}
 		<VersionMatrixView
 			features={featureTree}
 			{versions}
 			selectedId={selectedFeatureId}
+			{projectId}
 			featureColumnWidth={sidebarWidth.value}
 			onSelect={handleSelectFeature}
 			onCreateVersion={handleCreateVersion}
 			onUpdateFeatureVersion={handleUpdateFeatureVersion}
 			onCompleteVersion={handleCompleteVersion}
 			onResize={(delta) => sidebarWidth.resize(delta)}
+			onReparent={handleReparentFeature}
 		/>
 	{/if}
 </section>
