@@ -5,13 +5,14 @@
 		children: Snippet;
 		icon?: Snippet;
 		spacerWidth?: string;
+		variant?: 'info' | 'warning';
 		class?: string;
 	}
 
-	let { children, icon, spacerWidth, class: className = '' }: Props = $props();
+	let { children, icon, spacerWidth, variant = 'info', class: className = '' }: Props = $props();
 </script>
 
-<div class="info-banner {className}">
+<div class="info-banner {className}" data-variant={variant}>
 	{#if spacerWidth}
 		<div class="banner-spacer" style="flex: 0 0 {spacerWidth}; min-width: 200px;"></div>
 	{/if}
@@ -69,5 +70,14 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+	}
+
+	.info-banner[data-variant="warning"] .banner-content {
+		background: rgba(204, 167, 0, 0.15);
+		color: var(--foreground);
+	}
+
+	.info-banner[data-variant="warning"] .banner-icon {
+		color: var(--state-proposed);
 	}
 </style>
