@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { WelcomeScreen, NewProjectWizard } from '$lib/components/projects/index.js';
 	import type { components } from '$lib/api/schema.js';
 
@@ -15,6 +16,15 @@
 
 	let wizardOpen = $state(false);
 
+	// Redirect to first project when projects are loaded
+	$effect(() => {
+		if (!projectsContext.isLoading && projectsContext.projects.length > 0) {
+			const realProject = projectsContext.projects.find((p) => p.description);
+			const targetProject = realProject || projectsContext.projects[0];
+			goto(`/app/${targetProject.id}`, { replaceState: true });
+		}
+	});
+
 	function handleCreateProject() {
 		wizardOpen = true;
 	}
@@ -24,23 +34,18 @@
 	}
 </script>
 
-{#if projectsContext.isLoading}
+{#if projectsContext.isLoading || projectsContext.projects.length > 0}
 	<div class="loading-container">
 		<div class="spinner"></div>
 		<span>Loading projects...</span>
 	</div>
-{:else if projectsContext.projects.length === 0}
+{:else}
 	<WelcomeScreen onCreateProject={handleCreateProject} />
 	<NewProjectWizard
 		open={wizardOpen}
 		onOpenChange={(open) => (wizardOpen = open)}
 		onCreated={handleProjectCreated}
 	/>
-{:else}
-	<div class="loading-container">
-		<div class="spinner"></div>
-		<span>Loading projects...</span>
-	</div>
 {/if}
 
 <style>
