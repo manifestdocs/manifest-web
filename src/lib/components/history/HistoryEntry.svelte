@@ -6,10 +6,25 @@
 
 	interface Props {
 		entry: ProjectHistoryEntry;
+		gitRemote?: string;
 		onFeatureClick?: (featureId: string) => void;
 	}
 
-	let { entry, onFeatureClick }: Props = $props();
+	let { entry, gitRemote, onFeatureClick }: Props = $props();
+
+	// Convert git remote URL to GitHub web URL for commits
+	// e.g., "git@github.com:user/repo.git" -> "https://github.com/user/repo"
+	// e.g., "https://github.com/user/repo.git" -> "https://github.com/user/repo"
+	let repoUrl = $derived.by(() => {
+		if (!gitRemote) return null;
+		// SSH format: git@github.com:user/repo.git
+		const sshMatch = gitRemote.match(/^git@github\.com:(.+?)(?:\.git)?$/);
+		if (sshMatch) return `https://github.com/${sshMatch[1]}`;
+		// HTTPS format: https://github.com/user/repo.git
+		const httpsMatch = gitRemote.match(/^https:\/\/github\.com\/(.+?)(?:\.git)?$/);
+		if (httpsMatch) return `https://github.com/${httpsMatch[1]}`;
+		return null;
+	});
 	let isExpanded = $state(false);
 
 	// Parse summary into headline (first line) and body (after first blank line)
@@ -63,7 +78,21 @@
 		{#if entry.commits && entry.commits.length > 0}
 			<span class="commits">
 				{#each entry.commits as commit, i}
-					<code class="sha">{commit.sha.slice(0, 7)}</code>{#if i < entry.commits.length - 1},&nbsp;{/if}
+					{#if repoUrl}
+						<a
+							href="{repoUrl}/commit/{commit.sha}"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="sha-link"
+							title={commit.message}
+							onclick={(e) => e.stopPropagation()}
+						>
+							<code class="sha">{commit.sha.slice(0, 7)}</code>
+						</a>
+					{:else}
+						<code class="sha" title={commit.message}>{commit.sha.slice(0, 7)}</code>
+					{/if}
+					{#if i < entry.commits.length - 1},&nbsp;{/if}
 				{/each}
 			</span>
 		{/if}
@@ -146,6 +175,15 @@
 		background: var(--background-muted);
 		border-radius: 3px;
 		color: var(--accent-blue);
+	}
+
+	.sha-link {
+		text-decoration: none;
+	}
+
+	.sha-link:hover .sha {
+		background: var(--accent-blue);
+		color: var(--background);
 	}
 
 	.twirl {

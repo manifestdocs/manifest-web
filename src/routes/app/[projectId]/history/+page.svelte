@@ -9,13 +9,15 @@
 
 	let historyEntries = $state<ProjectHistoryEntry[]>([]);
 	let isLoadingHistory = $state(false);
+	let gitRemote = $state<string | undefined>(undefined);
 
 	const projectId = $derived(page.params.projectId);
 
-	// Load history when project changes
+	// Load history and directories when project changes
 	$effect(() => {
 		if (projectId) {
 			loadHistory(projectId);
+			loadGitRemote(projectId);
 		}
 	});
 
@@ -36,6 +38,19 @@
 		}
 	}
 
+	async function loadGitRemote(projectId: string) {
+		const { data, error } = await api.GET('/projects/{id}/directories', {
+			params: { path: { id: projectId } }
+		});
+		if (error || !data) {
+			gitRemote = undefined;
+			return;
+		}
+		// Use git_remote from primary directory, or first directory with git_remote
+		const primary = data.find((d) => d.is_primary);
+		gitRemote = primary?.git_remote ?? data.find((d) => d.git_remote)?.git_remote ?? undefined;
+	}
+
 	function handleFeatureClick(featureId: string) {
 		// Navigate to tree view with feature selected
 		goto(`/app/${projectId}?feature=${featureId}`);
@@ -43,7 +58,7 @@
 </script>
 
 <section class="content-full">
-	<HistoryList entries={historyEntries} isLoading={isLoadingHistory} onFeatureClick={handleFeatureClick} />
+	<HistoryList entries={historyEntries} isLoading={isLoadingHistory} {gitRemote} onFeatureClick={handleFeatureClick} />
 </section>
 
 <style>

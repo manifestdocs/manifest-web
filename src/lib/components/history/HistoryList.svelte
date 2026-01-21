@@ -7,10 +7,11 @@
 	interface Props {
 		entries: ProjectHistoryEntry[];
 		isLoading?: boolean;
+		gitRemote?: string;
 		onFeatureClick?: (featureId: string) => void;
 	}
 
-	let { entries, isLoading = false, onFeatureClick }: Props = $props();
+	let { entries, isLoading = false, gitRemote, onFeatureClick }: Props = $props();
 
 	type TimeGroup = {
 		label: string;
@@ -102,7 +103,7 @@
 					</div>
 					<div class="entries">
 						{#each group.entries as entry (entry.id)}
-							<HistoryEntry {entry} {onFeatureClick} />
+							<HistoryEntry {entry} {gitRemote} {onFeatureClick} />
 						{/each}
 					</div>
 				</div>
