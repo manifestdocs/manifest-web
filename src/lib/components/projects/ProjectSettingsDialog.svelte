@@ -2,6 +2,7 @@
 	import { Dialog } from 'bits-ui';
 	import { api } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
+	import { MarkdownEditor } from '$lib/components/markdown/index.js';
 	import DirectoryList from './DirectoryList.svelte';
 
 	type Project = components['schemas']['Project'];
@@ -176,16 +177,15 @@
 								disabled={isSaving}
 							/>
 						</div>
-						<div class="form-field">
-							<label for="project-instructions" class="form-label">AI Instructions</label>
-							<textarea
-								id="project-instructions"
-								class="form-textarea instructions-textarea"
-								placeholder="Guidelines for AI agents working on this project..."
-								rows="8"
-								bind:value={instructions}
-								disabled={isSaving}
-							></textarea>
+						<div class="form-field form-field-grow">
+							<label class="form-label">AI Instructions</label>
+							<div class="editor-wrapper">
+								<MarkdownEditor
+									bind:value={instructions}
+									placeholder="Guidelines for AI agents working on this project..."
+									rows={12}
+								/>
+							</div>
 							<span class="form-hint">These instructions are provided to AI agents when they work on features in this project.</span>
 						</div>
 
@@ -257,8 +257,8 @@
 
 	:global(.settings-content) {
 		max-width: 680px;
-		min-height: 500px;
-		max-height: 90vh;
+		height: calc(100vh - 80px);
+		max-height: none;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -318,6 +318,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
+		height: 100%;
 	}
 
 	.form-field {
@@ -356,13 +357,38 @@
 
 	.form-textarea {
 		resize: vertical;
-		min-height: 80px;
+		min-height: 100px;
 		font-family: inherit;
 	}
 
-	.instructions-textarea {
-		font-family: var(--font-mono, monospace);
-		font-size: 13px;
+	.form-field-grow {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.editor-wrapper {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.editor-wrapper :global(.markdown-editor) {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.editor-wrapper :global(.editor-body) {
+		flex: 1;
+		min-height: 0;
+	}
+
+	.editor-wrapper :global(.editor-textarea) {
+		height: 100%;
+		min-height: 200px;
 	}
 
 	.form-hint {
