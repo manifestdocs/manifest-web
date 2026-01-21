@@ -256,7 +256,9 @@
 	}
 
 	:global(.settings-content) {
-		max-width: 680px;
+		width: 800px;
+		min-width: 640px;
+		max-width: calc(100vw - 40px);
 		height: calc(100vh - 80px);
 		max-height: none;
 		overflow: hidden;
