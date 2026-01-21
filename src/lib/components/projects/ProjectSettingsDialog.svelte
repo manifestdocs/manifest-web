@@ -256,7 +256,7 @@
 	}
 
 	:global(.settings-content) {
-		width: 800px;
+		width: 1000px;
 		min-width: 640px;
 		max-width: calc(100vw - 40px);
 		height: calc(100vh - 80px);
