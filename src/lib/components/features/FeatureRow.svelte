@@ -55,6 +55,9 @@
 		<StateIcon state={feature.state} size={14} />
 	{/if}
 	<span class="feature-title">{feature.title}</span>
+	{#if feature.desired_details}
+		<span class="pending-indicator" title="Has proposed changes"></span>
+	{/if}
 	{#if showTrack}
 		<span class="track"></span>
 	{/if}
@@ -62,7 +65,7 @@
 
 <style>
 	.feature-row {
-		flex: 0 0 280px;
+		flex: 0 0 var(--feature-col-width, 350px);
 		min-width: 200px;
 		height: 25px;
 		display: flex;
@@ -74,6 +77,7 @@
 		border: none;
 		cursor: pointer;
 		text-align: left;
+		overflow: hidden;
 	}
 
 	.feature-row:hover {
@@ -121,6 +125,14 @@
 		white-space: nowrap;
 		flex-shrink: 1;
 		min-width: 0;
+	}
+
+	.pending-indicator {
+		flex-shrink: 0;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--state-proposed);
 	}
 
 	.track {

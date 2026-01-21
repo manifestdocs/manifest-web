@@ -8,11 +8,12 @@
 	interface Props {
 		features: FeatureTreeNode[];
 		selectedId: string | null;
+		featureColumnWidth?: number;
 		onSelect: (id: string) => void;
 		onAddFeature?: (parentId: string | null) => void;
 	}
 
-	let { features, selectedId, onSelect, onAddFeature }: Props = $props();
+	let { features, selectedId, featureColumnWidth = 350, onSelect, onAddFeature }: Props = $props();
 
 	let expandedIds = $state(new Set<string>());
 
@@ -132,7 +133,7 @@
 	}
 </script>
 
-<div class="feature-tree">
+<div class="feature-tree" style="--feature-col-width: {featureColumnWidth}px">
 	<!-- Header row (matches matrix header) -->
 	<div class="tree-header">
 		<span class="tree-title">Features</span>
@@ -259,6 +260,7 @@
 	.tree-content {
 		flex: 1;
 		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	.tree-row {

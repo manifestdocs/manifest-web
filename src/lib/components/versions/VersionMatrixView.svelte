@@ -2,7 +2,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import FeatureRow from '$lib/components/features/FeatureRow.svelte';
 	import { StateIcon } from '$lib/components/icons/index.js';
-	import { InfoBanner } from '$lib/components/ui/index.js';
+	import { InfoBanner, ResizeDivider } from '$lib/components/ui/index.js';
 	import CreateVersionDialog from './CreateVersionDialog.svelte';
 	import DraggableDot from './DraggableDot.svelte';
 
@@ -13,16 +13,19 @@
 		features: FeatureTreeNode[];
 		versions: Version[];
 		selectedId: string | null;
+		featureColumnWidth?: number;
 		onSelect: (id: string) => void;
 		onCreateVersion: (name: string, description: string | null) => Promise<void>;
 		onUpdateFeatureVersion?: (featureId: string, versionId: string | null) => Promise<void>;
 		onCompleteVersion?: (versionId: string) => Promise<void>;
+		onResize?: (deltaX: number) => void;
 	}
 
-	let { features, versions, selectedId, onSelect, onCreateVersion, onUpdateFeatureVersion, onCompleteVersion }: Props = $props();
+	let { features, versions, selectedId, featureColumnWidth = 350, onSelect, onCreateVersion, onUpdateFeatureVersion, onCompleteVersion, onResize }: Props = $props();
 
 	let showCreateDialog = $state(false);
 	let isCompleting = $state(false);
+	let closingVersionId = $state<string | null>(null);
 	let expandedIds = $state(new Set<string>());
 
 	// Drag state for drop zone indicator
@@ -103,15 +106,30 @@
 
 	// Handle completing the Now version
 	async function handleCompleteNow() {
-		if (!nowVersion || !onCompleteVersion || isCompleting) return;
-		isCompleting = true;
-		try {
-			await onCompleteVersion(nowVersion.id);
-		} catch (error) {
-			console.error('Failed to complete version:', error);
-		} finally {
-			isCompleting = false;
-		}
+		if (!nowVersion || isCompleting || closingVersionId) return;
+
+		// Track which specific version is closing
+		const versionToClose = nowVersion.id;
+		closingVersionId = versionToClose;
+
+		// Wait for animation to complete, then call API
+		setTimeout(async () => {
+			if (onCompleteVersion) {
+				isCompleting = true;
+				try {
+					await onCompleteVersion(versionToClose);
+				} catch (error) {
+					console.error('Failed to complete version:', error);
+					closingVersionId = null; // Reset on error so user can retry
+				} finally {
+					isCompleting = false;
+					// Don't reset closingVersionId here - let the data refresh handle it
+					// The old version will be gone, so the class won't match anything
+				}
+			} else {
+				closingVersionId = null;
+			}
+		}, 400); // Match animation duration
 	}
 
 	// Flatten features with visibility based on expanded state
@@ -207,7 +225,13 @@
 	}
 </script>
 
-<div class="matrix-container">
+<div class="matrix-container" style="--feature-col-width: {featureColumnWidth}px">
+	{#if onResize}
+		<div class="resize-divider-container">
+			<ResizeDivider onResize={onResize} />
+		</div>
+	{/if}
+
 	<!-- Header -->
 	<div class="matrix-header">
 		<!-- Feature column header -->
@@ -217,7 +241,12 @@
 
 		<!-- Version group headers -->
 		{#each groupedVersions as group}
-			<div class="header-cell group-header" style="width: {group.versions.length * 80}px">
+			{@const isGroupClosing = group.versions.some(v => v.id === closingVersionId)}
+			<div
+				class="header-cell group-header"
+				class:closing={isGroupClosing}
+				style="width: {group.versions.length * 80}px"
+			>
 				<span class="group-label">{group.label}</span>
 			</div>
 		{/each}
@@ -234,6 +263,7 @@
 					class:group-start={versionIndex === 0}
 					class:zebra={colIndex % 2 === 0}
 					class:feature-complete={isNowFeatureComplete && group.label === 'Now'}
+					class:closing={version.id === closingVersionId}
 					title={version.description || ''}
 				>
 					{version.name}
@@ -244,7 +274,7 @@
 
 	<!-- Feature complete banner -->
 	{#if isNowFeatureComplete && onCompleteVersion && nowVersion}
-		<InfoBanner spacerWidth="280px">
+		<InfoBanner spacerWidth="{featureColumnWidth}px" class="feature-complete-banner">
 			{#snippet icon()}
 				<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
 					<path d="M6 2L6 10M6 2L2 6M6 2L10 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -274,6 +304,7 @@
 						class="col-bg version-col"
 						class:group-start={versionIndex === 0}
 						class:zebra={colIndex % 2 === 0}
+						class:closing={version.id === closingVersionId}
 					></div>
 				{/each}
 			{/each}
@@ -312,6 +343,7 @@
 								class:has-dot={isTarget}
 								class:drop-zone={isDropZone}
 								class:zebra={currentIdx % 2 === 0}
+								class:closing={version.id === closingVersionId}
 								data-version-id={version.id}
 							>
 								{#if isTarget}
@@ -363,6 +395,22 @@
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
+		max-width: 100%;
+		position: relative;
+	}
+
+	.resize-divider-container {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: var(--feature-col-width);
+		z-index: 20;
+		display: flex;
+		align-items: stretch;
+	}
+
+	:global(.feature-complete-banner .banner-content) {
+		max-width: 800px;
 	}
 
 	.matrix-header {
@@ -370,6 +418,7 @@
 		height: 36px;
 		background: var(--background-subtle);
 		border-bottom: 1px solid var(--border-default);
+		overflow: hidden;
 	}
 
 	.header-cell {
@@ -384,7 +433,7 @@
 	}
 
 	.feature-header {
-		flex: 0 0 280px;
+		flex: 0 0 var(--feature-col-width);
 		min-width: 200px;
 		display: flex;
 		align-items: center;
@@ -406,6 +455,13 @@
 		text-align: center;
 		border-left: 1px solid var(--border-default);
 		flex: none;
+		transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+		overflow: hidden;
+	}
+
+	.group-header.closing {
+		width: 0 !important;
+		opacity: 0;
 	}
 
 	.group-header:last-child {
@@ -447,6 +503,7 @@
 		height: 27px;
 		background: var(--background);
 		border-bottom: 1px solid var(--border-default);
+		overflow: hidden;
 	}
 
 	.matrix-subheader.has-complete-banner {
@@ -463,7 +520,7 @@
 	}
 
 	.feature-subheader {
-		flex: 0 0 280px;
+		flex: 0 0 var(--feature-col-width);
 		min-width: 200px;
 	}
 
@@ -474,6 +531,12 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		transition: flex-basis 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+	}
+
+	.version-name.closing {
+		flex-basis: 0;
+		opacity: 0;
 	}
 
 	.version-name.group-start {
@@ -496,7 +559,8 @@
 
 	.matrix-body {
 		flex: 1;
-		overflow: auto;
+		overflow-y: auto;
+		overflow-x: hidden;
 		position: relative;
 	}
 
@@ -504,9 +568,11 @@
 		position: absolute;
 		top: 0;
 		left: 0;
+		right: 0;
 		bottom: 0;
 		display: flex;
 		pointer-events: none;
+		overflow: hidden;
 	}
 
 	.col-bg {
@@ -514,13 +580,19 @@
 	}
 
 	.col-bg.feature-col {
-		width: 280px;
+		width: var(--feature-col-width);
 		min-width: 200px;
 	}
 
 	.col-bg.version-col {
 		width: 80px;
 		border-left: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
+		transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+	}
+
+	.col-bg.version-col.closing {
+		width: 0;
+		opacity: 0;
 	}
 
 	.col-bg.version-col.group-start {
@@ -548,7 +620,7 @@
 		display: flex;
 		border-bottom: 1px solid var(--border-subtle);
 		position: relative;
-		width: fit-content;
+		overflow: hidden;
 	}
 
 	.matrix-row:hover {
@@ -567,6 +639,13 @@
 		justify-content: center;
 		border-left: 1px solid color-mix(in srgb, var(--border-subtle) 40%, transparent);
 		position: relative;
+		overflow: hidden;
+		transition: flex-basis 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+	}
+
+	.version-cell.closing {
+		flex-basis: 0;
+		opacity: 0;
 	}
 
 	.version-cell.group-start {
@@ -582,7 +661,7 @@
 		content: '';
 		position: absolute;
 		top: 50%;
-		left: -1px;
+		left: 0;
 		border-top: 1px dashed var(--border-default);
 	}
 
