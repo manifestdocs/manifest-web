@@ -12,9 +12,6 @@ interface StoredExpansionState {
 	version: number;
 }
 
-// Track completion status to detect newly-complete groups
-let previousCompletionStatus = new Map<string, boolean>();
-
 function getStorageKey(projectId: string): string {
 	return `${STORAGE_KEY_PREFIX}${projectId}`;
 }
@@ -92,18 +89,6 @@ function getGroupsWithIncompleteWork(nodes: FeatureTreeNode[]): string[] {
 	return ids;
 }
 
-function buildCompletionMap(nodes: FeatureTreeNode[]): Map<string, boolean> {
-	const map = new Map<string, boolean>();
-	for (const node of nodes) {
-		if (node.children.length > 0) {
-			map.set(node.id, isGroupComplete(node));
-			const childMap = buildCompletionMap(node.children);
-			childMap.forEach((v, k) => map.set(k, v));
-		}
-	}
-	return map;
-}
-
 // Current project state
 let currentProjectId: string | null = null;
 let userExpanded = new Set<string>();
@@ -118,9 +103,6 @@ function createFeatureExpansionStore() {
 		init(projectId: string, features: FeatureTreeNode[], containerHeight: number): Set<string> {
 			const stored = loadFromStorage(projectId);
 			currentProjectId = projectId;
-
-			// Build completion map for auto-close detection
-			previousCompletionStatus = buildCompletionMap(features);
 
 			if (stored) {
 				// Restore user preferences
@@ -200,30 +182,10 @@ function createFeatureExpansionStore() {
 		},
 
 		/**
-		 * Handle tree updates (e.g., from SSE). Auto-collapses newly-complete groups.
+		 * Handle tree updates (e.g., from SSE).
 		 */
-		handleTreeUpdate(features: FeatureTreeNode[], currentExpanded: Set<string>): Set<string> {
-			const newCompletionStatus = buildCompletionMap(features);
-			const newExpanded = new Set(currentExpanded);
-			let changed = false;
-
-			// Check for newly complete groups
-			for (const [id, isComplete] of newCompletionStatus) {
-				const wasComplete = previousCompletionStatus.get(id) ?? false;
-				if (isComplete && !wasComplete && currentExpanded.has(id)) {
-					// This group just became complete - auto-collapse it
-					// But only if the user hasn't explicitly expanded it
-					if (!userExpanded.has(id)) {
-						newExpanded.delete(id);
-						changed = true;
-					}
-				}
-			}
-
-			// Update tracking
-			previousCompletionStatus = newCompletionStatus;
-
-			return changed ? newExpanded : currentExpanded;
+		handleTreeUpdate(_features: FeatureTreeNode[], currentExpanded: Set<string>): Set<string> {
+			return currentExpanded;
 		},
 
 		/**
