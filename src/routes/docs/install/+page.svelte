@@ -56,7 +56,7 @@
             <h2>2. Add the Claude Code Plugin (Optional)</h2>
             <p>
                 If you use <a href="https://claude.ai/code" target="_blank" rel="noopener">Claude Code</a>,
-                install the Manifest plugin to give Claude direct access to your feature tree via MCP.
+                add the Manifest plugin so Claude can read your feature tree, track progress, and record what gets built.
             </p>
             <div class="code-block">
                 <code>{claudeCommand}</code>
@@ -74,8 +74,8 @@
                 </button>
             </div>
             <p class="note">
-                The plugin requires the Homebrew installation above. It connects to your local Manifest server
-                and provides MCP tools like <code>get_feature</code>, <code>start_feature</code>, and <code>complete_feature</code>.
+                The plugin requires the Homebrew installation above. Once installed, Claude can start features,
+                mark them complete, and automatically log commits to each feature's history.
             </p>
         </section>
 

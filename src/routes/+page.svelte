@@ -96,7 +96,7 @@
                 </div>
                 <p class="install-note">
                     Using <span class="claude-code-text">Claude Code</span>?
-                    <a href="/docs/install">Install the plugin</a> for MCP integration.
+                    <a href="/docs/install">Add the plugin</a> so Claude can track features as you build.
                 </p>
             </div>
         </section>
