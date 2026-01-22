@@ -10,6 +10,7 @@
 
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { env } from '$env/dynamic/private';
 
 /**
  * Deployment mode detection.
@@ -17,13 +18,13 @@ import { sequence } from '@sveltejs/kit/hooks';
  * In development (local mode), security is relaxed for easier testing.
  */
 function isCloudMode(): boolean {
-	return process.env.MANIFEST_MODE === 'cloud';
+	return env.MANIFEST_MODE === 'cloud';
 }
 
 /**
  * API base URL for the Manifest server.
  */
-const API_BASE_URL = process.env.MANIFEST_API_URL ?? 'http://localhost:17010/api/v1';
+const API_BASE_URL = env.MANIFEST_API_URL ?? 'http://localhost:17010/api/v1';
 
 /**
  * Security headers applied to all responses.
@@ -47,30 +48,24 @@ function getSecurityHeaders(isCloud: boolean): Record<string, string> {
 		// HSTS - force HTTPS
 		headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
 
-		// Content Security Policy
+		// Content Security Policy (includes Clerk domains)
 		headers['Content-Security-Policy'] = [
 			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline'", // unsafe-inline needed for SvelteKit
+			"script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
 			"style-src 'self' 'unsafe-inline'",
-			`connect-src 'self' ${API_BASE_URL}`,
-			"img-src 'self' data: https:",
+			`connect-src 'self' ${API_BASE_URL} https://*.clerk.accounts.dev https://api.clerk.com`,
+			"img-src 'self' data: https: blob:",
 			"font-src 'self'",
+			"worker-src 'self' blob:",
 			"object-src 'none'",
+			"frame-src https://*.clerk.accounts.dev",
 			"frame-ancestors 'none'",
 			"base-uri 'self'",
-			"form-action 'self'"
+			"form-action 'self' https://*.clerk.accounts.dev"
 		].join('; ');
 	} else {
-		// Relaxed CSP for local development
-		headers['Content-Security-Policy'] = [
-			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-			"style-src 'self' 'unsafe-inline'",
-			"connect-src 'self' http://localhost:* ws://localhost:*",
-			"img-src 'self' data: https:",
-			"font-src 'self'",
-			"frame-ancestors 'none'"
-		].join('; ');
+		// No CSP for local development - Clerk requires blob workers
+		// CSP is enforced in cloud mode only
 	}
 
 	return headers;
@@ -209,10 +204,13 @@ const routeProtection: Handle = async ({ event, resolve }) => {
 	}
 
 	// Public routes that don't require auth
-	const publicRoutes = ['/', '/login', '/auth', '/api/health'];
+	const publicRoutes = ['/', '/sign-in', '/sign-up', '/api/health'];
 
 	const isPublic = publicRoutes.some(
-		(route) => event.url.pathname === route || event.url.pathname.startsWith('/auth/')
+		(route) =>
+			event.url.pathname === route ||
+			event.url.pathname.startsWith('/sign-in/') ||
+			event.url.pathname.startsWith('/sign-up/')
 	);
 
 	if (isPublic) {
@@ -221,12 +219,12 @@ const routeProtection: Handle = async ({ event, resolve }) => {
 
 	// Check if user is authenticated
 	if (!event.locals.user) {
-		// Redirect to login
-		const loginUrl = new URL('/login', event.url.origin);
-		loginUrl.searchParams.set('redirect', event.url.pathname);
+		// Redirect to sign-in
+		const signInUrl = new URL('/sign-in', event.url.origin);
+		signInUrl.searchParams.set('redirect_url', event.url.pathname);
 		return new Response(null, {
 			status: 302,
-			headers: { Location: loginUrl.toString() }
+			headers: { Location: signInUrl.toString() }
 		});
 	}
 

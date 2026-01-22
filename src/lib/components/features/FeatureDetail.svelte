@@ -1,9 +1,12 @@
 <script lang="ts">
-	import { api } from '$lib/api/client.js';
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
 	import { InfoBanner } from '$lib/components/ui/index.js';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
 
 	type Feature = components['schemas']['Feature'];
 	type FeatureState = components['schemas']['FeatureState'];
@@ -14,9 +17,10 @@
 		feature: (Feature & { is_root?: boolean }) | null;
 		isGroup?: boolean;
 		onSave: (id: string, updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }) => Promise<void>;
+		onArchive?: () => void;
 	}
 
-	let { feature, isGroup = false, onSave }: Props = $props();
+	let { feature, isGroup = false, onSave, onArchive }: Props = $props();
 
 	const isRoot = $derived(feature?.is_root ?? false);
 
@@ -46,7 +50,7 @@
 		{ value: 'proposed', label: 'Proposed' },
 		{ value: 'in_progress', label: 'In Progress' },
 		{ value: 'implemented', label: 'Implemented' },
-		{ value: 'deprecated', label: 'Deprecated' }
+		{ value: 'archived', label: 'Archived' }
 	];
 
 	async function handleSave() {
@@ -97,6 +101,7 @@
 		if (!feature) return;
 		isLoadingDiff = true;
 		try {
+			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/features/{id}/diff', {
 				params: { path: { id: feature.id } }
 			});
@@ -213,6 +218,9 @@
 							<div class="header-actions">
 								{#if hasPendingChanges}
 									<button class="btn btn-warning" onclick={handleViewDiff} type="button">Review Changes</button>
+								{/if}
+								{#if onArchive && !isRoot}
+									<button class="btn btn-warning-subtle" onclick={onArchive} type="button">Archive</button>
 								{/if}
 								<button class="btn btn-primary" onclick={() => (activeTab = 'edit')} type="button">Edit</button>
 							</div>
@@ -364,7 +372,7 @@
 	.header-content {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
 		gap: 24px;
 		max-width: 800px;
 	}
@@ -404,9 +412,9 @@
 		color: var(--state-implemented);
 	}
 
-	.state-badge[data-state="deprecated"] {
+	.state-badge[data-state="archived"] {
 		background: rgba(110, 110, 110, 0.15);
-		color: var(--state-deprecated);
+		color: var(--state-archived);
 	}
 
 	.group-badge {
@@ -534,6 +542,30 @@
 
 	.btn-danger:hover:not(:disabled) {
 		background: rgba(248, 81, 73, 0.3);
+	}
+
+	.btn-danger-subtle {
+		background: transparent;
+		color: var(--foreground-subtle);
+		border-color: var(--border-default);
+	}
+
+	.btn-danger-subtle:hover:not(:disabled) {
+		background: rgba(248, 81, 73, 0.15);
+		color: #f85149;
+		border-color: #f85149;
+	}
+
+	.btn-warning-subtle {
+		background: transparent;
+		color: var(--foreground-subtle);
+		border-color: var(--border-default);
+	}
+
+	.btn-warning-subtle:hover:not(:disabled) {
+		background: rgba(210, 153, 34, 0.15);
+		color: #d29922;
+		border-color: #d29922;
 	}
 
 	.header-actions {

@@ -44,9 +44,9 @@
 	}
 
 	.welcome-logo {
-		height: 48px;
-		width: auto;
-		margin-bottom: 24px;
+		width: 300px;
+		height: auto;
+		margin-bottom: 12px;
 	}
 
 	.welcome-title {

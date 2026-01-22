@@ -64,9 +64,9 @@ function getAllGroupIds(nodes: FeatureTreeNode[]): string[] {
 }
 
 function isGroupComplete(node: FeatureTreeNode): boolean {
-	// A group is complete if all descendants are implemented or deprecated
+	// A group is complete if all descendants are implemented or archived
 	if (node.children.length === 0) {
-		return node.state === 'implemented' || node.state === 'deprecated';
+		return node.state === 'implemented' || node.state === 'archived';
 	}
 	return node.children.every((child) => isGroupComplete(child));
 }

@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
-	import { api } from '$lib/api/client.js';
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import { goto } from '$app/navigation';
 	import StepIndicator from './StepIndicator.svelte';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
 
 	interface Props {
 		open: boolean;
@@ -75,6 +78,8 @@
 		error = null;
 
 		try {
+			const api = await authApi.getClient();
+
 			// Create the project
 			const { data: project, error: projectError } = await api.POST('/projects', {
 				body: {

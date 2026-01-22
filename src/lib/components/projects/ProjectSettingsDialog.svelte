@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
-	import { api } from '$lib/api/client.js';
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import DirectoryList from './DirectoryList.svelte';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
 
 	type Project = components['schemas']['Project'];
 	type ProjectDirectory = components['schemas']['ProjectDirectory'];
@@ -41,6 +44,7 @@
 	async function loadDirectories() {
 		isLoadingDirectories = true;
 		try {
+			const api = await authApi.getClient();
 			const { data, error: fetchError } = await api.GET('/projects/{id}/directories', {
 				params: { path: { id: project.id } }
 			});
@@ -65,6 +69,7 @@
 		error = null;
 
 		try {
+			const api = await authApi.getClient();
 			// Only update the name (syncs to root feature title on server)
 			const { error: updateError } = await api.PUT('/projects/{id}', {
 				params: { path: { id: project.id } },
@@ -90,6 +95,7 @@
 	}
 
 	async function handleAddDirectory(path: string, gitRemote: string | null) {
+		const api = await authApi.getClient();
 		const { error: addError } = await api.POST('/projects/{id}/directories', {
 			params: { path: { id: project.id } },
 			body: {
@@ -107,6 +113,7 @@
 	}
 
 	async function handleRemoveDirectory(directoryId: string) {
+		const api = await authApi.getClient();
 		const { error: removeError } = await api.DELETE('/directories/{id}', {
 			params: { path: { id: directoryId } }
 		});

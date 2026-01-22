@@ -1,9 +1,12 @@
 <script lang="ts">
-	import { api } from '$lib/api/client.js';
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { HistoryList } from '$lib/components/history/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
 
 	type ProjectHistoryEntry = components['schemas']['ProjectHistoryEntry'];
 
@@ -13,9 +16,9 @@
 
 	const projectId = $derived(page.params.projectId);
 
-	// Load history and directories when project changes
+	// Load history and directories when project changes and auth is ready
 	$effect(() => {
-		if (projectId) {
+		if (projectId && authApi.isReady()) {
 			loadHistory(projectId);
 			loadGitRemote(projectId);
 		}
@@ -24,6 +27,7 @@
 	async function loadHistory(projectId: string) {
 		isLoadingHistory = true;
 		try {
+			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/projects/{id}/history', {
 				params: { path: { id: projectId }, query: { limit: 50 } }
 			});
@@ -39,6 +43,7 @@
 	}
 
 	async function loadGitRemote(projectId: string) {
+		const api = await authApi.getClient();
 		const { data, error } = await api.GET('/projects/{id}/directories', {
 			params: { path: { id: projectId } }
 		});

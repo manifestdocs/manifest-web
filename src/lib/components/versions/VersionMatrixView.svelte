@@ -390,7 +390,7 @@
 		implemented: 0,
 		in_progress: 1,
 		proposed: 2,
-		deprecated: 3
+		archived: 3
 	};
 
 	function sortFeatures(nodes: FeatureTreeNode[]): FeatureTreeNode[] {

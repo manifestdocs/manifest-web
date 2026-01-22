@@ -575,10 +575,10 @@ export interface components {
          * @description - proposed: Initial state, idea captured
          *     - in_progress: Work is actively being done
          *     - implemented: Feature is live in codebase
-         *     - deprecated: Feature marked for removal
+         *     - archived: Feature archived (soft-deleted)
          * @enum {string}
          */
-        FeatureState: "proposed" | "in_progress" | "implemented" | "deprecated";
+        FeatureState: "proposed" | "in_progress" | "implemented" | "archived";
         /** @description Lightweight feature summary without details (used for list operations) */
         FeatureSummary: {
             /** Format: uuid */

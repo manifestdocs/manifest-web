@@ -4,72 +4,37 @@ import type { paths } from './schema';
 export const API_BASE_URL = 'http://localhost:17010/api/v1';
 
 /**
- * Get the access token from storage (client-side only).
- * In cloud mode, this is stored after OAuth login.
- */
-function getAccessToken(): string | null {
-	if (typeof window === 'undefined') return null;
-	return localStorage.getItem('manifest_access_token');
-}
-
-/**
- * Set the access token in storage.
- */
-export function setAccessToken(token: string): void {
-	if (typeof window !== 'undefined') {
-		localStorage.setItem('manifest_access_token', token);
-	}
-}
-
-/**
- * Clear the access token from storage.
- */
-export function clearAccessToken(): void {
-	if (typeof window !== 'undefined') {
-		localStorage.removeItem('manifest_access_token');
-		localStorage.removeItem('manifest_refresh_token');
-	}
-}
-
-/**
- * Get auth headers for API requests.
- */
-function getAuthHeaders(): HeadersInit {
-	const token = getAccessToken();
-	const csrfToken = typeof document !== 'undefined'
-		? document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1]
-		: null;
-
-	const headers: HeadersInit = {};
-
-	if (token) {
-		headers['Authorization'] = `Bearer ${token}`;
-	}
-
-	if (csrfToken) {
-		headers['X-CSRF-Token'] = csrfToken;
-	}
-
-	return headers;
-}
-
-/**
- * Create an authenticated API client.
- * Automatically includes auth headers when available.
+ * API client instance for use without authentication.
+ * Use this for local development or public endpoints.
  */
 export const api = createClient<paths>({
-	baseUrl: API_BASE_URL,
-	headers: getAuthHeaders()
+	baseUrl: API_BASE_URL
 });
 
 /**
- * Create a fresh API client with current auth headers.
- * Use this when the auth state may have changed.
+ * Create an authenticated API client with a Clerk session token.
+ * Call this with the token obtained from `useClerkContext().session.getToken()`.
+ *
+ * Example usage in a Svelte component:
+ * ```svelte
+ * <script lang="ts">
+ *   import { useClerkContext } from 'svelte-clerk/client';
+ *   import { createAuthenticatedClient } from '$lib/api/client';
+ *
+ *   const ctx = useClerkContext();
+ *
+ *   async function fetchData() {
+ *     const token = await ctx.session?.getToken();
+ *     const client = createAuthenticatedClient(token);
+ *     const { data, error } = await client.GET('/projects');
+ *   }
+ * </script>
+ * ```
  */
-export function createAuthenticatedClient() {
+export function createAuthenticatedClient(token: string | null | undefined) {
 	return createClient<paths>({
 		baseUrl: API_BASE_URL,
-		headers: getAuthHeaders()
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined
 	});
 }
 

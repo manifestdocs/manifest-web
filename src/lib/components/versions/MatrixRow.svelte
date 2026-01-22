@@ -26,7 +26,7 @@
 
 	// Only show connector for non-implemented features
 	const showsConnector = $derived(
-		feature.state !== 'implemented' && feature.state !== 'deprecated'
+		feature.state !== 'implemented' && feature.state !== 'archived'
 	);
 
 	function handleTreeClick(e: MouseEvent) {

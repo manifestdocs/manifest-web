@@ -1,10 +1,14 @@
 <script lang="ts">
-	import { api, subscribeToProject } from '$lib/api/client.js';
+	import { subscribeToProject } from '$lib/api/client.js';
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { VersionMatrixView } from '$lib/components/versions/index.js';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 	type Version = components['schemas']['Version'];
@@ -17,9 +21,9 @@
 	const projectId = $derived(page.params.projectId);
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
 
-	// Load features and versions when project changes
+	// Load features and versions when project changes and auth is ready
 	$effect(() => {
-		if (projectId) {
+		if (projectId && authApi.isReady()) {
 			loadFeatureTree(projectId);
 			loadVersions(projectId);
 		}
@@ -27,7 +31,7 @@
 
 	// Subscribe to SSE for real-time updates from other clients/agents
 	$effect(() => {
-		if (!projectId) return;
+		if (!projectId || !authApi.isReady()) return;
 
 		const source = subscribeToProject(projectId);
 
@@ -48,6 +52,7 @@
 	async function loadFeatureTree(projectId: string) {
 		isLoadingFeatures = true;
 		try {
+			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/projects/{id}/features/tree', {
 				params: { path: { id: projectId } }
 			});
@@ -65,6 +70,7 @@
 	async function loadVersions(projectId: string) {
 		isLoadingVersions = true;
 		try {
+			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/projects/{id}/versions', {
 				params: { path: { id: projectId } }
 			});
@@ -82,6 +88,7 @@
 	async function handleCreateVersion(name: string, description: string | null) {
 		if (!projectId) return;
 
+		const api = await authApi.getClient();
 		const { error } = await api.POST('/projects/{id}/versions', {
 			params: { path: { id: projectId } },
 			body: { name, description }
@@ -97,6 +104,7 @@
 	async function handleUpdateFeatureVersion(featureId: string, versionId: string | null) {
 		if (!projectId) return;
 
+		const api = await authApi.getClient();
 		const { error } = await api.PUT('/features/{id}', {
 			params: { path: { id: featureId } },
 			body: { target_version_id: versionId }
@@ -112,6 +120,7 @@
 	async function handleCompleteVersion(versionId: string) {
 		if (!projectId) return;
 
+		const api = await authApi.getClient();
 		const { error } = await api.PUT('/versions/{id}', {
 			params: { path: { id: versionId } },
 			body: { released_at: new Date().toISOString() }
@@ -129,6 +138,7 @@
 	}
 
 	async function handleReparentFeature(featureId: string, newParentId: string | null) {
+		const api = await authApi.getClient();
 		const { error } = await api.PUT('/features/{id}', {
 			params: { path: { id: featureId } },
 			body: { parent_id: newParentId }
