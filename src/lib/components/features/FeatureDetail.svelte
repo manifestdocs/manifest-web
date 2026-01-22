@@ -18,11 +18,14 @@
 		isGroup?: boolean;
 		onSave: (id: string, updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }) => Promise<void>;
 		onArchive?: () => void;
+		onRestore?: () => void;
+		onDelete?: () => void;
 	}
 
-	let { feature, isGroup = false, onSave, onArchive }: Props = $props();
+	let { feature, isGroup = false, onSave, onArchive, onRestore, onDelete }: Props = $props();
 
 	const isRoot = $derived(feature?.is_root ?? false);
+	const isArchived = $derived(feature?.state === 'archived');
 
 	let isEditing = $state(false);
 	let isSaving = $state(false);
@@ -213,6 +216,15 @@
 									<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 								</svg>
 								<span class="locked-text">in progress features can't be edited</span>
+							</div>
+						{:else if isArchived}
+							<div class="header-actions">
+								{#if onRestore}
+									<button class="btn btn-primary" onclick={onRestore} type="button">Restore</button>
+								{/if}
+								{#if onDelete}
+									<button class="btn btn-danger" onclick={onDelete} type="button">Delete Permanently</button>
+								{/if}
 							</div>
 						{:else}
 							<div class="header-actions">

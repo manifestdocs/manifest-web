@@ -287,6 +287,53 @@
 		);
 	}
 
+	async function handleRestoreFeature(featureId: string) {
+		if (!projectId) return;
+
+		const api = await authApi.getClient();
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { state: 'proposed' }
+		});
+
+		if (error) {
+			console.error('Failed to restore feature:', error);
+			throw new Error('Failed to restore feature');
+		}
+
+		await loadFeatureTree(projectId);
+	}
+
+	function handleRestoreFromDetail() {
+		if (!selectedFeature) return;
+		handleRestoreFeature(selectedFeature.id);
+	}
+
+	async function handleDeleteFeature(featureId: string) {
+		if (!projectId) return;
+
+		const api = await authApi.getClient();
+		const { error } = await api.DELETE('/features/{id}', {
+			params: { path: { id: featureId } }
+		});
+
+		if (error) {
+			console.error('Failed to delete feature:', error);
+			throw new Error('Failed to delete feature');
+		}
+
+		await loadFeatureTree(projectId);
+
+		if (selectedFeatureId === featureId) {
+			goto(`/app/${projectId}`);
+		}
+	}
+
+	function handleDeleteFromDetail() {
+		if (!selectedFeature) return;
+		handleDeleteFeature(selectedFeature.id);
+	}
+
 	async function handleArchiveFeature(moveChildrenToParent: boolean) {
 		if (!archiveTarget || !projectId) return;
 
@@ -346,7 +393,7 @@
 			{#if isLoadingFeatures && featureTree.length === 0}
 				<div class="loading-state">Loading features...</div>
 			{:else}
-				<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onArchiveFeature={handleOpenArchiveDialog} />
+				<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onArchiveFeature={handleOpenArchiveDialog} onRestoreFeature={handleRestoreFeature} onDeleteFeature={handleDeleteFeature} />
 			{/if}
 		</aside>
 
@@ -358,7 +405,7 @@
 			{:else if isLoadingFeature}
 				<div class="loading-state">Loading...</div>
 			{:else}
-				<FeatureDetail feature={selectedFeature} isGroup={selectedFeatureIsGroup} onSave={handleSaveFeature} onArchive={handleArchiveFromDetail} />
+				<FeatureDetail feature={selectedFeature} isGroup={selectedFeatureIsGroup} onSave={handleSaveFeature} onArchive={handleArchiveFromDetail} onRestore={handleRestoreFromDetail} onDelete={handleDeleteFromDetail} />
 			{/if}
 		</section>
 	</div>

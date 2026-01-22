@@ -3,6 +3,7 @@
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { VersionMatrixView } from '$lib/components/versions/index.js';
+	import { CreateFeatureDialog, ArchiveFeatureDialog } from '$lib/components/features/index.js';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -18,8 +19,39 @@
 	let isLoadingFeatures = $state(false);
 	let isLoadingVersions = $state(false);
 
+	// Create feature dialog state
+	let createDialogOpen = $state(false);
+	let createDialogParentId = $state<string | null>(null);
+
+	// Archive feature dialog state
+	let archiveDialogOpen = $state(false);
+	let archiveTarget = $state<{
+		id: string;
+		title: string;
+		isGroup: boolean;
+		childCount: number;
+		parentId: string | null;
+	} | null>(null);
+
 	const projectId = $derived(page.params.projectId);
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
+
+	// Helper to find a feature in the tree
+	function findInTree(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
+		for (const node of nodes) {
+			if (node.id === id) return node;
+			const found = findInTree(node.children, id);
+			if (found) return found;
+		}
+		return null;
+	}
+
+	// Get parent title for create dialog
+	const createDialogParentTitle = $derived.by(() => {
+		if (!createDialogParentId) return null;
+		const node = findInTree(featureTree, createDialogParentId);
+		return node?.title ?? null;
+	});
 
 	// Load features and versions when project changes and auth is ready
 	$effect(() => {
@@ -85,13 +117,13 @@
 		}
 	}
 
-	async function handleCreateVersion(name: string, description: string | null) {
+	async function handleCreateVersion(name: string) {
 		if (!projectId) return;
 
 		const api = await authApi.getClient();
 		const { error } = await api.POST('/projects/{id}/versions', {
 			params: { path: { id: projectId } },
-			body: { name, description }
+			body: { name }
 		});
 		if (error) {
 			console.error('Failed to create version:', error);
@@ -154,6 +186,133 @@
 			await loadFeatureTree(projectId);
 		}
 	}
+
+	function handleOpenCreateDialog(parentId: string | null) {
+		createDialogParentId = parentId;
+		createDialogOpen = true;
+	}
+
+	async function handleCreateFeature(title: string, details: string | null) {
+		if (!projectId) return;
+
+		const api = await authApi.getClient();
+		const { data, error } = await api.POST('/projects/{id}/features', {
+			params: { path: { id: projectId } },
+			body: {
+				title,
+				details,
+				parent_id: createDialogParentId
+			}
+		});
+
+		if (error || !data) {
+			console.error('Failed to create feature:', error);
+			throw new Error('Failed to create feature');
+		}
+
+		// Refresh tree and select the new feature
+		await loadFeatureTree(projectId);
+		goto(`/app/${projectId}/versions?feature=${data.id}`);
+	}
+
+	function handleOpenArchiveDialog(id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) {
+		archiveTarget = { id, title, isGroup, childCount, parentId };
+		archiveDialogOpen = true;
+	}
+
+	async function handleArchiveFeature(moveChildrenToParent: boolean) {
+		if (!archiveTarget || !projectId) return;
+
+		const api = await authApi.getClient();
+		const node = findInTree(featureTree, archiveTarget.id);
+
+		if (moveChildrenToParent && archiveTarget.isGroup && node) {
+			// Reparent children to grandparent first
+			await Promise.all(
+				node.children.map((child) =>
+					api.PUT('/features/{id}', {
+						params: { path: { id: child.id } },
+						body: { parent_id: archiveTarget!.parentId }
+					})
+				)
+			);
+		} else if (archiveTarget.isGroup && node) {
+			// Cascade: archive all descendants too
+			const archiveDescendants = (n: FeatureTreeNode): Promise<unknown>[] => {
+				const promises: Promise<unknown>[] = [];
+				for (const child of n.children) {
+					promises.push(
+						api.PUT('/features/{id}', {
+							params: { path: { id: child.id } },
+							body: { state: 'archived' }
+						})
+					);
+					promises.push(...archiveDescendants(child));
+				}
+				return promises;
+			};
+			await Promise.all(archiveDescendants(node));
+		}
+
+		// Archive the target feature itself
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: archiveTarget.id } },
+			body: { state: 'archived' }
+		});
+
+		if (error) {
+			console.error('Failed to archive feature:', error);
+			throw new Error('Failed to archive feature');
+		}
+
+		// Refresh tree
+		await loadFeatureTree(projectId);
+
+		// If archived feature was selected, clear selection
+		if (selectedFeatureId === archiveTarget.id) {
+			goto(`/app/${projectId}/versions`);
+		}
+	}
+
+	async function handleRestoreFeature(featureId: string) {
+		if (!projectId) return;
+
+		const api = await authApi.getClient();
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { state: 'proposed' }
+		});
+
+		if (error) {
+			console.error('Failed to restore feature:', error);
+			throw new Error('Failed to restore feature');
+		}
+
+		// Refresh tree
+		await loadFeatureTree(projectId);
+	}
+
+	async function handleDeleteFeature(featureId: string) {
+		if (!projectId) return;
+
+		const api = await authApi.getClient();
+		const { error } = await api.DELETE('/features/{id}', {
+			params: { path: { id: featureId } }
+		});
+
+		if (error) {
+			console.error('Failed to delete feature:', error);
+			throw new Error('Failed to delete feature');
+		}
+
+		// Refresh tree
+		await loadFeatureTree(projectId);
+
+		// If deleted feature was selected, clear selection
+		if (selectedFeatureId === featureId) {
+			goto(`/app/${projectId}/versions`);
+		}
+	}
 </script>
 
 <section class="content-full">
@@ -172,9 +331,34 @@
 			onCompleteVersion={handleCompleteVersion}
 			onResize={(delta) => sidebarWidth.resize(delta)}
 			onReparent={handleReparentFeature}
+			onAddFeature={handleOpenCreateDialog}
+			onArchiveFeature={handleOpenArchiveDialog}
+			onRestoreFeature={handleRestoreFeature}
+			onDeleteFeature={handleDeleteFeature}
 		/>
 	{/if}
 </section>
+
+<CreateFeatureDialog
+	open={createDialogOpen}
+	onOpenChange={(open) => (createDialogOpen = open)}
+	onCreate={handleCreateFeature}
+	parentTitle={createDialogParentTitle}
+/>
+
+{#if archiveTarget}
+	<ArchiveFeatureDialog
+		open={archiveDialogOpen}
+		onOpenChange={(open) => {
+			archiveDialogOpen = open;
+			if (!open) archiveTarget = null;
+		}}
+		featureTitle={archiveTarget.title}
+		isGroup={archiveTarget.isGroup}
+		childCount={archiveTarget.childCount}
+		onArchive={handleArchiveFeature}
+	/>
+{/if}
 
 <style>
 	.content-full {
