@@ -94,10 +94,6 @@
                         {/if}
                     </button>
                 </div>
-                <p class="install-note">
-                    Using <span class="claude-code-text">Claude Code</span>?
-                    <a href="/docs/install">Add the plugin</a> for slash commands and enhanced workflows.
-                </p>
             </div>
         </section>
 
@@ -185,10 +181,9 @@
                         Features, not tickets
                     </h3>
                     <p>
-                        Features describe what your system <strong
-                            >can do</strong
-                        >—living capabilities that evolve, not work items to
-                        close and forget.
+                        Features describe what your system does (or will do),
+                        living capabilities that evolve, not work items to close
+                        and forget.
                     </p>
                 </div>
                 <div class="value-prop">
@@ -247,8 +242,11 @@
                         Built for AI agents
                     </h3>
                     <p>
-                        MCP server integration means both CLI and IDE based
-                        agents can read and update features directly.
+                        MCP server lets any agent read and update features.
+                        <a href="/docs/getting-started"
+                            >Add the Claude Code plugin</a
+                        >
+                        for slash commands and enhanced workflows.
                     </p>
                 </div>
             </div>
@@ -276,7 +274,7 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        font-size: 107%;
+        font-size: 112%;
     }
 
     /* Top Navigation */
@@ -356,7 +354,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 0.625em 1.5em 1em;
+        padding: 0.5em 1.5em 0em;
     }
 
     .hero-logotype {
@@ -370,7 +368,7 @@
         font-size: 2em;
         font-weight: 700;
         line-height: 1.2;
-        margin: 0 0 0.5em;
+        margin: 0 0 0.25em;
         color: var(--foreground);
     }
 
@@ -396,7 +394,6 @@
         background: var(--background);
         user-select: all;
         cursor: text;
-        width: 52ch;
     }
 
     .copy-button {
@@ -428,52 +425,6 @@
 
     .install-box.highlight {
         border-color: var(--accent-green);
-    }
-
-    .install-note {
-        font-size: 0.875em;
-        color: var(--foreground-muted);
-        margin: 0;
-    }
-
-    .install-note a {
-        color: var(--accent-green);
-        text-decoration: none;
-    }
-
-    .install-note a:hover {
-        text-decoration: underline;
-    }
-
-    .claude-code-text {
-        position: relative;
-        background: linear-gradient(
-            90deg,
-            var(--foreground-muted) 0%,
-            var(--foreground-muted) 40%,
-            #e07a3e 50%,
-            var(--foreground-muted) 60%,
-            var(--foreground-muted) 100%
-        );
-        background-size: 300% 100%;
-        background-position: 100% 0;
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: claude-flash 8s ease-in-out infinite;
-    }
-
-    @keyframes claude-flash {
-        0%,
-        70% {
-            background-position: 100% 0;
-        }
-        95% {
-            background-position: 0% 0;
-        }
-        100% {
-            background-position: 0% 0;
-        }
     }
 
     /* Pain Points */
@@ -600,6 +551,15 @@
         font-size: 0.8125em;
         border: 1px solid var(--border-muted);
         white-space: nowrap;
+    }
+
+    .value-prop p a {
+        color: var(--accent-green);
+        text-decoration: none;
+    }
+
+    .value-prop p a:hover {
+        text-decoration: underline;
     }
 
     /* CTA Section */

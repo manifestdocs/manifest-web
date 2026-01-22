@@ -1,23 +1,22 @@
 <script lang="ts">
-    // Docs landing page - redirects to install for now
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
 
     onMount(() => {
-        goto('/docs/install');
+        goto('/docs/getting-started');
     });
 </script>
 
-<div class="docs-page">
-    <p>Redirecting to installation...</p>
+<div class="redirect">
+    <p>Redirecting to documentation...</p>
 </div>
 
 <style>
-    .docs-page {
-        min-height: 100vh;
+    .redirect {
         display: flex;
         align-items: center;
         justify-content: center;
+        min-height: 50vh;
         color: var(--foreground-muted);
     }
 </style>
