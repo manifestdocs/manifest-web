@@ -4,20 +4,19 @@
 	interface Props {
 		open: boolean;
 		onOpenChange: (open: boolean) => void;
-		onCreate: (name: string, description: string | null) => Promise<void>;
+		onCreate: (name: string) => Promise<void>;
+		suggestedName?: string;
 	}
 
-	let { open, onOpenChange, onCreate }: Props = $props();
+	let { open, onOpenChange, onCreate, suggestedName = '' }: Props = $props();
 
 	let name = $state('');
-	let description = $state('');
 	let isCreating = $state(false);
 	let error = $state<string | null>(null);
 
 	$effect(() => {
 		if (open) {
-			name = '';
-			description = '';
+			name = suggestedName;
 			error = null;
 		}
 	});
@@ -33,7 +32,7 @@
 		error = null;
 
 		try {
-			await onCreate(name.trim(), description.trim() || null);
+			await onCreate(name.trim());
 			onOpenChange(false);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create version';
@@ -63,18 +62,6 @@
 						bind:value={name}
 						disabled={isCreating}
 					/>
-				</div>
-
-				<div class="form-field">
-					<label for="version-description" class="form-label">Description (optional)</label>
-					<textarea
-						id="version-description"
-						class="form-textarea"
-						placeholder="What's included in this version..."
-						rows="3"
-						bind:value={description}
-						disabled={isCreating}
-					></textarea>
 				</div>
 
 				{#if error}
@@ -155,8 +142,7 @@
 		color: var(--foreground);
 	}
 
-	.form-input,
-	.form-textarea {
+	.form-input {
 		padding: 8px 12px;
 		font-size: 14px;
 		background: var(--background-subtle);
@@ -166,20 +152,13 @@
 		transition: border-color 0.15s ease;
 	}
 
-	.form-input:focus,
-	.form-textarea:focus {
+	.form-input:focus {
 		outline: none;
 		border-color: var(--accent-blue);
 	}
 
-	.form-input:disabled,
-	.form-textarea:disabled {
+	.form-input:disabled {
 		opacity: 0.6;
-	}
-
-	.form-textarea {
-		resize: vertical;
-		min-height: 80px;
 	}
 
 	.form-error {

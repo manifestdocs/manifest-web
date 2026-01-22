@@ -286,6 +286,7 @@
 		width: auto;
 		position: relative;
 		top: -1px;
+		left: 1px;
 	}
 
 	.project-select {
