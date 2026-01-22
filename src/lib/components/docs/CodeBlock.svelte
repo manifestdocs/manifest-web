@@ -1,7 +1,23 @@
 <script lang="ts">
+    import hljs from 'highlight.js/lib/core';
+    import json from 'highlight.js/lib/languages/json';
+    import bash from 'highlight.js/lib/languages/bash';
+    import toml from 'highlight.js/lib/languages/ini'; // ini works for toml
+
+    hljs.registerLanguage('json', json);
+    hljs.registerLanguage('bash', bash);
+    hljs.registerLanguage('toml', toml);
+
     let { code, language = '', copyable = true }: { code: string; language?: string; copyable?: boolean } = $props();
 
     let copied = $state(false);
+
+    const highlighted = $derived.by(() => {
+        if (language && hljs.getLanguage(language)) {
+            return hljs.highlight(code, { language }).value;
+        }
+        return code;
+    });
 
     async function copyCode() {
         await navigator.clipboard.writeText(code);
@@ -11,7 +27,7 @@
 </script>
 
 <div class="code-block">
-    <pre><code class={language ? `language-${language}` : ''}>{code}</code></pre>
+    <pre><code class={language ? `language-${language}` : ''}>{@html highlighted}</code></pre>
     {#if copyable}
         <button class="copy-button" onclick={copyCode} aria-label="Copy code">
             {#if copied}
@@ -48,6 +64,33 @@
 
     code {
         font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    }
+
+    /* Syntax highlighting - minimal dark theme */
+    code :global(.hljs-attr),
+    code :global(.hljs-section) {
+        color: #7ee787;
+    }
+
+    code :global(.hljs-string) {
+        color: #a5d6ff;
+    }
+
+    code :global(.hljs-number),
+    code :global(.hljs-literal) {
+        color: #79c0ff;
+    }
+
+    code :global(.hljs-keyword) {
+        color: #ff7b72;
+    }
+
+    code :global(.hljs-comment) {
+        color: #8b949e;
+    }
+
+    code :global(.hljs-punctuation) {
+        color: #c9d1d9;
     }
 
     .copy-button {
