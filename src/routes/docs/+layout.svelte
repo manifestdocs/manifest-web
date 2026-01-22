@@ -246,7 +246,7 @@
         color: var(--foreground-muted);
         line-height: 1.4;
         padding-left: 2.5rem;
-        margin: -0.5rem 0 1rem;
+        margin: 0.5rem 0 1.5rem;
         list-style-type: disc;
     }
 
@@ -254,12 +254,12 @@
         color: var(--foreground-muted);
         line-height: 1.4;
         padding-left: 2.5rem;
-        margin: -0.5rem 0 1rem;
+        margin: 0.5rem 0 1.5rem;
         list-style-type: decimal;
     }
 
     .docs-content :global(li) {
-        margin-bottom: 0.375rem;
+        margin-bottom: 0.5rem;
     }
 
     /* Inline code only (not in components) */

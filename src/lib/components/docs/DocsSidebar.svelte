@@ -82,7 +82,7 @@
     .back-link {
         color: var(--foreground-muted);
         text-decoration: none;
-        font-size: 0.875rem;
+        font-size: 1.04rem;
         margin-bottom: 0.5rem;
     }
 
@@ -97,11 +97,11 @@
     }
 
     .nav-section-title {
-        font-size: 0.75rem;
+        font-size: 0.89rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--foreground-muted);
+        color: var(--foreground);
         margin: 0;
     }
 
@@ -117,7 +117,7 @@
     .nav-link {
         display: block;
         padding: 0.375rem 0.75rem;
-        font-size: 0.875rem;
+        font-size: 1.04rem;
         color: var(--foreground-muted);
         text-decoration: none;
         border-radius: 0.25rem;
