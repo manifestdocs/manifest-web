@@ -1,8 +1,16 @@
 <script lang="ts">
+    import { browser } from "$app/environment";
+    import { goto } from "$app/navigation";
+    import { PUBLIC_MANIFEST_MODE } from "$env/static/public";
     import logotype from "$lib/assets/logotype.png";
     import illustrationSpecRip from "$lib/assets/illustration-spec-rip.png";
     import illustrationRunningRobot from "$lib/assets/illustration-running-robot.png";
     import illustrationCowboy from "$lib/assets/illustration-cowboy.png";
+
+    // Local users skip marketing, go straight to app
+    if (browser && PUBLIC_MANIFEST_MODE === "local") {
+        goto("/app", { replaceState: true });
+    }
 
     const brewCommand = "brew install rocket-tycoon/tap/manifest";
 
@@ -30,7 +38,6 @@
 <div class="marketing-page">
     <nav class="top-nav">
         <a href="/docs/" class="nav-button nav-button--docs">Read the Docs</a>
-        <a href="/app" class="nav-button nav-button--app">Go to App →</a>
     </nav>
     <main>
         <section id="top" class="hero">
