@@ -53,10 +53,10 @@
         </section>
 
         <section class="install-step">
-            <h2>2. Add the Claude Code Plugin (Optional)</h2>
+            <h2>2. Add the Claude Code Plugin</h2>
             <p>
                 If you use <a href="https://claude.ai/code" target="_blank" rel="noopener">Claude Code</a>,
-                add the Manifest plugin so Claude can read your feature tree, track progress, and record what gets built.
+                the plugin connects Claude to your local Manifest server so it can work with your feature tree.
             </p>
             <div class="code-block">
                 <code>{claudeCommand}</code>
@@ -74,8 +74,8 @@
                 </button>
             </div>
             <p class="note">
-                The plugin requires the Homebrew installation above. Once installed, Claude can start features,
-                mark them complete, and automatically log commits to each feature's history.
+                Requires the Homebrew installation above. The plugin configures Claude Code to communicate
+                with your Manifest server via MCP.
             </p>
         </section>
 
