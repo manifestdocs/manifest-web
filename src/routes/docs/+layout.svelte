@@ -1,10 +1,53 @@
 <script lang="ts">
     import { DocsSidebar } from '$lib/components/docs';
+    import { browser } from '$app/environment';
+    import { beforeNavigate } from '$app/navigation';
     import type { Snippet } from 'svelte';
 
     let { children }: { children: Snippet } = $props();
 
     let mobileMenuOpen = $state(false);
+
+    // Track where user came from (home vs app)
+    const STORAGE_KEY = 'docs_referrer';
+
+    let cameFromApp = $state(false);
+
+    // On mount, check referrer and store it
+    $effect(() => {
+        if (!browser) return;
+
+        // Check if we already have a stored referrer
+        const stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            cameFromApp = stored === 'app';
+            return;
+        }
+
+        // Check document.referrer for initial navigation
+        const referrer = document.referrer;
+        if (referrer) {
+            try {
+                const url = new URL(referrer);
+                // If referrer is from same origin and is an app route (not home or docs)
+                if (url.origin === window.location.origin) {
+                    const isAppRoute = url.pathname.startsWith('/projects') ||
+                                       url.pathname.startsWith('/app');
+                    sessionStorage.setItem(STORAGE_KEY, isAppRoute ? 'app' : 'home');
+                    cameFromApp = isAppRoute;
+                }
+            } catch {
+                // Invalid URL, ignore
+            }
+        }
+    });
+
+    // Clear stored referrer when navigating away from docs
+    beforeNavigate(({ to }) => {
+        if (browser && to?.url && !to.url.pathname.startsWith('/docs')) {
+            sessionStorage.removeItem(STORAGE_KEY);
+        }
+    });
 
     function toggleMenu() {
         mobileMenuOpen = !mobileMenuOpen;
@@ -42,13 +85,13 @@
 
     <!-- Mobile sidebar overlay -->
     <aside class="sidebar-mobile" class:open={mobileMenuOpen}>
-        <DocsSidebar onNavigate={closeMenu} />
+        <DocsSidebar onNavigate={closeMenu} {cameFromApp} />
     </aside>
 
     <!-- Centered container for sidebar + content -->
     <div class="docs-container">
         <aside class="sidebar-desktop">
-            <DocsSidebar />
+            <DocsSidebar {cameFromApp} />
         </aside>
         <main class="docs-main">
             <div class="docs-content">

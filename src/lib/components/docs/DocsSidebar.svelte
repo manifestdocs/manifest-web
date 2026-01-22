@@ -29,7 +29,9 @@
         }
     ];
 
-    let { onNavigate }: { onNavigate?: () => void } = $props();
+    let { onNavigate, cameFromApp = false }: { onNavigate?: () => void; cameFromApp?: boolean } = $props();
+
+    const backLink = $derived(cameFromApp ? { href: '/projects', label: 'Back to App' } : { href: '/', label: 'Back to Home' });
 
     function isActive(href: string): boolean {
         return $page.url.pathname === href;
@@ -41,7 +43,7 @@
 </script>
 
 <nav class="docs-sidebar">
-    <a href="/" class="back-link">&larr; Back to Home</a>
+    <a href={backLink.href} class="back-link">&larr; {backLink.label}</a>
 
     {#each navigation as section}
         <div class="nav-section">
