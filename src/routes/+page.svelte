@@ -126,8 +126,8 @@
                     </div>
                     <h3>Change happens too fast</h3>
                     <p>
-                        Agents ship changes faster than you can update Jira.
-                        Your tracking system is already behind.
+                        Agents are quick, managing them via Jira or Github
+                        Issues is the path to maddness.
                     </p>
                 </div>
                 <div class="pain-card">
@@ -391,7 +391,7 @@
         font-family: "IBM Plex Mono", ui-monospace, monospace;
         font-size: 0.875em;
         color: var(--foreground);
-        background: var(--background);
+        background: rgba(255, 255, 255, 0.02);
         user-select: all;
         cursor: text;
     }
