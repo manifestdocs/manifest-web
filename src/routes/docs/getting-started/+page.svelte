@@ -18,11 +18,16 @@
 
 <h3>Claude Code</h3>
 
-<p>Add to <code>~/.claude/config.json</code>:</p>
+<p>Run in your terminal:</p>
+
+<CopyableCommand command="claude mcp add --scope user manifest -- manifest mcp" />
+
+<p>Or manually add to <code>~/.claude.json</code>:</p>
 
 <CodeBlock language="json" code={`{
   "mcpServers": {
     "manifest": {
+      "type": "stdio",
       "command": "manifest",
       "args": ["mcp"]
     }
@@ -66,7 +71,7 @@ args = ["mcp"]`} />
 
 <p>If you're using Claude Code, you can install the Manifest plugin for slash commands and enhanced workflows. Run this command <strong>inside Claude Code</strong>:</p>
 
-<CopyableCommand command="/install rocket-tycoon/claude-plugins/manifest" />
+<CopyableCommand command="/plugin install rocket-tycoon/claude-plugins/manifest" />
 
 <Admonition type="note">
     {#snippet children()}
