@@ -12,46 +12,67 @@
 
 <p>This installs the <code>manifest</code> binary which runs the MCP server for AI agents.</p>
 
-<h2>2. Add the Claude Code plugin</h2>
+<h2>2. Configure your AI agent</h2>
 
-<p>Using Claude Code? Add the plugin for slash commands and enhanced workflows:</p>
+<p>Add Manifest as an MCP server so your AI agent can access project context.</p>
 
-<CopyableCommand command="/install rocket-tycoon/claude-plugins/manifest" />
+<h3>Claude Code</h3>
 
-<Admonition type="note">
-    {#snippet children()}
-        <p>Not using Claude Code? Configure MCP manually for your agent below.</p>
-    {/snippet}
-</Admonition>
-
-<h2>Configure other agents</h2>
-
-<p><strong>Claude Code (manual)</strong> — Add to <code>~/.claude/config.json</code>:</p>
+<p>Add to <code>~/.claude/config.json</code>:</p>
 
 <CodeBlock language="json" code={`{
   "mcpServers": {
     "manifest": {
-      "command": "manifest-server",
+      "command": "manifest",
       "args": ["mcp"]
     }
   }
 }`} />
 
-<p><strong>Codex (OpenAI)</strong> — Add to <code>~/.codex/config.toml</code>:</p>
+<h3>VS Code (Copilot, Cline, etc.)</h3>
+
+<p>Add to your VS Code <code>settings.json</code>:</p>
+
+<CodeBlock language="json" code={`{
+  "mcp": {
+    "servers": {
+      "manifest": {
+        "command": "manifest",
+        "args": ["mcp"]
+      }
+    }
+  }
+}`} />
+
+<h3>Codex (OpenAI)</h3>
+
+<p>Add to <code>~/.codex/config.toml</code>:</p>
 
 <CodeBlock language="toml" code={`[mcp_servers.manifest]
-command = "manifest-server"
+command = "manifest"
 args = ["mcp"]`} />
 
-<h2>Verify installation</h2>
+<h2>3. Verify installation</h2>
 
-<p>Check that everything is working:</p>
+<p>Check that the CLI is installed:</p>
 
 <CopyableCommand command="manifest --version" />
 
-<p>Then start the server and open the web interface at <a href="http://localhost:17010" target="_blank" rel="noopener">http://localhost:17010</a>:</p>
+<p>Start the server and open the web interface at <a href="http://localhost:17010" target="_blank" rel="noopener">http://localhost:17010</a>:</p>
 
 <CopyableCommand command="manifest serve" />
+
+<h2>4. Claude Code plugin (optional)</h2>
+
+<p>If you're using Claude Code, you can install the Manifest plugin for slash commands and enhanced workflows. Run this command <strong>inside Claude Code</strong>:</p>
+
+<CopyableCommand command="/install rocket-tycoon/claude-plugins/manifest" />
+
+<Admonition type="note">
+    {#snippet children()}
+        <p>This is a Claude Code slash command, not a terminal command. Run it in a Claude Code session.</p>
+    {/snippet}
+</Admonition>
 
 <h2>Next step</h2>
 
