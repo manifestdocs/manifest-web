@@ -36,6 +36,7 @@
 		projectId: string;
 		featureColumnWidth?: number;
 		showHeader?: boolean;
+		showFilterButton?: boolean;
 		scrollable?: boolean;
 		class?: string;
 		rowExtras?: Snippet<[RowContext]>;
@@ -54,6 +55,7 @@
 		projectId,
 		featureColumnWidth = 350,
 		showHeader = true,
+		showFilterButton = true,
 		scrollable = true,
 		class: className = '',
 		rowExtras,
@@ -376,6 +378,7 @@
 			<FeatureTreeActions
 				{showProposedOnly}
 				showAddButton={!!onAddFeature}
+				{showFilterButton}
 				onAddFeature={handleAddFeature}
 				onToggleFilter={() => (showProposedOnly = !showProposedOnly)}
 				onExpandAll={expandAll}
@@ -416,10 +419,12 @@
 	{@const isExpanded = isRoot || expandedIds.has(feature.id)}
 	{@const rowContext: RowContext = { feature, depth, isExpanded, hasChildren, isGroup, isLeaf, isRoot, groupMeta }}
 
+	{@const isSelectedRow = selectedId === feature.id}
 	<div
 		class="tree-row"
 		class:is-group={isGroup}
 		class:is-leaf={isLeaf}
+		class:selected={isSelectedRow}
 		class:drop-hover={isDropHovered}
 		class:leaf-drop-hover={isLeafDropTarget}
 		class:is-dragging={isDragging}
@@ -430,7 +435,7 @@
 			{depth}
 			isSelected={selectedId === feature.id}
 			{isExpanded}
-			showTrack={!hasChildren && !!feature.target_version_id}
+			showTrack={!hasChildren && !isRoot}
 			hasFutureWork={groupMeta?.hasFutureWork ?? false}
 			isDraggable={!!(onReparent || onCreateGroup) && !isRoot}
 			{isDragging}

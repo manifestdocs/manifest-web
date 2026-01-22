@@ -660,6 +660,10 @@
 		background: var(--background-muted);
 	}
 
+	.matrix-body :global(.tree-row.selected) {
+		background: color-mix(in srgb, var(--background-emphasis) 33%, transparent);
+	}
+
 	.version-cell {
 		flex: 0 0 80px;
 		min-height: 25px;
