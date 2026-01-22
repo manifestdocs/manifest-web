@@ -56,7 +56,7 @@
             <h2>2. Add the Claude Code Plugin</h2>
             <p>
                 If you use <a href="https://claude.ai/code" target="_blank" rel="noopener">Claude Code</a>,
-                the plugin connects Claude to your local Manifest server so it can work with your feature tree.
+                the plugin adds slash commands and enhanced workflows on top of the MCP server.
             </p>
             <div class="code-block">
                 <code>{claudeCommand}</code>
@@ -74,8 +74,8 @@
                 </button>
             </div>
             <p class="note">
-                Requires the Homebrew installation above. The plugin configures Claude Code to communicate
-                with your Manifest server via MCP.
+                Requires the Homebrew installation above. The plugin extends the MCP server with
+                Claude Code-specific features like <code>/feature</code> commands.
             </p>
         </section>
 

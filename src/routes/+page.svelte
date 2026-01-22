@@ -96,7 +96,7 @@
                 </div>
                 <p class="install-note">
                     Using <span class="claude-code-text">Claude Code</span>?
-                    <a href="/docs/install">Add the plugin</a> to connect Claude to your feature tree.
+                    <a href="/docs/install">Add the plugin</a> for slash commands and enhanced workflows.
                 </p>
             </div>
         </section>
