@@ -5,10 +5,8 @@
     import illustrationCowboy from "$lib/assets/illustration-cowboy.png";
 
     const brewCommand = "brew install rocket-tycoon/tap/manifest";
-    const claudeCommand = "/install rocket-tycoon/claude-plugins/manifest";
 
-    let copiedBrew = $state(false);
-    let copiedClaude = $state(false);
+    let copied = $state(false);
     let highlightInstall = $state(false);
 
     function scrollToInstall() {
@@ -24,14 +22,8 @@
 
     async function copyBrewCommand() {
         await navigator.clipboard.writeText(brewCommand);
-        copiedBrew = true;
-        setTimeout(() => (copiedBrew = false), 2000);
-    }
-
-    async function copyClaudeCommand() {
-        await navigator.clipboard.writeText(claudeCommand);
-        copiedClaude = true;
-        setTimeout(() => (copiedClaude = false), 2000);
+        copied = true;
+        setTimeout(() => (copied = false), 2000);
     }
 </script>
 
@@ -55,108 +47,57 @@
         </section>
 
         <section class="install-section">
-            <div class="install-options" class:highlight={highlightInstall}>
-                <div class="install-option">
-                    <span class="install-label">1. Install via Homebrew</span>
-                    <div class="install-wrapper">
-                        <code class="install-command">{brewCommand}</code>
-                        <button
-                            class="copy-button"
-                            onclick={copyBrewCommand}
-                            aria-label="Copy brew command"
-                        >
-                            {#if copiedBrew}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            {:else}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect
-                                        width="14"
-                                        height="14"
-                                        x="8"
-                                        y="8"
-                                        rx="2"
-                                        ry="2"
-                                    />
-                                    <path
-                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                                    />
-                                </svg>
-                            {/if}
-                        </button>
-                    </div>
-                </div>
-                <div class="install-option">
-                    <span class="install-label"
-                        >2. Add <span class="claude-code-text">Claude Code</span
-                        > plugin</span
+            <div class="install-box" class:highlight={highlightInstall}>
+                <div class="install-wrapper">
+                    <code class="install-command">{brewCommand}</code>
+                    <button
+                        class="copy-button"
+                        onclick={copyBrewCommand}
+                        aria-label="Copy brew command"
                     >
-                    <div class="install-wrapper">
-                        <code class="install-command">{claudeCommand}</code>
-                        <button
-                            class="copy-button"
-                            onclick={copyClaudeCommand}
-                            aria-label="Copy Claude command"
-                        >
-                            {#if copiedClaude}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            {:else}
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect
-                                        width="14"
-                                        height="14"
-                                        x="8"
-                                        y="8"
-                                        rx="2"
-                                        ry="2"
-                                    />
-                                    <path
-                                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                                    />
-                                </svg>
-                            {/if}
-                        </button>
-                    </div>
+                        {#if copied}
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        {:else}
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <rect
+                                    width="14"
+                                    height="14"
+                                    x="8"
+                                    y="8"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <path
+                                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                                />
+                            </svg>
+                        {/if}
+                    </button>
                 </div>
+                <p class="install-note">
+                    Using <span class="claude-code-text">Claude Code</span>?
+                    <a href="/docs/install">Install the plugin</a> for MCP integration.
+                </p>
             </div>
         </section>
 
@@ -475,31 +416,33 @@
         color: var(--foreground);
     }
 
-    .install-options {
+    .install-box {
         display: flex;
-        align-items: stretch;
-        justify-content: center;
-        gap: 1.5em;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75em;
         padding: 1em;
         border: 2px solid transparent;
         transition: border-color 0.3s ease;
     }
 
-    .install-options.highlight {
+    .install-box.highlight {
         border-color: var(--accent-green);
     }
 
-    .install-option {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.375em;
+    .install-note {
+        font-size: 0.875em;
+        color: var(--foreground-muted);
+        margin: 0;
     }
 
-    .install-label {
-        color: var(--foreground-muted);
-        font-size: 0.875em;
+    .install-note a {
+        color: var(--accent-green);
+        text-decoration: none;
+    }
+
+    .install-note a:hover {
+        text-decoration: underline;
     }
 
     .claude-code-text {
