@@ -1,7 +1,8 @@
 import createClient from 'openapi-fetch';
 import type { paths } from './schema';
+import { env } from '$env/dynamic/public';
 
-export const API_BASE_URL = 'http://localhost:17010/api/v1';
+export const API_BASE_URL = env.PUBLIC_MANIFEST_API_URL || 'http://localhost:17010/api/v1';
 
 /**
  * API client instance for use without authentication.
@@ -41,9 +42,17 @@ export function createAuthenticatedClient(token: string | null | undefined) {
 /**
  * Subscribe to feature change events for a project via SSE.
  * Returns an EventSource that emits 'change' events when features are modified.
+ *
+ * @param projectId - The project UUID to subscribe to
+ * @param token - Optional JWT token for cloud mode authentication.
+ *                Required in cloud mode since EventSource doesn't support Authorization headers.
  */
-export function subscribeToProject(projectId: string): EventSource {
-	return new EventSource(`${API_BASE_URL}/projects/${projectId}/subscribe`);
+export function subscribeToProject(projectId: string, token?: string | null): EventSource {
+	const url = new URL(`${API_BASE_URL}/projects/${projectId}/subscribe`);
+	if (token) {
+		url.searchParams.set('token', token);
+	}
+	return new EventSource(url.toString());
 }
 
 // Re-export types for convenience
