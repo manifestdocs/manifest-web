@@ -1,93 +1,59 @@
 <script lang="ts">
-    import { Admonition, CodeBlock } from '$lib/components/docs';
+    import { CodeBlock } from '$lib/components/docs';
+    import { StateIcon } from '$lib/components/icons';
 </script>
 
 <h1>Implementing Features</h1>
 
-<p>How agents pull and implement work from the feature tree.</p>
+<p>With your feature tree planned, agents can start implementing. Manifest tracks state and records history as work progresses.</p>
 
-<p>With your feature tree planned, agents can start implementing. This page explains what you tell the agent vs. what the agent handles automatically.</p>
+<h2>Feature lifecycle</h2>
 
-<h2>The work cycle</h2>
+<div class="lifecycle">
+    <div class="lifecycle-step">
+        <StateIcon state="proposed" size={18} />
+        <span class="state-label">Proposed</span>
+    </div>
+    <div class="lifecycle-arrow">→</div>
+    <div class="lifecycle-step">
+        <StateIcon state="in_progress" size={18} />
+        <span class="state-label">In Progress</span>
+    </div>
+    <div class="lifecycle-arrow">→</div>
+    <div class="lifecycle-step">
+        <StateIcon state="implemented" size={18} />
+        <span class="state-label">Implemented</span>
+    </div>
+</div>
 
-<CodeBlock code={`┌──────────┐    ┌─────────┐    ┌───────────┐    ┌──────────┐
-│ DISCOVER │───▶│  START  │───▶│ IMPLEMENT │───▶│ COMPLETE │
-└──────────┘    └─────────┘    └───────────┘    └──────────┘
-      │                                               │
-      └───────────────────────────────────────────────┘
-                         (repeat)`} />
+<h2>Finding work</h2>
 
-<h2>Discover</h2>
+<CodeBlock code="What should we work on next?" />
 
-<p><strong>You say:</strong></p>
+<p>The agent finds the highest-priority proposed feature from the Now version.</p>
 
-<CodeBlock code="What should I work on next?" />
-
-<p><strong>Agent handles:</strong></p>
-
-<ul>
-    <li>Calls <code>get_next_feature</code> to find the highest priority work</li>
-    <li>Prioritizes: "now" version → priority order → backlog</li>
-    <li>Returns the feature spec with acceptance criteria</li>
-</ul>
-
-<p><strong>You can also ask:</strong></p>
-
-<CodeBlock code={`What features are proposed?
-Show me the details for OAuth`} />
-
-<Admonition type="skill" title="Claude Code slash command /manifest:next">
-    {#snippet children()}
-        <p>Use <code>/manifest:next</code> to quickly see the highest-priority feature ready for work.</p>
-    {/snippet}
-</Admonition>
-
-<Admonition type="skill" title="Claude Code slash command /manifest:feature [query]">
-    {#snippet children()}
-        <p>Use <code>/manifest:feature OAuth</code> to search for and display feature details.</p>
-    {/snippet}
-</Admonition>
-
-<h2>Start</h2>
-
-<p><strong>You say:</strong></p>
+<h2>Starting work</h2>
 
 <CodeBlock code="Implement OAuth" />
 
-<p><strong>Agent handles:</strong></p>
+<p>Manifest records:</p>
 
 <ul>
-    <li>Calls <code>start_feature</code> to claim the work</li>
-    <li>Transitions state: <code>proposed</code> (◇) → <code>in_progress</code> (○)</li>
-    <li>Other agents see this feature is taken</li>
+    <li>State transitions to <strong>in_progress</strong> (○)</li>
+    <li>Other agents see this feature is claimed</li>
 </ul>
 
-<Admonition type="skill" title="Claude Code slash command /manifest:start [feature]">
-    {#snippet children()}
-        <p>Use <code>/manifest:start OAuth</code> to begin work, or <code>/manifest:start</code> without arguments to start the next priority feature.</p>
-    {/snippet}
-</Admonition>
+<h2>Completing work</h2>
 
-<h2>Implement</h2>
-
-<p><strong>You do:</strong> Review code, answer questions, guide decisions.</p>
-
-<p><strong>Agent handles:</strong> Writing code, running tests, making commits. The agent uses the feature spec as its guide.</p>
-
-<h2>Complete</h2>
-
-<p><strong>Agent handles automatically</strong> when implementation is done:</p>
+<p>When the agent finishes, Manifest records:</p>
 
 <ul>
-    <li>Calls <code>complete_feature</code> with a summary of what was done</li>
-    <li>Creates a history log entry with timestamp</li>
-    <li>Links commits from the session</li>
-    <li>Transitions state: <code>in_progress</code> (○) → <code>implemented</code> (●)</li>
+    <li>State transitions to <strong>implemented</strong> (●)</li>
+    <li>History entry with summary of what was done</li>
+    <li>Links to commits from the session</li>
 </ul>
 
-<p>The history entry becomes a permanent record:</p>
-
-<CodeBlock code={`Feature: OAuth Integration (●)
+<CodeBlock copyable={false} code={`Feature: OAuth Integration (●)
 
 History:
   2024-03-20 - Implemented Google OAuth with token refresh
@@ -95,29 +61,33 @@ History:
                - Built token storage with encryption
                Commits: abc123, def456`} />
 
-<Admonition type="skill" title="Claude Code slash command /manifest:complete">
-    {#snippet children()}
-        <p>Use <code>/manifest:complete</code> to explicitly complete the current in-progress feature. The agent will gather commits and prompt for a summary.</p>
-    {/snippet}
-</Admonition>
+<h2>Slash commands</h2>
 
-<h2>Quick reference</h2>
+<p>Claude Code plugin provides shortcuts:</p>
 
 <table>
     <thead>
         <tr>
-            <th>You say</th>
-            <th>Agent handles</th>
+            <th>Command</th>
+            <th>Description</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td>"What should I work on next?"</td>
-            <td>Finds highest priority feature</td>
+            <td><code>/manifest:next</code></td>
+            <td>Show highest-priority feature ready for work</td>
         </tr>
         <tr>
-            <td>"Implement OAuth"</td>
-            <td>Claims feature, writes code, completes</td>
+            <td><code>/manifest:feature [query]</code></td>
+            <td>Search for and display feature details</td>
+        </tr>
+        <tr>
+            <td><code>/manifest:start [feature]</code></td>
+            <td>Begin work on a feature (or next priority if omitted)</td>
+        </tr>
+        <tr>
+            <td><code>/manifest:complete</code></td>
+            <td>Complete current in-progress feature with summary</td>
         </tr>
     </tbody>
 </table>
@@ -125,3 +95,31 @@ History:
 <h2>Next step</h2>
 
 <p>Continue to <a href="/docs/cli/versions">Product versions</a>.</p>
+
+<style>
+    .lifecycle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .lifecycle-step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--border-muted);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .state-label {
+        font-weight: 500;
+        color: var(--foreground);
+    }
+
+    .lifecycle-arrow {
+        color: var(--foreground-muted);
+        font-size: 1.25rem;
+    }
+</style>

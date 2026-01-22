@@ -55,7 +55,7 @@ add items to a cart, and checkout with Stripe.`} />
 
 <p>The agent will display:</p>
 
-<CodeBlock code={`MyProject
+<CodeBlock copyable={false} code={`MyProject
 ├── ◇ Authentication
 │   ├── ◇ Password Login
 │   ├── ◇ OAuth

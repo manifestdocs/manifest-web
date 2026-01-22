@@ -1,5 +1,6 @@
 <script lang="ts">
     import { CodeBlock } from '$lib/components/docs';
+    import { StateIcon } from '$lib/components/icons';
 </script>
 
 <h1>Edit View</h1>
@@ -12,12 +13,25 @@
 
 <p>Your feature hierarchy with state indicators:</p>
 
-<ul>
-    <li>◇ <strong>Proposed:</strong> Idea in backlog</li>
-    <li>○ <strong>In progress:</strong> Currently being worked</li>
-    <li>● <strong>Implemented:</strong> Complete</li>
-    <li>✗ <strong>Archived:</strong> Soft-deleted</li>
+<ul class="state-list">
+    <li><span class="state-item"><StateIcon state="proposed" size={14} /> <strong>Proposed:</strong> Idea in backlog</span></li>
+    <li><span class="state-item"><StateIcon state="in_progress" size={14} /> <strong>In progress:</strong> Currently being worked</span></li>
+    <li><span class="state-item"><StateIcon state="implemented" size={14} /> <strong>Implemented:</strong> Complete</span></li>
+    <li><span class="state-item"><StateIcon state="archived" size={14} /> <strong>Archived:</strong> Soft-deleted</span></li>
 </ul>
+
+<style>
+    .state-list {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .state-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
 
 <p>Click to select. Right-click for context menu.</p>
 
@@ -26,7 +40,7 @@
 <p><strong>For normal features:</strong></p>
 
 <ul>
-    <li><strong>Add Child Feature:</strong> Create a new feature under this one (making it a chapter)</li>
+    <li><strong>Add Child Feature:</strong> Create a new feature under this one (making it a feature set)</li>
     <li><strong>Archive:</strong> Soft-delete the feature</li>
 </ul>
 
@@ -37,11 +51,11 @@
     <li><strong>Delete Permanently:</strong> Remove from database (cannot be undone)</li>
 </ul>
 
-<h3>Chapters</h3>
+<h3>Feature sets</h3>
 
 <p>
-    Features with children are called chapters. They organize related features into groups.
-    When you add a child to a leaf feature, it becomes a chapter.
+    Features with children are called feature sets. They organize related features into groups.
+    When you add a child to a leaf feature, it becomes a feature set.
 </p>
 
 <h2>Feature detail (right panel)</h2>

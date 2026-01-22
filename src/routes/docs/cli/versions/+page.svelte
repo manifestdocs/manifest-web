@@ -42,7 +42,7 @@
 
 <CodeBlock code="Show me what's in the next few versions" />
 
-<CodeBlock code={`0.2 (now)
+<CodeBlock copyable={false} code={`0.2 (now)
 ├── ● OAuth Integration
 └── ○ Rate Limiting
 
@@ -102,7 +102,7 @@ Unversioned
     <li><strong>Backlog last:</strong> Unassigned features after versioned work</li>
 </ol>
 
-<p>This means when you ask "What should I work on next?", the agent pulls from Now before anything else.</p>
+<p>This means when you ask "What should we work on next?", the agent pulls from Now before anything else.</p>
 
 <h2>Closing out a version</h2>
 
@@ -133,7 +133,7 @@ Unversioned
 
 <p>The web interface provides a visual version matrix:</p>
 
-<CodeBlock code={`┌──────────────────────────────────────────────────────────┐
+<CodeBlock copyable={false} code={`┌──────────────────────────────────────────────────────────┐
 │ Feature           │ 0.2 (now) │ 0.3 (next) │ Unversioned │
 ├──────────────────────────────────────────────────────────┤
 │ OAuth Integration │     ●     │            │             │

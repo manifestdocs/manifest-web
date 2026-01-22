@@ -1,5 +1,6 @@
 <script lang="ts">
     import { CodeBlock } from '$lib/components/docs';
+    import { StateIcon } from '$lib/components/icons';
 </script>
 
 <h1>Concepts</h1>
@@ -61,25 +62,25 @@
 
 <p>Features form a hierarchy mirroring your product's architecture:</p>
 
-<CodeBlock code={`MyProject
+<CodeBlock copyable={false} code={`MyProject
 ├── ● Authentication
 │   ├── ● Password Login
 │   ├── ○ OAuth Integration
 │   └── ◇ Two-Factor Auth
 └── ◇ Webhooks`} />
 
-<p>Leaf features can be implemented directly. Parent features with children are called <strong>chapters</strong>.</p>
+<p>Leaf features can be implemented directly. Parent features with children are called <strong>feature sets</strong>.</p>
 
-<h2>Chapters</h2>
+<h2>Feature sets</h2>
 
-<p>Chapters are features that contain other features. They organize related functionality into logical groups:</p>
+<p>Feature sets are features that contain other features. They organize related functionality into logical groups:</p>
 
-<CodeBlock code={`◇ Authentication          ← Chapter (has children)
+<CodeBlock copyable={false} code={`◇ Authentication          ← Feature set (has children)
 ├── ◇ Password Login      ← Leaf feature
 ├── ◇ OAuth Integration   ← Leaf feature
 └── ◇ Two-Factor Auth     ← Leaf feature`} />
 
-<p>Use chapters to:</p>
+<p>Use feature sets to:</p>
 
 <ul>
     <li>Group related features (e.g., all auth features under "Authentication")</li>
@@ -87,7 +88,7 @@
     <li>Create navigation hierarchy in the feature tree</li>
 </ul>
 
-<p>Chapters can be nested. A chapter's state reflects its children—it's complete when all children are implemented.</p>
+<p>Feature sets can be nested. A feature set's state reflects its children—it's complete when all children are implemented.</p>
 
 <h2>Feature states</h2>
 
@@ -95,7 +96,8 @@
     <thead>
         <tr>
             <th>State</th>
-            <th>Symbol</th>
+            <th>CLI</th>
+            <th>Web</th>
             <th>Meaning</th>
         </tr>
     </thead>
@@ -103,21 +105,25 @@
         <tr>
             <td>Proposed</td>
             <td>◇</td>
+            <td><StateIcon state="proposed" size={16} /></td>
             <td>Idea in the backlog</td>
         </tr>
         <tr>
             <td>In progress</td>
             <td>○</td>
+            <td><StateIcon state="in_progress" size={16} /></td>
             <td>Currently being worked on</td>
         </tr>
         <tr>
             <td>Implemented</td>
             <td>●</td>
+            <td><StateIcon state="implemented" size={16} /></td>
             <td>Complete and documented</td>
         </tr>
         <tr>
             <td>Archived</td>
             <td>✗</td>
+            <td><StateIcon state="archived" size={16} /></td>
             <td>Soft-deleted, can be restored</td>
         </tr>
     </tbody>

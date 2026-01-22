@@ -14,11 +14,11 @@
 
 <p>The agent will:</p>
 
-<ol>
+<ul>
     <li>Analyze your codebase structure (if files exist)</li>
     <li>Create a project with appropriate settings</li>
     <li>Associate the current directory</li>
-</ol>
+</ul>
 
 <p>For existing codebases, the agent uses the analysis to suggest initial features based on what's already built.</p>
 
