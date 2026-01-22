@@ -24,7 +24,7 @@
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (!title.trim()) {
-			error = 'Group name is required';
+			error = 'Feature set name is required';
 			return;
 		}
 
@@ -35,7 +35,7 @@
 			await onCreate(title.trim());
 			onOpenChange(false);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to create group';
+			error = err instanceof Error ? err.message : 'Failed to create feature set';
 		} finally {
 			isCreating = false;
 		}
@@ -46,14 +46,14 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="dialog-overlay" />
 		<Dialog.Content class="dialog-content">
-			<Dialog.Title class="dialog-title">Create Group</Dialog.Title>
+			<Dialog.Title class="dialog-title">Create Feature Set</Dialog.Title>
 			<Dialog.Description class="dialog-description">
-				Group "{featureTitles[0]}" and "{featureTitles[1]}" into a new folder.
+				Group "{featureTitles[0]}" and "{featureTitles[1]}" into a new feature set.
 			</Dialog.Description>
 
 			<form class="dialog-form" onsubmit={handleSubmit}>
 				<div class="form-field">
-					<label for="group-title" class="form-label">Group Name</label>
+					<label for="group-title" class="form-label">Feature Set Name</label>
 					<input
 						id="group-title"
 						type="text"
@@ -78,7 +78,7 @@
 						Cancel
 					</button>
 					<button type="submit" class="btn btn-primary" disabled={isCreating || !title.trim()}>
-						{isCreating ? 'Creating...' : 'Create Group'}
+						{isCreating ? 'Creating...' : 'Create Feature Set'}
 					</button>
 				</div>
 			</form>

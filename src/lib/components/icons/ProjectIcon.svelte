@@ -7,7 +7,7 @@
 	let { size = 16, class: className = '' }: Props = $props();
 </script>
 
-<!-- Folder icon for project root -->
+<!-- Open book icon for project root -->
 <svg
 	width={size}
 	height={size}
@@ -18,7 +18,10 @@
 	aria-label="Project root"
 >
 	<path
-		d="M2 4C2 3.44772 2.44772 3 3 3H6.17157C6.43679 3 6.69114 3.10536 6.87868 3.29289L7.70711 4.12132C7.89464 4.30886 8.149 4.41421 8.41421 4.41421H13C13.5523 4.41421 14 4.86193 14 5.41421V12C14 12.5523 13.5523 13 13 13H3C2.44772 13 2 12.5523 2 12V4Z"
-		fill="var(--accent-blue)"
+		d="M8 3.5V13M8 3.5C7 2.5 5 2 3 2.5V12C5 11.5 7 12 8 13M8 3.5C9 2.5 11 2 13 2.5V12C11 11.5 9 12 8 13"
+		stroke="currentColor"
+		stroke-width="1.5"
+		stroke-linecap="round"
+		stroke-linejoin="round"
 	/>
 </svg>

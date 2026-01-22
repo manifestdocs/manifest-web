@@ -50,8 +50,8 @@
 		align-items: center;
 		gap: 10px;
 		padding: 10px 16px;
-		background: var(--state-implemented);
-		color: var(--background);
+		background: rgba(156, 220, 254, 0.2);
+		color: var(--foreground);
 		font-size: 13px;
 		line-height: 1.4;
 	}
@@ -64,6 +64,7 @@
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
+		color: var(--state-implemented);
 	}
 
 	.banner-text {

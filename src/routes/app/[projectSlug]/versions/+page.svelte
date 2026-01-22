@@ -7,12 +7,22 @@
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { getContext } from 'svelte';
 
 	// Get authenticated API client from context
 	const authApi = getAuthApiContext();
 
+	type Project = components['schemas']['Project'];
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 	type Version = components['schemas']['Version'];
+
+	interface ProjectsContext {
+		readonly projects: Project[];
+		readonly isLoading: boolean;
+		refresh: () => Promise<void>;
+	}
+
+	const projectsContext = getContext<ProjectsContext>('projects');
 
 	let featureTree = $state<FeatureTreeNode[]>([]);
 	let versions = $state<Version[]>([]);
@@ -33,7 +43,9 @@
 		parentId: string | null;
 	} | null>(null);
 
-	const projectId = $derived(page.params.projectId);
+	const projectSlug = $derived(page.params.projectSlug);
+	const project = $derived(projectsContext.projects.find((p) => p.slug === projectSlug));
+	const projectId = $derived(project?.id);
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
 
 	// Helper to find a feature in the tree
@@ -166,7 +178,7 @@
 	}
 
 	function handleSelectFeature(id: string) {
-		goto(`/app/${projectId}/versions?feature=${id}`);
+		goto(`/app/${projectSlug}/versions?feature=${id}`);
 	}
 
 	async function handleReparentFeature(featureId: string, newParentId: string | null) {
@@ -212,7 +224,7 @@
 
 		// Refresh tree and select the new feature
 		await loadFeatureTree(projectId);
-		goto(`/app/${projectId}/versions?feature=${data.id}`);
+		goto(`/app/${projectSlug}/versions?feature=${data.id}`);
 	}
 
 	function handleOpenArchiveDialog(id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) {
@@ -270,7 +282,7 @@
 
 		// If archived feature was selected, clear selection
 		if (selectedFeatureId === archiveTarget.id) {
-			goto(`/app/${projectId}/versions`);
+			goto(`/app/${projectSlug}/versions`);
 		}
 	}
 
@@ -310,7 +322,7 @@
 
 		// If deleted feature was selected, clear selection
 		if (selectedFeatureId === featureId) {
-			goto(`/app/${projectId}/versions`);
+			goto(`/app/${projectSlug}/versions`);
 		}
 	}
 </script>

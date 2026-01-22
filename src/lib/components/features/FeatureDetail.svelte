@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
-	import { GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
+	import { BookIcon, GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
 	import { InfoBanner } from '$lib/components/ui/index.js';
 
@@ -11,18 +11,20 @@
 	type Feature = components['schemas']['Feature'];
 	type FeatureState = components['schemas']['FeatureState'];
 	type FeatureDiff = components['schemas']['FeatureDiff'];
-	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
+	type Version = components['schemas']['Version'];
 
 	interface Props {
 		feature: (Feature & { is_root?: boolean }) | null;
 		isGroup?: boolean;
+		versions?: Version[];
 		onSave: (id: string, updates: { title?: string; details?: string | null; desired_details?: string | null; state?: FeatureState }) => Promise<void>;
+		onVersionChange?: (featureId: string, versionId: string | null) => Promise<void>;
 		onArchive?: () => void;
 		onRestore?: () => void;
 		onDelete?: () => void;
 	}
 
-	let { feature, isGroup = false, onSave, onArchive, onRestore, onDelete }: Props = $props();
+	let { feature, isGroup = false, versions = [], onSave, onVersionChange, onArchive, onRestore, onDelete }: Props = $props();
 
 	const isRoot = $derived(feature?.is_root ?? false);
 	const isArchived = $derived(feature?.state === 'archived');
@@ -48,6 +50,28 @@
 	});
 
 	let isLocked = $derived(feature?.state === 'in_progress');
+
+	// Version-related state
+	let isSavingVersion = $state(false);
+	const currentVersion = $derived(
+		feature?.target_version_id
+			? versions.find((v) => v.id === feature.target_version_id)
+			: null
+	);
+	const unreleasedVersions = $derived(versions.filter((v) => !v.released_at));
+
+	async function handleVersionChange(e: Event) {
+		if (!feature || !onVersionChange) return;
+		const select = e.target as HTMLSelectElement;
+		const versionId = select.value || null;
+
+		isSavingVersion = true;
+		try {
+			await onVersionChange(feature.id, versionId);
+		} finally {
+			isSavingVersion = false;
+		}
+	}
 
 	const stateOptions: { value: FeatureState; label: string }[] = [
 		{ value: 'proposed', label: 'Proposed' },
@@ -182,13 +206,13 @@
 						<div class="meta">
 							{#if isRoot}
 								<div class="project-badge">
-									<ProjectIcon size={14} />
-									<span>{feature.title}</span>
+									<BookIcon size={14} />
+									<span>Project Context</span>
 								</div>
 							{:else if isGroup}
 								<div class="group-badge">
 									<GroupIcon size={14} />
-									<span>Group</span>
+									<span>Feature Set</span>
 								</div>
 							{:else}
 								<div class="state-badge" data-state={feature.state}>
@@ -206,6 +230,12 @@
 								</div>
 							{/if}
 							<span class="meta-item">Updated {formatDate(feature.updated_at)}</span>
+							{#if !isRoot && !isGroup}
+								<span class="meta-separator">·</span>
+								<span class="meta-item version-display">
+									{currentVersion ? currentVersion.name : 'Unassigned'}
+								</span>
+							{/if}
 						</div>
 					</div>
 					<div class="header-right">
@@ -253,13 +283,13 @@
 						<div class="meta">
 							{#if isRoot}
 								<div class="project-badge">
-									<ProjectIcon size={14} />
-									<span>{feature.title}</span>
+									<BookIcon size={14} />
+									<span>Project Context</span>
 								</div>
 							{:else if isGroup}
 								<div class="group-badge">
 									<GroupIcon size={14} />
-									<span>Group</span>
+									<span>Feature Set</span>
 								</div>
 							{:else}
 								<div class="state-badge" data-state={feature.state}>
@@ -303,11 +333,11 @@
 		<div class="detail-content">
 			{#if isRoot}
 				<InfoBanner class="content-banner">
-					Project-wide instructions for AI agents. This context is provided when agents work on any feature in this project.
+					Context here applies project-wide.
 				</InfoBanner>
 			{:else if isGroup}
 				<InfoBanner class="content-banner">
-					Content here provides shared context for all child features in this group.
+					Context here applies to all features in this set.
 				</InfoBanner>
 			{/if}
 
@@ -330,14 +360,35 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'edit'}
-				<div class="details-edit">
-					<MarkdownEditor
-						bind:value={editDetails}
-						placeholder={isRoot
-							? 'Project-wide instructions for AI agents. Include coding guidelines, conventions, and any context that should apply to all features...'
-							: 'Add feature details, user stories, technical notes...'}
-						rows={20}
-					/>
+				<div class="details-edit" class:with-sidebar={!isRoot && !isGroup}>
+					<div class="editor-main">
+						<MarkdownEditor
+							bind:value={editDetails}
+							placeholder={isRoot
+								? 'Project-wide instructions for AI agents. Include coding guidelines, conventions, and any context that should apply to all features...'
+								: 'Add feature details, user stories, technical notes...'}
+							rows={20}
+						/>
+					</div>
+					{#if !isRoot && !isGroup}
+						<div class="editor-sidebar">
+							<div class="sidebar-field">
+								<label class="field-label" for="version-select">Version</label>
+								<select
+									id="version-select"
+									class="version-select"
+									value={feature.target_version_id ?? ''}
+									onchange={handleVersionChange}
+									disabled={isSavingVersion}
+								>
+									<option value="">Unassigned</option>
+									{#each unreleasedVersions as version (version.id)}
+										<option value={version.id}>{version.name}</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{:else}
 				<div class="details-diff">
@@ -614,6 +665,15 @@
 		color: var(--foreground-subtle);
 	}
 
+	.meta-separator {
+		color: var(--foreground-subtle);
+		opacity: 0.5;
+	}
+
+	.version-display {
+		color: var(--foreground-muted);
+	}
+
 	.detail-content {
 		flex: 1;
 		overflow-y: auto;
@@ -638,6 +698,61 @@
 
 	.details-edit {
 		max-width: 800px;
+	}
+
+	.details-edit.with-sidebar {
+		display: flex;
+		gap: 24px;
+		max-width: none;
+	}
+
+	.editor-main {
+		flex: 1;
+		max-width: 800px;
+	}
+
+	.editor-sidebar {
+		width: 200px;
+		flex-shrink: 0;
+	}
+
+	.sidebar-field {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.field-label {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
+	}
+
+	.version-select {
+		width: 100%;
+		padding: 8px 12px;
+		font-size: 13px;
+		background: var(--background-subtle);
+		border: 1px solid var(--border-default);
+		border-radius: 4px;
+		color: var(--foreground);
+		cursor: pointer;
+	}
+
+	.version-select:hover {
+		border-color: var(--foreground-subtle);
+	}
+
+	.version-select:focus {
+		outline: none;
+		border-color: var(--accent-blue);
+	}
+
+	.version-select:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	.details-diff {

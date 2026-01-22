@@ -19,14 +19,15 @@
 	// Redirect to last viewed project (or first project) when projects are loaded
 	$effect(() => {
 		if (!projectsContext.isLoading && projectsContext.projects.length > 0) {
-			const lastProjectId = typeof localStorage !== 'undefined'
+			const lastProjectKey = typeof localStorage !== 'undefined'
 				? localStorage.getItem('manifest_last_project')
 				: null;
-			const lastProject = lastProjectId
-				? projectsContext.projects.find((p) => p.id === lastProjectId)
+			// Support both slug (new) and id (legacy) lookups for backwards compatibility
+			const lastProject = lastProjectKey
+				? projectsContext.projects.find((p) => p.slug === lastProjectKey || p.id === lastProjectKey)
 				: null;
 			const targetProject = lastProject || projectsContext.projects[0];
-			goto(`/app/${targetProject.id}`, { replaceState: true });
+			goto(`/app/${targetProject.slug}`, { replaceState: true });
 		}
 	});
 

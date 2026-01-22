@@ -61,6 +61,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Project slug (URL-friendly identifier)
+                 * @example manifest
+                 */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        /** Get a project by slug */
+        get: operations["getProjectBySlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{id}": {
         parameters: {
             query?: never;
@@ -78,9 +101,35 @@ export interface paths {
         post?: never;
         /**
          * Delete a project
-         * @description Deletes the project and cascades to all features
+         * @description Deletes the project and cascades to all features, sessions, and tasks
          */
         delete: operations["deleteProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get project-wide history
+         * @description Returns history entries across all features in the project, ordered by
+         *     creation date (newest first). Each entry includes feature and version context.
+         *     Useful for PMs to see recent changes across the entire project.
+         *     Filter by version_id to see all work done for a specific release.
+         */
+        get: operations["getProjectHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -101,31 +150,6 @@ export interface paths {
         put?: never;
         /** Add a directory to a project */
         post: operations["addProjectDirectory"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{id}/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Get project-wide history
-         * @description Returns history entries across all features in the project, ordered by
-         *     creation date (newest first). Each entry includes feature context for display.
-         *     Useful for PMs to see recent changes across the entire project.
-         */
-        get: operations["getProjectHistory"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -398,7 +422,12 @@ export interface paths {
          */
         get: operations["getFeatureHistory"];
         put?: never;
-        post?: never;
+        /**
+         * Add a history entry to a feature
+         * @description Records work completed on a feature. Each entry captures a summary of changes
+         *     and optionally links to git commits. Use this when completing work on a feature.
+         */
+        post: operations["addFeatureHistory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -436,6 +465,11 @@ export interface components {
         Project: {
             /** Format: uuid */
             id: string;
+            /**
+             * @description URL-friendly identifier (lowercase, hyphenated). Unique across all projects.
+             * @example manifest
+             */
+            slug: string;
             /** @example Manifest */
             name: string;
             /** @example Living feature documentation server */
@@ -458,12 +492,22 @@ export interface components {
         CreateProjectInput: {
             /** @example My Project */
             name: string;
+            /**
+             * @description URL-friendly identifier. If not provided, auto-generated from name.
+             * @example my-project
+             */
+            slug?: string | null;
             description?: string | null;
             /** @description Project-wide instructions for AI agents */
             instructions?: string | null;
         };
         UpdateProjectInput: {
             name?: string;
+            /**
+             * @description URL-friendly identifier. Must be unique.
+             * @example my-project
+             */
+            slug?: string;
             description?: string | null;
             /** @description Project-wide instructions for AI agents */
             instructions?: string | null;
@@ -504,6 +548,8 @@ export interface components {
         ProjectWithDirectories: {
             /** Format: uuid */
             id: string;
+            /** @description URL-friendly identifier */
+            slug: string;
             name: string;
             description?: string | null;
             /** @description Project-wide instructions for AI agents */
@@ -518,26 +564,6 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             directories: components["schemas"]["ProjectDirectory"][];
-        };
-        /**
-         * @description Project-wide history entry with feature context. Used for the unified
-         *     project history view, where PMs can see recent changes across all features.
-         */
-        ProjectHistoryEntry: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            feature_id: string;
-            /** @description Feature title, denormalized for display */
-            feature_title: string;
-            /** @description Feature state at time of query */
-            feature_state: components["schemas"]["FeatureState"];
-            /** @description Summary of work completed */
-            summary: string;
-            /** @description Git commits created during this work */
-            commits?: components["schemas"]["CommitRef"][];
-            /** Format: date-time */
-            created_at: string;
         };
         Feature: {
             /** Format: uuid */
@@ -572,8 +598,8 @@ export interface components {
             updated_at: string;
         };
         /**
-         * @description - proposed: Initial state, idea captured
-         *     - in_progress: Work is actively being done
+         * @description - proposed: Initial state, in backlog
+         *     - in_progress: Actively being worked on
          *     - implemented: Feature is live in codebase
          *     - archived: Feature archived (soft-deleted)
          * @enum {string}
@@ -693,7 +719,7 @@ export interface components {
             is_root: boolean;
         };
         /**
-         * @description Append-only log entry recording implementation work.
+         * @description Append-only log entry recording work completed on a feature.
          *     Similar to git log - records implementation history, not version snapshots.
          */
         FeatureHistory: {
@@ -701,6 +727,38 @@ export interface components {
             id: string;
             /** Format: uuid */
             feature_id: string;
+            /**
+             * Format: uuid
+             * @description Version this work was done for (captured at time of completion)
+             */
+            version_id?: string | null;
+            /** @description Summary of work completed */
+            summary: string;
+            /** @description Git commits created during this work */
+            commits?: components["schemas"]["CommitRef"][];
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description Project-wide history entry with feature context. Used for the unified
+         *     project history view, where PMs can see recent changes across all features.
+         */
+        ProjectHistoryEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            feature_id: string;
+            /** @description Feature title, denormalized for display */
+            feature_title: string;
+            /** @description Feature state at time of query */
+            feature_state: components["schemas"]["FeatureState"];
+            /**
+             * Format: uuid
+             * @description Version this work was done for
+             */
+            version_id?: string | null;
+            /** @description Version name, denormalized for display */
+            version_name?: string | null;
             /** @description Summary of work completed */
             summary: string;
             /** @description Git commits created during this work */
@@ -719,6 +777,23 @@ export interface components {
             current?: string | null;
             /** @description Desired details (what the feature SHOULD be) */
             desired?: string | null;
+        };
+        /** @description Input for adding a history entry to a feature */
+        AddHistoryInput: {
+            /** @description Summary of work completed */
+            summary: string;
+            /** @description Git commits created during this work */
+            commits?: components["schemas"]["CommitRef"][];
+            /**
+             * Format: uuid
+             * @description Version this work was done for (defaults to feature's target_version_id if not specified)
+             */
+            version_id?: string | null;
+            /**
+             * @description If true, also transitions the feature to 'implemented' state
+             * @default false
+             */
+            mark_implemented: boolean;
         };
         /** @description Reference to a git commit */
         CommitRef: {
@@ -919,6 +994,33 @@ export interface operations {
             };
         };
     };
+    getProjectBySlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Project slug (URL-friendly identifier)
+                 * @example manifest
+                 */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project with directories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectWithDirectories"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     getProject: {
         parameters: {
             query?: never;
@@ -993,6 +1095,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getProjectHistory: {
+        parameters: {
+            query?: {
+                /** @description Filter to entries for a specific version (useful for release notes). */
+                version_id?: string;
+                /** @description Maximum number of entries to return. Defaults to 50. */
+                limit?: number;
+                /** @description Number of entries to skip for pagination. Defaults to 0. */
+                offset?: number;
+                /** @description Only return entries created after this ISO datetime. */
+                since?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description History entries with feature and version context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectHistoryEntry"][];
+                };
+            };
+        };
+    };
     listProjectDirectories: {
         parameters: {
             query?: never;
@@ -1042,36 +1176,6 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
-        };
-    };
-    getProjectHistory: {
-        parameters: {
-            query?: {
-                /** @description Maximum number of entries to return. Defaults to 50. */
-                limit?: number;
-                /** @description Number of entries to skip for pagination. Defaults to 0. */
-                offset?: number;
-                /** @description Only return entries created after this ISO datetime. */
-                since?: string;
-            };
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description History entries with feature context */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectHistoryEntry"][];
-                };
-            };
         };
     };
     listProjectVersions: {
@@ -1523,6 +1627,36 @@ export interface operations {
                     "application/json": components["schemas"]["FeatureHistory"][];
                 };
             };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addFeatureHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddHistoryInput"];
+            };
+        };
+        responses: {
+            /** @description History entry created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureHistory"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
     getFeatureDiff: {

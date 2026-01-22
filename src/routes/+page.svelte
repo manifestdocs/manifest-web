@@ -49,27 +49,23 @@
                 >
             </h1>
             <p class="hero-subheadline">
-                No vibes. No stale specs. Just up-to-date documentation for
-                humans and AI agents.
+                Keep humans and agents in the loop with always up-to-date
+                context of your app
             </p>
         </section>
 
         <section class="install-section">
             <div class="install-options" class:highlight={highlightInstall}>
                 <div class="install-option">
-                    <span class="install-label"
-                        >Install via <span class="claude-code-text"
-                            >Claude Code plugin</span
-                        ></span
-                    >
+                    <span class="install-label">1. Install via Homebrew</span>
                     <div class="install-wrapper">
-                        <code class="install-command">{claudeCommand}</code>
+                        <code class="install-command">{brewCommand}</code>
                         <button
                             class="copy-button"
-                            onclick={copyClaudeCommand}
-                            aria-label="Copy Claude command"
+                            onclick={copyBrewCommand}
+                            aria-label="Copy brew command"
                         >
-                            {#if copiedClaude}
+                            {#if copiedBrew}
                                 <svg
                                     width="18"
                                     height="18"
@@ -110,15 +106,18 @@
                     </div>
                 </div>
                 <div class="install-option">
-                    <span class="install-label">or brew</span>
+                    <span class="install-label"
+                        >2. Add <span class="claude-code-text">Claude Code</span
+                        > plugin</span
+                    >
                     <div class="install-wrapper">
-                        <code class="install-command">{brewCommand}</code>
+                        <code class="install-command">{claudeCommand}</code>
                         <button
                             class="copy-button"
-                            onclick={copyBrewCommand}
-                            aria-label="Copy brew command"
+                            onclick={copyClaudeCommand}
+                            aria-label="Copy Claude command"
                         >
-                            {#if copiedBrew}
+                            {#if copiedClaude}
                                 <svg
                                     width="18"
                                     height="18"
@@ -177,7 +176,7 @@
                     <h3>Specs die on day one</h3>
                     <p>
                         AI makes it easy to iterate... away from your spec which
-                        is already out of date.
+                        is out of date after the first commit.
                     </p>
                 </div>
                 <div class="pain-card">
@@ -188,7 +187,7 @@
                             class="pain-card-illustration pain-card-illustration--robot"
                         />
                     </div>
-                    <h3>Changes happen too fast</h3>
+                    <h3>Change happens too fast</h3>
                     <p>
                         Agents ship changes faster than you can update Jira.
                         Your tracking system is already behind.
@@ -204,8 +203,8 @@
                     </div>
                     <h3>Agents get confused</h3>
                     <p>
-                        Without a trail of past work or a map for the future,
-                        agents sling the wrong thing.
+                        Without context of past work or a map for where their
+                        going, agents sling the wrong thing.
                     </p>
                 </div>
             </div>
@@ -213,7 +212,7 @@
 
         <section class="solution">
             <h2 class="section-title">
-                A better way to track coding agents' work
+                Manifest is a better way to define and track coding agents' work
             </h2>
             <div class="value-props">
                 <div class="value-prop">
@@ -269,12 +268,11 @@
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
                         </span>
-                        Product history linked to code
+                        Activity log for agent work
                     </h3>
                     <p>
-                        Every feature has a history: who worked on it, what was
-                        decided, how it evolved. Like <code>git log</code> for your
-                        product.
+                        Track what agents built, see their commits, and
+                        understand how each feature was implemented.
                     </p>
                 </div>
                 <div class="value-prop">

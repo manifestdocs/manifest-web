@@ -105,21 +105,21 @@
 
 	function handleProjectChange(event: Event) {
 		const select = event.target as HTMLSelectElement;
-		const projectId = select.value;
-		if (projectId) {
-			goto(`/app/${projectId}`);
+		const projectSlug = select.value;
+		if (projectSlug) {
+			goto(`/app/${projectSlug}`);
 		}
 	}
 
-	const selectedProjectId = $derived(page.params.projectId || null);
-	const selectedProject = $derived(projects.find((p) => p.id === selectedProjectId));
+	const selectedProjectSlug = $derived(page.params.projectSlug || null);
+	const selectedProject = $derived(projects.find((p) => p.slug === selectedProjectSlug));
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
 	const featureQueryParam = $derived(selectedFeatureId ? `?feature=${selectedFeatureId}` : '');
 
-	// Remember last viewed project
+	// Remember last viewed project (by slug for cleaner URLs)
 	$effect(() => {
-		if (selectedProjectId && typeof localStorage !== 'undefined') {
-			localStorage.setItem('manifest_last_project', selectedProjectId);
+		if (selectedProjectSlug && typeof localStorage !== 'undefined') {
+			localStorage.setItem('manifest_last_project', selectedProjectSlug);
 		}
 	});
 
@@ -135,7 +135,7 @@
 	});
 </script>
 
-{#if page.params.projectId}
+{#if page.params.projectSlug}
 	<div class="app-layout">
 		<header class="app-header">
 			<div class="header-left">
@@ -145,26 +145,26 @@
 				<nav class="view-nav">
 					<div class="nav-group">
 						<a
-							href="/app/{selectedProjectId}{featureQueryParam}"
+							href="/app/{selectedProjectSlug}{featureQueryParam}"
 							class="nav-link"
-							class:active={page.url.pathname === `/app/${selectedProjectId}`}
+							class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
 						>
 							Edit
 						</a>
 						<a
-							href="/app/{selectedProjectId}/versions{featureQueryParam}"
+							href="/app/{selectedProjectSlug}/versions{featureQueryParam}"
 							class="nav-link"
-							class:active={page.url.pathname === `/app/${selectedProjectId}/versions`}
+							class:active={page.url.pathname === `/app/${selectedProjectSlug}/versions`}
 						>
 							Plan
 						</a>
 					</div>
 					<a
-						href="/app/{selectedProjectId}/history"
+						href="/app/{selectedProjectSlug}/activity"
 						class="nav-link"
-						class:active={page.url.pathname === `/app/${selectedProjectId}/history`}
+						class:active={page.url.pathname === `/app/${selectedProjectSlug}/activity`}
 					>
-						History
+						Activity
 					</a>
 				</nav>
 			</div>
@@ -172,7 +172,7 @@
 				<span class="project-label">Project</span>
 				<select
 					class="project-select"
-					value={selectedProjectId}
+					value={selectedProjectSlug}
 					onchange={handleProjectChange}
 					disabled={isLoadingProjects}
 				>
@@ -182,7 +182,7 @@
 						<option value="">No projects</option>
 					{:else}
 						{#each projects as project (project.id)}
-							<option value={project.id}>{project.name}</option>
+							<option value={project.slug}>{project.name}</option>
 						{/each}
 					{/if}
 				</select>
@@ -200,6 +200,10 @@
 				>
 					<PlusIcon size={16} />
 				</button>
+				<div class="header-divider"></div>
+				<a href="/docs" class="docs-link">
+					Docs
+				</a>
 				{#if isCloudMode}
 					<SignedIn>
 						<UserButton afterSignOutUrl="/" />
@@ -404,5 +408,27 @@
 	.sign-in-link:hover {
 		background: var(--background-emphasis);
 		border-color: var(--foreground-subtle);
+	}
+
+	.header-divider {
+		width: 1px;
+		height: 20px;
+		background: var(--border-default);
+		margin: 0 4px;
+	}
+
+	.docs-link {
+		padding: 6px 12px;
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--foreground-muted);
+		text-decoration: none;
+		border-radius: 6px;
+		transition: all 0.15s ease;
+	}
+
+	.docs-link:hover {
+		color: var(--foreground);
+		background: var(--background);
 	}
 </style>

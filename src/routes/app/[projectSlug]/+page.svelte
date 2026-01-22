@@ -2,23 +2,36 @@
 	import { subscribeToProject } from '$lib/api/client.js';
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
-	import { FeatureTree, FeatureDetail, CreateFeatureDialog, ArchiveFeatureDialog } from '$lib/components/features/index.js';
+	import { FeatureTree, FeatureDetail, FeatureSidebar, CreateFeatureDialog, ArchiveFeatureDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import { EmptyProjectGuide } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { getContext } from 'svelte';
 
 	// Get authenticated API client from context
 	const authApi = getAuthApiContext();
 
+	type Project = components['schemas']['Project'];
 	type Feature = components['schemas']['Feature'];
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 	type FeatureState = components['schemas']['FeatureState'];
+	type Version = components['schemas']['Version'];
+
+	interface ProjectsContext {
+		readonly projects: Project[];
+		readonly isLoading: boolean;
+		refresh: () => Promise<void>;
+	}
+
+	const projectsContext = getContext<ProjectsContext>('projects');
 
 	let featureTree = $state<FeatureTreeNode[]>([]);
 	let selectedFeature = $state<Feature | null>(null);
+	let versions = $state<Version[]>([]);
+	let gitRemote = $state<string | undefined>(undefined);
 	let isLoadingFeatures = $state(false);
 	let isLoadingFeature = $state(false);
 
@@ -36,7 +49,9 @@
 		parentId: string | null;
 	} | null>(null);
 
-	const projectId = $derived(page.params.projectId);
+	const projectSlug = $derived(page.params.projectSlug);
+	const project = $derived(projectsContext.projects.find((p) => p.slug === projectSlug));
+	const projectId = $derived(project?.id);
 	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
 
 	// Check if selected feature is a group (has children)
@@ -77,10 +92,12 @@
 	// Check if the project is empty (no features)
 	const isProjectEmpty = $derived(!isLoadingFeatures && featureTree.length === 0);
 
-	// Load features when project changes and auth is ready
+	// Load features, versions, and git remote when project changes and auth is ready
 	$effect(() => {
 		if (projectId && authApi.isReady()) {
 			loadFeatureTree(projectId);
+			loadVersions(projectId);
+			loadGitRemote(projectId);
 		}
 	});
 
@@ -130,7 +147,7 @@
 
 			// Auto-select first feature if none selected
 			if (!selectedFeatureId && data.length > 0) {
-				goto(`/app/${projectId}?feature=${data[0].id}`, { replaceState: true });
+				goto(`/app/${projectSlug}?feature=${data[0].id}`, { replaceState: true });
 			}
 		} finally {
 			isLoadingFeatures = false;
@@ -153,6 +170,57 @@
 		} finally {
 			isLoadingFeature = false;
 		}
+	}
+
+	async function loadVersions(projectId: string) {
+		try {
+			const api = await authApi.getClient();
+			const { data, error } = await api.GET('/projects/{id}/versions', {
+				params: { path: { id: projectId } }
+			});
+			if (error || !data) {
+				console.error('Failed to load versions:', error);
+				versions = [];
+				return;
+			}
+			versions = data;
+		} catch (e) {
+			console.error('Failed to load versions:', e);
+			versions = [];
+		}
+	}
+
+	async function loadGitRemote(projectId: string) {
+		try {
+			const api = await authApi.getClient();
+			const { data, error } = await api.GET('/projects/{id}/directories', {
+				params: { path: { id: projectId } }
+			});
+			if (error || !data) {
+				gitRemote = undefined;
+				return;
+			}
+			const primary = data.find((d) => d.is_primary);
+			gitRemote = primary?.git_remote ?? data.find((d) => d.git_remote)?.git_remote ?? undefined;
+		} catch (e) {
+			gitRemote = undefined;
+		}
+	}
+
+	async function handleVersionChange(featureId: string, versionId: string | null) {
+		const api = await authApi.getClient();
+		const { error } = await api.PUT('/features/{id}', {
+			params: { path: { id: featureId } },
+			body: { target_version_id: versionId }
+		});
+
+		if (error) {
+			console.error('Failed to update version:', error);
+			throw new Error('Failed to update version');
+		}
+
+		// Refresh the feature to update the UI
+		await loadFeature(featureId);
 	}
 
 	async function handleSaveFeature(
@@ -178,7 +246,7 @@
 	}
 
 	function handleSelectFeature(id: string) {
-		goto(`/app/${projectId}?feature=${id}`);
+		goto(`/app/${projectSlug}?feature=${id}`);
 	}
 
 	function handleResize(deltaX: number) {
@@ -210,7 +278,7 @@
 
 		// Refresh tree and select the new feature
 		await loadFeatureTree(projectId);
-		goto(`/app/${projectId}?feature=${data.id}`);
+		goto(`/app/${projectSlug}?feature=${data.id}`);
 	}
 
 	async function handleReparentFeature(featureId: string, newParentId: string | null) {
@@ -264,7 +332,7 @@
 
 		// 3. Refresh tree and select the new group
 		await loadFeatureTree(projectId);
-		goto(`/app/${projectId}?feature=${newGroup.id}`);
+		goto(`/app/${projectSlug}?feature=${newGroup.id}`);
 	}
 
 	function handleOpenArchiveDialog(id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) {
@@ -325,7 +393,7 @@
 		await loadFeatureTree(projectId);
 
 		if (selectedFeatureId === featureId) {
-			goto(`/app/${projectId}`);
+			goto(`/app/${projectSlug}`);
 		}
 	}
 
@@ -381,7 +449,7 @@
 
 		// Refresh and clear selection
 		await loadFeatureTree(projectId);
-		goto(`/app/${projectId}`);
+		goto(`/app/${projectSlug}`);
 
 		archiveTarget = null;
 	}
@@ -405,9 +473,26 @@
 			{:else if isLoadingFeature}
 				<div class="loading-state">Loading...</div>
 			{:else}
-				<FeatureDetail feature={selectedFeature} isGroup={selectedFeatureIsGroup} onSave={handleSaveFeature} onArchive={handleArchiveFromDetail} onRestore={handleRestoreFromDetail} onDelete={handleDeleteFromDetail} />
+				<FeatureDetail
+					feature={selectedFeature}
+					isGroup={selectedFeatureIsGroup}
+					{versions}
+					onSave={handleSaveFeature}
+					onVersionChange={handleVersionChange}
+					onArchive={handleArchiveFromDetail}
+					onRestore={handleRestoreFromDetail}
+					onDelete={handleDeleteFromDetail}
+				/>
 			{/if}
 		</section>
+
+		<FeatureSidebar
+			feature={selectedFeature}
+			featureTree={featureTree}
+			projectId={projectId!}
+			{projectSlug}
+			{gitRemote}
+		/>
 	</div>
 
 	<div class="page-legend">
@@ -472,6 +557,7 @@
 
 	.content {
 		flex: 1;
+		min-width: 0;
 		overflow: hidden;
 		background: var(--background);
 	}

@@ -2,6 +2,7 @@
 	interface Props {
 		showProposedOnly: boolean;
 		showAddButton?: boolean;
+		showFilterButton?: boolean;
 		onAddFeature?: () => void;
 		onToggleFilter: () => void;
 		onExpandAll: () => void;
@@ -11,6 +12,7 @@
 	let {
 		showProposedOnly,
 		showAddButton = true,
+		showFilterButton = true,
 		onAddFeature,
 		onToggleFilter,
 		onExpandAll,
@@ -26,23 +28,25 @@
 			</svg>
 		</button>
 	{/if}
-	<button
-		class="action-btn filter-btn"
-		class:active={showProposedOnly}
-		onclick={onToggleFilter}
-		title={showProposedOnly ? 'Show all features' : 'Show proposed only'}
-		type="button"
-	>
-		{#if showProposedOnly}
-			<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-				<path d="M8 2L14 8L8 14L2 8L8 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-			</svg>
-		{:else}
-			<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-				<path d="M8 2L14 8L8 14L2 8L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-			</svg>
-		{/if}
-	</button>
+	{#if showFilterButton}
+		<button
+			class="action-btn filter-btn"
+			class:active={showProposedOnly}
+			onclick={onToggleFilter}
+			title={showProposedOnly ? 'Show all features' : 'Show proposed only'}
+			type="button"
+		>
+			{#if showProposedOnly}
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+					<path d="M8 2L14 8L8 14L2 8L8 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+				</svg>
+			{:else}
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+					<path d="M8 2L14 8L8 14L2 8L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+				</svg>
+			{/if}
+		</button>
+	{/if}
 	<button class="action-btn" onclick={onExpandAll} title="Expand all" type="button">
 		<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
 			<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

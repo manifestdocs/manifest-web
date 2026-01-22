@@ -1,0 +1,204 @@
+<script lang="ts">
+	import { getAuthApiContext } from '$lib/api/auth-context.js';
+	import type { components } from '$lib/api/schema.js';
+	import { HistoryList } from '$lib/components/history/index.js';
+	import { FeatureTree } from '$lib/components/features/index.js';
+	import { findFeature, getDescendantIds } from '$lib/components/features/featureTreeUtils.js';
+	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
+	import { sidebarWidth } from '$lib/stores/index.js';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { getContext } from 'svelte';
+
+	// Get authenticated API client from context
+	const authApi = getAuthApiContext();
+
+	type Project = components['schemas']['Project'];
+	type ProjectHistoryEntry = components['schemas']['ProjectHistoryEntry'];
+	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
+
+	interface ProjectsContext {
+		readonly projects: Project[];
+		readonly isLoading: boolean;
+		refresh: () => Promise<void>;
+	}
+
+	const projectsContext = getContext<ProjectsContext>('projects');
+
+	let historyEntries = $state<ProjectHistoryEntry[]>([]);
+	let featureTree = $state<FeatureTreeNode[]>([]);
+	let isLoadingHistory = $state(false);
+	let isLoadingFeatures = $state(false);
+	let gitRemote = $state<string | undefined>(undefined);
+
+	const projectSlug = $derived(page.params.projectSlug);
+	const project = $derived(projectsContext.projects.find((p) => p.slug === projectSlug));
+	const projectId = $derived(project?.id);
+	const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
+
+	// Get selected feature node for filtering logic
+	const selectedNode = $derived(
+		selectedFeatureId ? findFeature(featureTree, selectedFeatureId) : null
+	);
+	const selectedIsRoot = $derived(selectedNode?.is_root ?? false);
+	const selectedIsGroup = $derived(selectedNode ? selectedNode.children.length > 0 : false);
+
+	// Filter history based on selected feature
+	const filteredHistory = $derived.by(() => {
+		// No selection or root feature → show all history
+		if (!selectedFeatureId || !selectedNode || selectedIsRoot) {
+			return historyEntries;
+		}
+
+		// Group feature → filter by feature + all descendants
+		if (selectedIsGroup) {
+			const descendantIds = getDescendantIds(selectedNode);
+			descendantIds.add(selectedFeatureId);
+			return historyEntries.filter((entry) => descendantIds.has(entry.feature_id));
+		}
+
+		// Leaf feature → filter by that feature only
+		return historyEntries.filter((entry) => entry.feature_id === selectedFeatureId);
+	});
+
+	// Load history, feature tree, and git remote when project changes and auth is ready
+	$effect(() => {
+		if (projectId && authApi.isReady()) {
+			loadHistory(projectId);
+			loadFeatureTree(projectId);
+			loadGitRemote(projectId);
+		}
+	});
+
+	async function loadHistory(projectId: string) {
+		isLoadingHistory = true;
+		try {
+			const api = await authApi.getClient();
+			const { data, error } = await api.GET('/projects/{id}/history', {
+				params: { path: { id: projectId }, query: { limit: 50 } }
+			});
+			if (error) {
+				console.error('Failed to load history:', error);
+				historyEntries = [];
+				return;
+			}
+			historyEntries = data;
+		} finally {
+			isLoadingHistory = false;
+		}
+	}
+
+	async function loadFeatureTree(projectId: string) {
+		isLoadingFeatures = true;
+		try {
+			const api = await authApi.getClient();
+			const { data, error } = await api.GET('/projects/{id}/features/tree', {
+				params: { path: { id: projectId } }
+			});
+			if (error || !data) {
+				console.error('Failed to load features:', error);
+				featureTree = [];
+				return;
+			}
+			featureTree = data;
+		} finally {
+			isLoadingFeatures = false;
+		}
+	}
+
+	async function loadGitRemote(projectId: string) {
+		const api = await authApi.getClient();
+		const { data, error } = await api.GET('/projects/{id}/directories', {
+			params: { path: { id: projectId } }
+		});
+		if (error || !data) {
+			gitRemote = undefined;
+			return;
+		}
+		// Use git_remote from primary directory, or first directory with git_remote
+		const primary = data.find((d) => d.is_primary);
+		gitRemote = primary?.git_remote ?? data.find((d) => d.git_remote)?.git_remote ?? undefined;
+	}
+
+	function handleSelectFeature(id: string) {
+		// Toggle selection: clicking already-selected feature deselects (clears filter)
+		if (id === selectedFeatureId) {
+			goto(`/app/${projectSlug}/activity`, { replaceState: true });
+		} else {
+			goto(`/app/${projectSlug}/activity?feature=${id}`, { replaceState: true });
+		}
+	}
+
+	function handleResize(deltaX: number) {
+		sidebarWidth.resize(deltaX);
+	}
+
+	function handleFeatureClick(featureId: string) {
+		// Navigate to tree view with feature selected
+		goto(`/app/${projectSlug}?feature=${featureId}`);
+	}
+</script>
+
+<div class="page-container">
+	<aside class="sidebar" style="width: {sidebarWidth.value}px">
+		{#if isLoadingFeatures && featureTree.length === 0}
+			<div class="loading-state">Loading features...</div>
+		{:else}
+			<FeatureTree
+				features={featureTree}
+				selectedId={selectedFeatureId}
+				projectId={projectId!}
+				featureColumnWidth={sidebarWidth.value}
+				showFilterButton={false}
+				onSelect={handleSelectFeature}
+			/>
+		{/if}
+	</aside>
+
+	<ResizeDivider onResize={handleResize} />
+
+	<section class="content">
+		<HistoryList
+			entries={filteredHistory}
+			isLoading={isLoadingHistory}
+			{gitRemote}
+			onFeatureClick={handleFeatureClick}
+		/>
+	</section>
+</div>
+
+<style>
+	.page-container {
+		display: flex;
+		flex: 1;
+		overflow: hidden;
+	}
+
+	.sidebar {
+		background: var(--background);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		flex-shrink: 0;
+		height: 100%;
+	}
+
+	.content {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		background: var(--background);
+		/* Align with tree content: header (36px) + subheader (27px) = 63px */
+		padding-top: 43px;
+		padding-left: 24px;
+	}
+
+	.loading-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: var(--foreground-subtle);
+		font-size: 14px;
+	}
+</style>

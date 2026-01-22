@@ -42,10 +42,10 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="dialog-overlay" />
 		<Dialog.Content class="dialog-content">
-			<Dialog.Title class="dialog-title">Archive {isGroup ? 'Group' : 'Feature'}</Dialog.Title>
+			<Dialog.Title class="dialog-title">Archive {isGroup ? 'Feature Set' : 'Feature'}</Dialog.Title>
 			<Dialog.Description class="dialog-description">
 				{#if isGroup && childCount > 0}
-					This group contains {childCount} child feature{childCount === 1 ? '' : 's'}. Choose how to handle them.
+					This feature set contains {childCount} child feature{childCount === 1 ? '' : 's'}. Choose how to handle them.
 				{:else}
 					Archive "{featureTitle}"? You can restore it later from the Archived state.
 				{/if}
@@ -63,7 +63,7 @@
 								onchange={() => (moveChildren = false)}
 								disabled={isArchiving}
 							/>
-							<span class="radio-label">Archive group and all {childCount} child{childCount === 1 ? '' : 'ren'}</span>
+							<span class="radio-label">Archive feature set and all {childCount} child{childCount === 1 ? '' : 'ren'}</span>
 						</label>
 						<label class="radio-option">
 							<input
@@ -74,7 +74,7 @@
 								onchange={() => (moveChildren = true)}
 								disabled={isArchiving}
 							/>
-							<span class="radio-label">Move {childCount} child{childCount === 1 ? '' : 'ren'} to parent and archive group</span>
+							<span class="radio-label">Move {childCount} child{childCount === 1 ? '' : 'ren'} to parent and archive feature set</span>
 						</label>
 					</div>
 				{/if}
