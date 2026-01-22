@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { code, language = '' }: { code: string; language?: string } = $props();
+    let { code, language = '', copyable = true }: { code: string; language?: string; copyable?: boolean } = $props();
 
     let copied = $state(false);
 
@@ -12,18 +12,20 @@
 
 <div class="code-block">
     <pre><code class={language ? `language-${language}` : ''}>{code}</code></pre>
-    <button class="copy-button" onclick={copyCode} aria-label="Copy code">
-        {#if copied}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-            </svg>
-        {:else}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-            </svg>
-        {/if}
-    </button>
+    {#if copyable}
+        <button class="copy-button" onclick={copyCode} aria-label="Copy code">
+            {#if copied}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+            {:else}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+            {/if}
+        </button>
+    {/if}
 </div>
 
 <style>
@@ -41,7 +43,7 @@
         overflow-x: auto;
         font-size: 0.875em;
         line-height: 1.5;
-        background: transparent;
+        background: rgba(255, 255, 255, 0.02);
     }
 
     code {

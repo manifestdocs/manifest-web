@@ -59,8 +59,7 @@
 <style>
     .admonition {
         margin: 1rem 0;
-        border-left: 4px solid;
-        background: var(--background-muted);
+        border: 1px solid var(--border-muted);
     }
 
     .admonition-title {
@@ -70,10 +69,15 @@
         padding: 0.625rem 1rem;
         font-size: 0.875rem;
         font-weight: 600;
+        border-bottom: 1px solid var(--border-muted);
+    }
+
+    .admonition-title span {
+        color: var(--foreground);
     }
 
     .admonition-content {
-        padding: 0 1rem 0.75rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
         color: var(--foreground-muted);
         line-height: 1.6;
@@ -92,7 +96,7 @@
 
     /* Note - blue */
     .admonition-note {
-        border-color: var(--accent-blue);
+        border-left: 7px solid var(--accent-blue);
     }
     .admonition-note .admonition-title {
         color: var(--accent-blue);
@@ -100,7 +104,7 @@
 
     /* Tip - green */
     .admonition-tip {
-        border-color: var(--accent-green);
+        border-left: 7px solid var(--accent-green);
     }
     .admonition-tip .admonition-title {
         color: var(--accent-green);
@@ -108,17 +112,17 @@
 
     /* Warning - orange */
     .admonition-warning {
-        border-color: var(--accent-orange);
+        border-left: 7px solid var(--accent-orange);
     }
     .admonition-warning .admonition-title {
         color: var(--accent-orange);
     }
 
-    /* Skill - purple */
+    /* Skill - Claude orange */
     .admonition-skill {
-        border-color: var(--accent-purple);
+        border-left: 7px solid #da7756;
     }
     .admonition-skill .admonition-title {
-        color: var(--accent-purple);
+        color: #da7756;
     }
 </style>

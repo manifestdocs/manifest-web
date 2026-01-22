@@ -40,7 +40,7 @@
         font-family: 'IBM Plex Mono', ui-monospace, monospace;
         font-size: 0.875em;
         color: var(--foreground);
-        background: var(--background);
+        background: rgba(255, 255, 255, 0.02);
         user-select: all;
         cursor: text;
         border: none;

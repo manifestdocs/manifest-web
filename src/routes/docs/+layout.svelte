@@ -62,6 +62,7 @@
     .docs-layout {
         min-height: 100vh;
         background: var(--background);
+        font-size: 110%;
     }
 
     /* Mobile header */
@@ -122,6 +123,7 @@
         z-index: 50;
         transform: translateX(-100%);
         transition: transform 0.2s ease;
+        font-size: 110%;
     }
 
     .sidebar-mobile.open {
@@ -141,6 +143,7 @@
         position: sticky;
         top: 0;
         height: 100vh;
+        font-size: 110%;
     }
 
     /* Main content */
@@ -150,7 +153,7 @@
     }
 
     .docs-content {
-        max-width: 48rem;
+        max-width: 50rem;
         padding: 4.25rem 1.5rem 4rem 5.5rem;
     }
 
@@ -196,12 +199,20 @@
         text-decoration: underline;
     }
 
-    .docs-content :global(ul),
+    .docs-content :global(ul) {
+        color: var(--foreground-muted);
+        line-height: 1.4;
+        padding-left: 2.5rem;
+        margin: -0.5rem 0 1rem;
+        list-style-type: disc;
+    }
+
     .docs-content :global(ol) {
         color: var(--foreground-muted);
-        line-height: 1.7;
-        padding-left: 1.5rem;
-        margin: 0 0 1rem;
+        line-height: 1.4;
+        padding-left: 2.5rem;
+        margin: -0.5rem 0 1rem;
+        list-style-type: decimal;
     }
 
     .docs-content :global(li) {
