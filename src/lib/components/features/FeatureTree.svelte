@@ -1,26 +1,70 @@
 <script lang="ts">
 	import type { components } from '$lib/api/schema.js';
+	import type { Snippet } from 'svelte';
 	import FeatureRow from './FeatureRow.svelte';
 	import FeatureDragPreview from './FeatureDragPreview.svelte';
 	import FeatureContextMenu from './FeatureContextMenu.svelte';
 	import CreateGroupDialog from './CreateGroupDialog.svelte';
+	import FeatureTreeActions from './FeatureTreeActions.svelte';
 	import { featureExpansion } from '$lib/stores/index.js';
+	import {
+		findFeature,
+		getDescendantIds,
+		filterProposed,
+		computeFeatureVersion,
+		sortFeatures
+	} from './featureTreeUtils.js';
 
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
+	type GroupMetadata = { hasFutureWork: boolean };
+
+	// Row context passed to rowExtras snippet
+	export type RowContext = {
+		feature: FeatureTreeNode;
+		depth: number;
+		isExpanded: boolean;
+		hasChildren: boolean;
+		isGroup: boolean;
+		isLeaf: boolean;
+		isRoot: boolean;
+		groupMeta: GroupMetadata | null;
+	};
 
 	interface Props {
 		features: FeatureTreeNode[];
 		selectedId: string | null;
 		projectId: string;
 		featureColumnWidth?: number;
+		showHeader?: boolean;
+		scrollable?: boolean;
+		class?: string;
+		rowExtras?: Snippet<[RowContext]>;
 		onSelect: (id: string) => void;
 		onAddFeature?: (parentId: string | null) => void;
 		onReparent?: (featureId: string, newParentId: string | null) => void;
 		onCreateGroup?: (title: string, childIds: [string, string], parentId: string | null) => Promise<void>;
 		onArchiveFeature?: (id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) => void;
+		onRestoreFeature?: (id: string) => Promise<void>;
+		onDeleteFeature?: (id: string) => Promise<void>;
 	}
 
-	let { features, selectedId, projectId, featureColumnWidth = 350, onSelect, onAddFeature, onReparent, onCreateGroup, onArchiveFeature }: Props = $props();
+	let {
+		features,
+		selectedId,
+		projectId,
+		featureColumnWidth = 350,
+		showHeader = true,
+		scrollable = true,
+		class: className = '',
+		rowExtras,
+		onSelect,
+		onAddFeature,
+		onReparent,
+		onCreateGroup,
+		onArchiveFeature,
+		onRestoreFeature,
+		onDeleteFeature
+	}: Props = $props();
 
 	// Layout constant (matches CSS)
 	const ROW_HEIGHT = 25;
@@ -46,6 +90,10 @@
 	let containerHeight = $state(0);
 	let initialized = $state(false);
 	let previousFeatureVersion = $state(0);
+	let showProposedOnly = $state(false);
+
+	// Apply filter if showProposedOnly is enabled
+	const displayFeatures = $derived(showProposedOnly ? filterProposed(features) : features);
 
 	// Context menu state
 	let contextMenuOpen = $state(false);
@@ -72,7 +120,7 @@
 				}
 			}
 		}
-		traverse(features, null);
+		traverse(displayFeatures, null);
 		return positions;
 	});
 
@@ -112,18 +160,6 @@
 		}
 	});
 
-	// Simple version computation based on feature states and structure
-	function computeFeatureVersion(nodes: FeatureTreeNode[]): number {
-		let hash = 0;
-		function traverse(n: FeatureTreeNode) {
-			hash = (hash * 31 + n.state.charCodeAt(0)) >>> 0;
-			hash = (hash * 31 + n.children.length) >>> 0;
-			for (const child of n.children) traverse(child);
-		}
-		for (const node of nodes) traverse(node);
-		return hash;
-	}
-
 	function handleToggle(id: string) {
 		expandedIds = featureExpansion.toggle(id, expandedIds);
 	}
@@ -138,29 +174,6 @@
 
 	function handleAddFeature() {
 		onAddFeature?.(selectedId);
-	}
-
-	// Find a feature by ID in the tree
-	function findFeature(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
-		for (const node of nodes) {
-			if (node.id === id) return node;
-			const found = findFeature(node.children, id);
-			if (found) return found;
-		}
-		return null;
-	}
-
-	// Get all descendant IDs of a feature
-	function getDescendantIds(node: FeatureTreeNode): Set<string> {
-		const ids = new Set<string>();
-		function collect(n: FeatureTreeNode) {
-			for (const child of n.children) {
-				ids.add(child.id);
-				collect(child);
-			}
-		}
-		collect(node);
-		return ids;
 	}
 
 	// Check if a feature is a valid drop target
@@ -308,6 +321,16 @@
 		);
 	}
 
+	function handleContextMenuRestore() {
+		if (!contextMenuFeature || !onRestoreFeature) return;
+		onRestoreFeature(contextMenuFeature.id);
+	}
+
+	function handleContextMenuDelete() {
+		if (!contextMenuFeature || !onDeleteFeature) return;
+		onDeleteFeature(contextMenuFeature.id);
+	}
+
 	function handleTreeContextMenu(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
 			e.preventDefault();
@@ -318,61 +341,53 @@
 		}
 	}
 
-	// Sort features: groups alphabetically first, then leaves by state
-	const stateOrder: Record<string, number> = {
-		implemented: 0,
-		in_progress: 1,
-		proposed: 2,
-		archived: 3
-	};
+	// Export state and functions for parent components to use
+	export function getExpandedIds(): Set<string> {
+		return expandedIds;
+	}
 
-	function sortFeatures(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
-		const groups = nodes.filter(n => n.children.length > 0);
-		const leaves = nodes.filter(n => n.children.length === 0);
+	export function setExpandedIds(ids: Set<string>): void {
+		expandedIds = ids;
+	}
 
-		groups.sort((a, b) => a.title.localeCompare(b.title));
-		leaves.sort((a, b) => {
-			const aOrder = stateOrder[a.state] ?? 99;
-			const bOrder = stateOrder[b.state] ?? 99;
-			if (aOrder !== bOrder) return aOrder - bOrder;
-			if (a.priority !== b.priority) return a.priority - b.priority;
-			return a.title.localeCompare(b.title);
-		});
+	export function isShowingProposedOnly(): boolean {
+		return showProposedOnly;
+	}
 
-		return [...groups, ...leaves];
+	export function setShowProposedOnly(value: boolean): void {
+		showProposedOnly = value;
+	}
+
+	// Export methods for external control
+	export { expandAll, collapseAll, showProposedOnly };
+
+	export function toggleFilter(): void {
+		showProposedOnly = !showProposedOnly;
 	}
 </script>
 
-<div class="feature-tree" style="--feature-col-width: {featureColumnWidth}px">
-	<div class="tree-header">
-		<span class="tree-title">Feature Tree</span>
-	</div>
-
-	<div class="tree-subheader">
-		<div class="tree-actions">
-			{#if onAddFeature}
-				<button class="action-btn" onclick={handleAddFeature} title="Add feature" type="button">
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-					</svg>
-				</button>
-			{/if}
-			<button class="action-btn" onclick={expandAll} title="Expand all" type="button">
-				<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-					<path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-				</svg>
-			</button>
-			<button class="action-btn" onclick={collapseAll} title="Collapse all" type="button">
-				<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-					<path d="M4 10L8 6L12 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-				</svg>
-			</button>
+<div class="feature-tree {className}" style="--feature-col-width: {featureColumnWidth}px">
+	{#if showHeader}
+		<div class="tree-header">
+			<span class="tree-title">Feature Tree</span>
 		</div>
-	</div>
+
+		<div class="tree-subheader">
+			<FeatureTreeActions
+				{showProposedOnly}
+				showAddButton={!!onAddFeature}
+				onAddFeature={handleAddFeature}
+				onToggleFilter={() => (showProposedOnly = !showProposedOnly)}
+				onExpandAll={expandAll}
+				onCollapseAll={collapseAll}
+			/>
+		</div>
+	{/if}
 
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="tree-content"
+		class:scrollable
 		bind:this={treeContentRef}
 		oncontextmenu={handleTreeContextMenu}
 		onpointermove={handlePointerMove}
@@ -382,7 +397,7 @@
 		{#if features.length === 0}
 			<div class="empty-state">No features yet</div>
 		{:else}
-			{#each sortFeatures(features) as node (node.id)}
+			{#each sortFeatures(displayFeatures) as node (node.id)}
 				{@render renderNode(node, 0)}
 			{/each}
 		{/if}
@@ -393,15 +408,17 @@
 	{@const hasChildren = feature.children.length > 0}
 	{@const isRoot = feature.is_root ?? false}
 	{@const isLeaf = !hasChildren && !isRoot}
-	{@const groupMeta = hasChildren ? featureExpansion.getGroupMetadata(feature) : null}
+	{@const isGroup = hasChildren || isRoot}
+	{@const groupMeta = isGroup ? featureExpansion.getGroupMetadata(feature) : null}
 	{@const isDragging = dragState?.featureId === feature.id}
 	{@const isDropHovered = dropTarget?.id === feature.id && !dropTarget?.isLeafTarget}
 	{@const isLeafDropTarget = dropTarget?.id === feature.id && dropTarget?.isLeafTarget}
 	{@const isExpanded = isRoot || expandedIds.has(feature.id)}
+	{@const rowContext: RowContext = { feature, depth, isExpanded, hasChildren, isGroup, isLeaf, isRoot, groupMeta }}
 
 	<div
 		class="tree-row"
-		class:is-group={hasChildren || isRoot}
+		class:is-group={isGroup}
 		class:is-leaf={isLeaf}
 		class:drop-hover={isDropHovered}
 		class:leaf-drop-hover={isLeafDropTarget}
@@ -422,9 +439,12 @@
 			onContextMenu={handleRowContextMenu}
 			onDragStart={handleDragStart}
 		/>
+		{#if rowExtras}
+			{@render rowExtras(rowContext)}
+		{/if}
 	</div>
 
-	{#if (hasChildren || isRoot) && isExpanded}
+	{#if isGroup && isExpanded}
 		{#each sortFeatures(feature.children) as child (child.id)}
 			{@render renderNode(child, depth + 1)}
 		{/each}
@@ -441,9 +461,12 @@
 	y={contextMenuY}
 	featureTitle={contextMenuFeatureTitle}
 	isRoot={contextMenuFeatureIsRoot}
+	isArchived={contextMenuFeature?.state === 'archived'}
 	onClose={handleContextMenuClose}
 	onAddChild={handleContextMenuAddChild}
 	onArchive={onArchiveFeature ? handleContextMenuArchive : undefined}
+	onRestore={onRestoreFeature ? handleContextMenuRestore : undefined}
+	onDelete={onDeleteFeature ? handleContextMenuDelete : undefined}
 />
 
 {#if pendingGroupData}
@@ -460,8 +483,8 @@
 
 <style>
 	.feature-tree {
-		display: grid;
-		grid-template-rows: auto auto 1fr;
+		display: flex;
+		flex-direction: column;
 		flex: 1;
 		min-height: 0;
 		overflow: hidden;
@@ -494,37 +517,16 @@
 		border-bottom: 1px solid var(--border-default);
 	}
 
-	.tree-actions {
-		display: flex;
-		gap: 4px;
-	}
-
-	.action-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		padding: 0;
-		border: none;
-		background: transparent;
-		color: var(--foreground-subtle);
-		cursor: pointer;
-		border-radius: 4px;
-		transition: all 0.1s ease;
-	}
-
-	.action-btn:hover {
-		background: var(--background-muted);
-		color: var(--foreground);
-	}
-
 	.tree-content {
 		min-height: 0;
-		overflow-y: auto;
-		overflow-x: hidden;
 		display: flex;
 		flex-direction: column;
+		flex: 1;
+	}
+
+	.tree-content.scrollable {
+		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	.tree-row {

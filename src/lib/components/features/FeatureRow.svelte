@@ -96,7 +96,7 @@
 
 	<span class="feature-title">{feature.title}</span>
 
-	{#if hasChildren && hasFutureWork}
+	{#if hasChildren && !isRoot && hasFutureWork}
 		<span class="future-work-indicator" title="Has incomplete work">
 			<svg width="10" height="10" viewBox="0 0 16 16" fill="none">
 				<path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
