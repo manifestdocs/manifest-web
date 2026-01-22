@@ -3,6 +3,7 @@
 	import { setAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { setContext } from 'svelte';
 	import headerLogotype from '$lib/assets/manifest_header_logotype.png';
@@ -145,14 +146,14 @@
 				<nav class="view-nav">
 					<div class="nav-group">
 						<a
-							href="/app/{selectedProjectSlug}{featureQueryParam}"
+							href="{base}/app/{selectedProjectSlug}{featureQueryParam}"
 							class="nav-link"
 							class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
 						>
 							Edit
 						</a>
 						<a
-							href="/app/{selectedProjectSlug}/versions{featureQueryParam}"
+							href="{base}/app/{selectedProjectSlug}/versions{featureQueryParam}"
 							class="nav-link"
 							class:active={page.url.pathname === `/app/${selectedProjectSlug}/versions`}
 						>
@@ -160,7 +161,7 @@
 						</a>
 					</div>
 					<a
-						href="/app/{selectedProjectSlug}/activity"
+						href="{base}/app/{selectedProjectSlug}/activity"
 						class="nav-link"
 						class:active={page.url.pathname === `/app/${selectedProjectSlug}/activity`}
 					>
@@ -201,7 +202,7 @@
 					<PlusIcon size={16} />
 				</button>
 				<div class="header-divider"></div>
-				<a href="/docs" class="docs-link">
+				<a href="{base}/docs" class="docs-link">
 					Docs
 				</a>
 				{#if isCloudMode}

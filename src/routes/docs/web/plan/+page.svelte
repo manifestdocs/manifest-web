@@ -1,3 +1,7 @@
+<script lang="ts">
+    import { base } from '$app/paths';
+</script>
+
 <h1>Plan View</h1>
 
 <p>Version matrix for release planning.</p>
@@ -47,4 +51,4 @@
     Clicking it closes out the version and shifts Now to the next unreleased version.
 </p>
 
-<p>See <a href="/docs/cli/versions">Product versions</a> for the full workflow.</p>
+<p>See <a href="{base}/docs/cli/versions">Product versions</a> for the full workflow.</p>

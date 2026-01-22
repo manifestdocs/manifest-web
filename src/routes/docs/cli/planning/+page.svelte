@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { base } from '$app/paths';
     import { Admonition, CodeBlock } from '$lib/components/docs';
 </script>
 
@@ -89,4 +90,4 @@ Legend: ◇ proposed  ○ in_progress  ● implemented  ✗ deprecated`} />
 
 <h2>Next step</h2>
 
-<p>Continue to <a href="/docs/cli/implementing">Implementing features</a>.</p>
+<p>Continue to <a href="{base}/docs/cli/implementing">Implementing features</a>.</p>

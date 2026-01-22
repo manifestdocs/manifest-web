@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { base } from "$app/paths";
     import {
         Admonition,
         CodeBlock,
@@ -83,4 +84,4 @@
 
 <h2>Next step</h2>
 
-<p>Continue to <a href="/docs/cli/initialize">Initialize a project</a>.</p>
+<p>Continue to <a href="{base}/docs/cli/initialize">Initialize a project</a>.</p>

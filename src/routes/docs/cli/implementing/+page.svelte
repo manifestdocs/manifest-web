@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { base } from '$app/paths';
     import { CodeBlock } from '$lib/components/docs';
     import { StateIcon } from '$lib/components/icons';
 </script>
@@ -94,7 +95,7 @@ History:
 
 <h2>Next step</h2>
 
-<p>Continue to <a href="/docs/cli/versions">Product versions</a>.</p>
+<p>Continue to <a href="{base}/docs/cli/versions">Product versions</a>.</p>
 
 <style>
     .lifecycle {

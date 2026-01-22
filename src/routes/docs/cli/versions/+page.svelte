@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { base } from '$app/paths';
     import { Admonition, CodeBlock } from '$lib/components/docs';
 </script>
 
@@ -146,4 +147,4 @@ Unversioned
 
 <h2>Next step</h2>
 
-<p>Continue to <a href="/docs/web">Web interface</a>.</p>
+<p>Continue to <a href="{base}/docs/web">Web interface</a>.</p>

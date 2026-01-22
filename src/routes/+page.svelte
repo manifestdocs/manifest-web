@@ -1,6 +1,7 @@
 <script lang="ts">
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
+    import { base } from "$app/paths";
     import { PUBLIC_MANIFEST_MODE } from "$env/static/public";
     import logotype from "$lib/assets/logotype.png";
     import illustrationSpecRip from "$lib/assets/illustration-spec-rip.png";
@@ -9,7 +10,7 @@
 
     // Local users skip marketing, go straight to app
     if (browser && PUBLIC_MANIFEST_MODE === "local") {
-        goto("/app", { replaceState: true });
+        goto(`${base}/app`, { replaceState: true });
     }
 
     const brewCommand = "brew install rocket-tycoon/tap/manifest";
@@ -37,7 +38,7 @@
 
 <div class="marketing-page">
     <nav class="top-nav">
-        <a href="/docs/" class="nav-button nav-button--docs">Read the Docs</a>
+        <a href="{base}/docs/" class="nav-button nav-button--docs">Read the Docs</a>
     </nav>
     <main>
         <section id="top" class="hero">
@@ -250,7 +251,7 @@
                     </h3>
                     <p>
                         MCP server lets any agent read and update features.
-                        <a href="/docs/getting-started"
+                        <a href="{base}/docs/getting-started"
                             >Add the Claude Code plugin</a
                         >
                         for slash commands and enhanced workflows.
@@ -260,7 +261,7 @@
         </section>
 
         <section class="cta-section">
-            <a class="cta-button cta-button--secondary" href="/docs/"
+            <a class="cta-button cta-button--secondary" href="{base}/docs/"
                 >Read the Docs</a
             >
             <button class="cta-button" onclick={scrollToInstall}

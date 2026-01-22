@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { base } from '$app/paths';
     import { CodeBlock } from '$lib/components/docs';
 </script>
 
@@ -33,4 +34,4 @@
 
 <h2>Next step</h2>
 
-<p>Continue to <a href="/docs/cli/planning">Planning features</a>.</p>
+<p>Continue to <a href="{base}/docs/cli/planning">Planning features</a>.</p>

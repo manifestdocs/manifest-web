@@ -1,3 +1,7 @@
+<script lang="ts">
+    import { base } from '$app/paths';
+</script>
+
 <h1>Web Interface</h1>
 
 <p>Managing projects and features through the browser.</p>
@@ -18,7 +22,7 @@
 
 <p>
     The web interface is available at <a href="http://localhost:17010" target="_blank" rel="noopener">http://localhost:17010</a>.
-    If it's not running, see <a href="/docs/getting-started">Install</a>.
+    If it's not running, see <a href="{base}/docs/getting-started">Install</a>.
 </p>
 
 <h2>Navigation</h2>
@@ -27,7 +31,7 @@
 
 <ul>
     <li><strong>Project selector:</strong> Dropdown to switch between projects</li>
-    <li><strong><a href="/docs/web/edit">Edit</a>:</strong> Feature tree and detail editing (default view)</li>
-    <li><strong><a href="/docs/web/plan">Plan</a>:</strong> Version matrix for release planning</li>
-    <li><strong><a href="/docs/web/history">History</a>:</strong> Timeline of implementation work</li>
+    <li><strong><a href="{base}/docs/web/edit">Edit</a>:</strong> Feature tree and detail editing (default view)</li>
+    <li><strong><a href="{base}/docs/web/plan">Plan</a>:</strong> Version matrix for release planning</li>
+    <li><strong><a href="{base}/docs/web/history">History</a>:</strong> Timeline of implementation work</li>
 </ul>
