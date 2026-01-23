@@ -93,6 +93,7 @@
 	let initialized = $state(false);
 	let previousFeatureVersion = $state(0);
 	let showProposedOnly = $state(false);
+	let lastExpandedToId = $state<string | null>(null);
 
 	// Apply filter if showProposedOnly is enabled
 	const displayFeatures = $derived(showProposedOnly ? filterProposed(features) : features);
@@ -160,6 +161,18 @@
 			expandedIds = featureExpansion.handleTreeUpdate(features, expandedIds);
 			previousFeatureVersion = currentVersion;
 		}
+	});
+
+	// Ensure selected feature is visible by expanding its ancestors (only when selection changes)
+	$effect(() => {
+		if (!initialized || !selectedId || features.length === 0) return;
+		if (selectedId === lastExpandedToId) return;
+
+		const newExpanded = featureExpansion.expandToFeature(features, selectedId, expandedIds);
+		if (newExpanded && newExpanded !== expandedIds) {
+			expandedIds = newExpanded;
+		}
+		lastExpandedToId = selectedId;
 	});
 
 	function handleToggle(id: string) {

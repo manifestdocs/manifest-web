@@ -93,6 +93,19 @@ function getGroupsWithIncompleteWork(nodes: FeatureTreeNode[]): string[] {
 	return ids;
 }
 
+function getAncestorIds(nodes: FeatureTreeNode[], targetId: string, ancestors: string[] = []): string[] | null {
+	for (const node of nodes) {
+		if (node.id === targetId) {
+			return ancestors;
+		}
+		if (node.children.length > 0) {
+			const found = getAncestorIds(node.children, targetId, [...ancestors, node.id]);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
 // Current project state - shared across all views
 let currentProjectId: string | null = null;
 let currentExpandedIds: Set<string> = new Set();
@@ -225,6 +238,38 @@ function createFeatureExpansionStore() {
 			}
 
 			return new Set();
+		},
+
+		/**
+		 * Expand to reveal a specific feature by expanding all its ancestors.
+		 * Returns the updated expanded set, or null if the feature wasn't found.
+		 */
+		expandToFeature(features: FeatureTreeNode[], featureId: string, currentExpanded: Set<string>): Set<string> | null {
+			const ancestorIds = getAncestorIds(features, featureId);
+			if (!ancestorIds) return null;
+
+			// Check if all ancestors are already expanded
+			const allExpanded = ancestorIds.every(id => currentExpanded.has(id));
+			if (allExpanded) return currentExpanded;
+
+			// Add all ancestors to expanded set
+			const newExpanded = new Set(currentExpanded);
+			for (const id of ancestorIds) {
+				newExpanded.add(id);
+			}
+
+			// Update state and persist
+			currentExpandedIds = newExpanded;
+
+			if (currentProjectId) {
+				saveToStorage(currentProjectId, {
+					expandedIds: [...newExpanded],
+					hasUserInteracted,
+					version: STORAGE_VERSION
+				});
+			}
+
+			return newExpanded;
 		},
 
 		/**
