@@ -171,6 +171,7 @@
 	.page-container {
 		display: flex;
 		flex: 1;
+		min-height: 0;
 		overflow: hidden;
 	}
 
@@ -178,14 +179,15 @@
 		background: var(--background);
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
 		flex-shrink: 0;
-		height: 100%;
+		min-height: 0;
+		overflow: hidden;
 	}
 
 	.content {
 		flex: 1;
 		min-width: 0;
+		min-height: 0;
 		overflow: hidden;
 		background: var(--background);
 		/* Align with tree content: header (36px) + subheader (27px) = 63px */

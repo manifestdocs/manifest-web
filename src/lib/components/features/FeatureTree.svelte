@@ -523,10 +523,10 @@
 	}
 
 	.tree-content {
-		min-height: 0;
 		display: flex;
 		flex-direction: column;
 		flex: 1;
+		min-height: 0;
 	}
 
 	.tree-content.scrollable {

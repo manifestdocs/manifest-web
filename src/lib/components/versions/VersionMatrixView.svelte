@@ -401,7 +401,8 @@
 	.matrix-container {
 		display: flex;
 		flex-direction: column;
-		height: 100%;
+		flex: 1;
+		min-height: 0;
 		overflow: hidden;
 		max-width: 100%;
 		position: relative;
@@ -593,6 +594,7 @@
 
 	.matrix-body {
 		flex: 1;
+		min-height: 0;
 		overflow-y: auto;
 		overflow-x: hidden;
 		display: grid;
@@ -706,6 +708,7 @@
 
 	.matrix-legend {
 		display: flex;
+		flex-shrink: 0;
 		gap: 16px;
 		padding: 8px 12px;
 		border-top: 1px solid var(--border-default);

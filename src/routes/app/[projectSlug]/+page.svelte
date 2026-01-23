@@ -537,12 +537,14 @@
 		display: flex;
 		flex-direction: column;
 		flex: 1;
+		min-height: 0;
 		overflow: hidden;
 	}
 
 	.page-content {
 		display: flex;
 		flex: 1;
+		min-height: 0;
 		overflow: hidden;
 	}
 
@@ -550,14 +552,15 @@
 		background: var(--background);
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
 		flex-shrink: 0;
-		height: 100%;
+		min-height: 0;
+		overflow: hidden;
 	}
 
 	.content {
 		flex: 1;
 		min-width: 0;
+		min-height: 0;
 		overflow: hidden;
 		background: var(--background);
 	}
@@ -573,6 +576,7 @@
 
 	.page-legend {
 		display: flex;
+		flex-shrink: 0;
 		gap: 16px;
 		padding: 8px 12px;
 		border-top: 1px solid var(--border-default);
