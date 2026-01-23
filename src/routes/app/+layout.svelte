@@ -401,8 +401,9 @@
 	.search-btn {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		padding: 6px 10px;
+		gap: 8px;
+		padding: 6px 12px;
+		min-width: 180px;
 		font-size: 13px;
 		color: var(--foreground-muted);
 		background: var(--background);
@@ -418,6 +419,7 @@
 	}
 
 	.search-label {
+		flex: 1;
 		font-weight: 500;
 	}
 

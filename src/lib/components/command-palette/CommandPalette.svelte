@@ -23,6 +23,7 @@
 	let isLoading = $state(false);
 	let selectedIndex = $state(0);
 	let inputRef = $state<HTMLInputElement | null>(null);
+	let proposedOnly = $state(false);
 
 	// Build a map of feature ID to parent path (breadcrumbs)
 	const featurePathMap = $derived.by(() => {
@@ -39,13 +40,15 @@
 		return map;
 	});
 
-	// Results with breadcrumb paths attached
+	// Results with breadcrumb paths attached, optionally filtered
 	type ResultWithPath = FeatureSummary & { breadcrumbs: string[] };
 	const resultsWithPaths = $derived<ResultWithPath[]>(
-		results.map((result) => ({
-			...result,
-			breadcrumbs: featurePathMap.get(result.id) || []
-		}))
+		results
+			.filter((result) => !proposedOnly || result.state === 'proposed')
+			.map((result) => ({
+				...result,
+				breadcrumbs: featurePathMap.get(result.id) || []
+			}))
 	);
 
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -93,9 +96,16 @@
 			query = '';
 			results = [];
 			selectedIndex = 0;
+			proposedOnly = false;
 			// Focus input after dialog animation
 			setTimeout(() => inputRef?.focus(), 50);
 		}
+	});
+
+	// Reset selection when filter changes
+	$effect(() => {
+		proposedOnly;
+		selectedIndex = 0;
 	});
 
 	function navigateToFeature(featureId: string) {
@@ -145,6 +155,22 @@
 					bind:value={query}
 					aria-label="Search features"
 				/>
+				<button
+					type="button"
+					class="filter-btn"
+					class:active={proposedOnly}
+					onclick={() => (proposedOnly = !proposedOnly)}
+					title={proposedOnly ? 'Show all features' : 'Show proposed only'}
+				>
+					<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+						{#if proposedOnly}
+							<path d="M8 2L14 8L8 14L2 8L8 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+						{:else}
+							<path d="M8 2L14 8L8 14L2 8L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+						{/if}
+					</svg>
+					<span class="filter-label">Proposed only</span>
+				</button>
 			</div>
 
 			<div class="palette-results">
@@ -196,37 +222,79 @@
 		z-index: 51;
 		width: 100%;
 		max-width: 560px;
-		background: var(--background);
+		background: var(--background-subtle);
 		border: 1px solid var(--border-default);
-		border-radius: 12px;
+		border-radius: 8px;
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 		animation: slideIn 0.15s ease;
 		overflow: hidden;
 	}
 
 	.palette-input-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 10px;
 		padding: 12px 16px;
+		background: var(--background-muted);
 		border-bottom: 1px solid var(--border-default);
 	}
 
 	.palette-input {
-		width: 100%;
-		padding: 8px 0;
-		font-size: 15px;
-		background: transparent;
-		border: none;
+		flex: 1;
+		padding: 8px 12px;
+		font-size: 14px;
+		font-family: var(--font-mono, monospace);
+		background: var(--background-subtle);
+		border: 1px solid var(--border-default);
+		border-radius: 6px;
 		color: var(--foreground);
 		outline: none;
+		transition: border-color 0.15s ease;
+	}
+
+	.palette-input:focus {
+		border-color: var(--accent-blue);
 	}
 
 	.palette-input::placeholder {
+		color: var(--foreground-subtle);
+	}
+
+	.filter-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 10px;
+		font-size: 12px;
 		color: var(--foreground-muted);
+		background: transparent;
+		border: 1px solid var(--border-default);
+		border-radius: 4px;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		white-space: nowrap;
+	}
+
+	.filter-btn:hover {
+		color: var(--foreground);
+		border-color: var(--foreground-subtle);
+	}
+
+	.filter-btn.active {
+		color: var(--state-proposed);
+		border-color: var(--state-proposed);
+		background: rgba(136, 136, 136, 0.1);
+	}
+
+	.filter-label {
+		font-weight: 500;
 	}
 
 	.palette-results {
 		max-height: 320px;
 		overflow-y: auto;
 		padding: 8px;
+		background: var(--background-subtle);
 	}
 
 	.palette-empty {
