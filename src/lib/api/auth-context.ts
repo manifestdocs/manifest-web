@@ -1,6 +1,6 @@
 /**
  * Auth-aware API context for use throughout the app.
- * Provides an authenticated API client using Clerk session tokens.
+ * Provides an authenticated API client using session tokens.
  */
 
 import { getContext, setContext } from 'svelte';
@@ -20,7 +20,7 @@ export interface AuthApiContext {
 	getClient: () => Promise<ApiClient>;
 
 	/**
-	 * Check if auth is ready (Clerk has loaded).
+	 * Check if auth is ready.
 	 * Use this to gate API calls until auth is available.
 	 */
 	isReady: () => boolean;
