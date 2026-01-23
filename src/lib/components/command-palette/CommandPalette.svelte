@@ -347,6 +347,8 @@
 		width: 14px;
 		height: 20px;
 		flex-shrink: 0;
+		position: relative;
+		top: 1px;
 	}
 
 	.item-content {
