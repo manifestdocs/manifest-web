@@ -3,7 +3,7 @@
 	import { api } from '$lib/api/client.js';
 	import { goto } from '$app/navigation';
 	import type { components } from '$lib/api/schema.js';
-	import { StateIcon } from '$lib/components/icons/index.js';
+	import { StateIcon, GroupIcon } from '$lib/components/icons/index.js';
 
 	type FeatureSummary = components['schemas']['FeatureSummary'];
 	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
@@ -25,13 +25,14 @@
 	let inputRef = $state<HTMLInputElement | null>(null);
 	let proposedOnly = $state(false);
 
-	// Build a map of feature ID to parent path (breadcrumbs)
-	const featurePathMap = $derived.by(() => {
-		const map = new Map<string, string[]>();
+	// Build a map of feature ID to parent path (breadcrumbs) and whether it's a group
+	const featureMetaMap = $derived.by(() => {
+		const map = new Map<string, { breadcrumbs: string[]; isGroup: boolean }>();
 
 		function buildPaths(nodes: FeatureTreeNode[], path: string[] = []) {
 			for (const node of nodes) {
-				map.set(node.id, path);
+				const isGroup = node.children.length > 0;
+				map.set(node.id, { breadcrumbs: path, isGroup });
 				buildPaths(node.children, [...path, node.title]);
 			}
 		}
@@ -41,14 +42,18 @@
 	});
 
 	// Results with breadcrumb paths attached, optionally filtered
-	type ResultWithPath = FeatureSummary & { breadcrumbs: string[] };
-	const resultsWithPaths = $derived<ResultWithPath[]>(
+	type ResultWithMeta = FeatureSummary & { breadcrumbs: string[]; isGroup: boolean };
+	const resultsWithMeta = $derived<ResultWithMeta[]>(
 		results
 			.filter((result) => !proposedOnly || result.state === 'proposed')
-			.map((result) => ({
-				...result,
-				breadcrumbs: featurePathMap.get(result.id) || []
-			}))
+			.map((result) => {
+				const meta = featureMetaMap.get(result.id);
+				return {
+					...result,
+					breadcrumbs: meta?.breadcrumbs || [],
+					isGroup: meta?.isGroup || false
+				};
+			})
 	);
 
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -114,20 +119,20 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (resultsWithPaths.length === 0) return;
+		if (resultsWithMeta.length === 0) return;
 
 		switch (e.key) {
 			case 'ArrowDown':
 				e.preventDefault();
-				selectedIndex = (selectedIndex + 1) % resultsWithPaths.length;
+				selectedIndex = (selectedIndex + 1) % resultsWithMeta.length;
 				break;
 			case 'ArrowUp':
 				e.preventDefault();
-				selectedIndex = (selectedIndex - 1 + resultsWithPaths.length) % resultsWithPaths.length;
+				selectedIndex = (selectedIndex - 1 + resultsWithMeta.length) % resultsWithMeta.length;
 				break;
 			case 'Enter':
 				e.preventDefault();
-				const selected = resultsWithPaths[selectedIndex];
+				const selected = resultsWithMeta[selectedIndex];
 				if (selected) {
 					navigateToFeature(selected.id);
 				}
@@ -176,21 +181,32 @@
 			<div class="palette-results">
 				{#if isLoading}
 					<div class="palette-empty">Searching...</div>
-				{:else if query.trim() && resultsWithPaths.length === 0}
+				{:else if query.trim() && resultsWithMeta.length === 0}
 					<div class="palette-empty">No features found matching "{query}"</div>
 				{:else if !query.trim()}
 					<div class="palette-empty">Type to search features</div>
 				{:else}
-					{#each resultsWithPaths as result, index (result.id)}
+					{#each resultsWithMeta as result, index (result.id)}
 						<button
 							class="palette-item"
 							class:selected={index === selectedIndex}
 							onclick={() => navigateToFeature(result.id)}
 							onmouseenter={() => (selectedIndex = index)}
 						>
-							<StateIcon state={result.state} size={14} />
+							<span class="item-icon">
+								{#if result.isGroup}
+									<GroupIcon size={14} />
+								{:else}
+									<StateIcon state={result.state} size={14} />
+								{/if}
+							</span>
 							<div class="item-content">
-								<div class="item-title">{result.title}</div>
+								<div class="item-title-row">
+									<span class="item-title">{result.title}</span>
+									{#if result.isGroup}
+										<span class="item-badge">Set</span>
+									{/if}
+								</div>
 								{#if result.breadcrumbs.length > 0}
 									<div class="item-breadcrumbs">
 										{result.breadcrumbs.join(' / ')}
@@ -324,9 +340,24 @@
 		background: var(--background-muted);
 	}
 
+	.item-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 20px;
+		flex-shrink: 0;
+	}
+
 	.item-content {
 		flex: 1;
 		min-width: 0;
+	}
+
+	.item-title-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.item-title {
@@ -335,6 +366,18 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.item-badge {
+		flex-shrink: 0;
+		padding: 1px 6px;
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
+		background: var(--background-muted);
+		border-radius: 3px;
 	}
 
 	.item-breadcrumbs {
