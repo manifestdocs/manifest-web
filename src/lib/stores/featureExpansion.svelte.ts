@@ -4,11 +4,11 @@ export type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
 const STORAGE_KEY_PREFIX = 'manifest:ui:feature-expansion:';
 const ROW_HEIGHT = 25;
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 interface StoredExpansionState {
-	userExpanded: string[];
-	userCollapsed: string[];
+	expandedIds: string[];
+	hasUserInteracted: boolean;
 	version: number;
 }
 
@@ -26,6 +26,10 @@ function loadFromStorage(projectId: string): StoredExpansionState | null {
 		const parsed = JSON.parse(stored);
 		if (parsed.version === STORAGE_VERSION) {
 			return parsed as StoredExpansionState;
+		}
+		// Migration from v1: clear old format
+		if (parsed.version === 1) {
+			localStorage.removeItem(getStorageKey(projectId));
 		}
 	} catch {
 		// Invalid JSON, ignore
@@ -89,91 +93,79 @@ function getGroupsWithIncompleteWork(nodes: FeatureTreeNode[]): string[] {
 	return ids;
 }
 
-// Current project state
+// Current project state - shared across all views
 let currentProjectId: string | null = null;
-let userExpanded = new Set<string>();
-let userCollapsed = new Set<string>();
+let currentExpandedIds: Set<string> = new Set();
+let hasUserInteracted = false;
+let isInitialized = false;
 
 function createFeatureExpansionStore() {
 	return {
 		/**
 		 * Initialize expansion state for a project.
-		 * Applies smart defaults if no persisted state, or restores user preferences.
+		 * Returns persisted state if available, or calculates smart defaults.
+		 * When switching views within the same project, returns the current state.
 		 */
 		init(projectId: string, features: FeatureTreeNode[], containerHeight: number): Set<string> {
-			const stored = loadFromStorage(projectId);
-			currentProjectId = projectId;
-
-			if (stored) {
-				// Restore user preferences
-				userExpanded = new Set(stored.userExpanded);
-				userCollapsed = new Set(stored.userCollapsed);
-
-				// Calculate which groups should be expanded based on defaults + user overrides
-				const totalRows = countTotalRows(features);
-				const needsScrolling = totalRows * ROW_HEIGHT > containerHeight;
-
-				let defaultExpanded: Set<string>;
-				if (needsScrolling) {
-					// Only expand groups with incomplete work by default
-					defaultExpanded = new Set(getGroupsWithIncompleteWork(features));
-				} else {
-					// Expand all groups by default
-					defaultExpanded = new Set(getAllGroupIds(features));
-				}
-
-				// Apply user overrides
-				const expanded = new Set(defaultExpanded);
-				for (const id of userExpanded) {
-					expanded.add(id);
-				}
-				for (const id of userCollapsed) {
-					expanded.delete(id);
-				}
-
-				return expanded;
+			// Same project - return current state (preserves state when switching views)
+			if (projectId === currentProjectId && isInitialized) {
+				return new Set(currentExpandedIds);
 			}
 
-			// No stored state - calculate smart defaults
-			userExpanded = new Set();
-			userCollapsed = new Set();
+			// Different project - reset state
+			if (projectId !== currentProjectId) {
+				isInitialized = false;
+			}
+
+			currentProjectId = projectId;
+			const stored = loadFromStorage(projectId);
+
+			if (stored) {
+				// Restore persisted state
+				currentExpandedIds = new Set(stored.expandedIds);
+				hasUserInteracted = stored.hasUserInteracted;
+				isInitialized = true;
+				return new Set(currentExpandedIds);
+			}
+
+			// No persisted state - calculate smart defaults
+			hasUserInteracted = false;
 
 			const totalRows = countTotalRows(features);
 			const needsScrolling = totalRows * ROW_HEIGHT > containerHeight;
 
 			if (needsScrolling) {
 				// Collapse complete groups, expand incomplete ones
-				return new Set(getGroupsWithIncompleteWork(features));
+				currentExpandedIds = new Set(getGroupsWithIncompleteWork(features));
 			} else {
 				// Expand all
-				return new Set(getAllGroupIds(features));
+				currentExpandedIds = new Set(getAllGroupIds(features));
 			}
+
+			isInitialized = true;
+			return new Set(currentExpandedIds);
 		},
 
 		/**
-		 * Toggle a group's expanded state. Tracks user preference and persists.
+		 * Toggle a group's expanded state. Persists the change.
 		 */
 		toggle(id: string, currentExpanded: Set<string>): Set<string> {
 			const newExpanded = new Set(currentExpanded);
-			const wasExpanded = currentExpanded.has(id);
 
-			if (wasExpanded) {
+			if (currentExpanded.has(id)) {
 				newExpanded.delete(id);
-				// Track as user-collapsed (remove from user-expanded if present)
-				userExpanded.delete(id);
-				userCollapsed.add(id);
 			} else {
 				newExpanded.add(id);
-				// Track as user-expanded (remove from user-collapsed if present)
-				userCollapsed.delete(id);
-				userExpanded.add(id);
 			}
 
-			// Persist
+			// Update state and persist
+			currentExpandedIds = newExpanded;
+			hasUserInteracted = true;
+
 			if (currentProjectId) {
 				saveToStorage(currentProjectId, {
-					userExpanded: [...userExpanded],
-					userCollapsed: [...userCollapsed],
+					expandedIds: [...newExpanded],
+					hasUserInteracted: true,
 					version: STORAGE_VERSION
 				});
 			}
@@ -202,38 +194,47 @@ function createFeatureExpansionStore() {
 		 * Expand all groups.
 		 */
 		expandAll(features: FeatureTreeNode[]): Set<string> {
-			// Clear user preferences (they're expanding everything)
-			userExpanded = new Set();
-			userCollapsed = new Set();
+			const allIds = new Set(getAllGroupIds(features));
+			currentExpandedIds = allIds;
+			hasUserInteracted = true;
 
 			if (currentProjectId) {
 				saveToStorage(currentProjectId, {
-					userExpanded: [],
-					userCollapsed: [],
+					expandedIds: [...allIds],
+					hasUserInteracted: true,
 					version: STORAGE_VERSION
 				});
 			}
 
-			return new Set(getAllGroupIds(features));
+			return allIds;
 		},
 
 		/**
 		 * Collapse all groups.
 		 */
 		collapseAll(): Set<string> {
-			// Clear user preferences (they're collapsing everything)
-			userExpanded = new Set();
-			userCollapsed = new Set();
+			currentExpandedIds = new Set();
+			hasUserInteracted = true;
 
 			if (currentProjectId) {
 				saveToStorage(currentProjectId, {
-					userExpanded: [],
-					userCollapsed: [],
+					expandedIds: [],
+					hasUserInteracted: true,
 					version: STORAGE_VERSION
 				});
 			}
 
 			return new Set();
+		},
+
+		/**
+		 * Reset the current project state (useful for testing or forced refresh).
+		 */
+		reset(): void {
+			currentProjectId = null;
+			currentExpandedIds = new Set();
+			hasUserInteracted = false;
+			isInitialized = false;
 		}
 	};
 }
