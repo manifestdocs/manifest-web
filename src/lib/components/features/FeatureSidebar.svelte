@@ -26,6 +26,7 @@
 
 	let history = $state<ProjectHistoryEntry[]>([]);
 	let isLoadingHistory = $state(false);
+	let lastLoadedFeatureId = $state<string | null>(null);
 
 	// Find feature node in tree
 	function findInTree(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
@@ -115,12 +116,19 @@
 			loadHistory(currentFeatureNode, currentIsGroup, currentIsRoot);
 		} else {
 			history = [];
+			lastLoadedFeatureId = null;
 		}
 	});
 
 	async function loadHistory(node: typeof featureNode, group: boolean, root: boolean) {
 		if (!feature) return;
-		isLoadingHistory = true;
+
+		// Only show loading state when switching to a different feature
+		// (not when refreshing the current one, which causes UI flicker)
+		const isRefresh = feature.id === lastLoadedFeatureId;
+		if (!isRefresh) {
+			isLoadingHistory = true;
+		}
 
 		try {
 			const api = await authApi.getClient();
@@ -144,8 +152,12 @@
 			} else {
 				history = data.filter((entry) => entry.feature_id === feature.id);
 			}
+
+			lastLoadedFeatureId = feature.id;
 		} finally {
-			isLoadingHistory = false;
+			if (!isRefresh) {
+				isLoadingHistory = false;
+			}
 		}
 	}
 
