@@ -595,15 +595,13 @@
 		flex: 1;
 		overflow-y: auto;
 		overflow-x: hidden;
-		position: relative;
+		display: grid;
+		grid-template: 1fr / 1fr;
 	}
 
 	.column-backgrounds {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
+		grid-row: 1;
+		grid-column: 1;
 		display: flex;
 		pointer-events: none;
 		overflow: hidden;
@@ -643,7 +641,8 @@
 
 	/* Style FeatureTree within matrix */
 	.matrix-body :global(.matrix-tree) {
-		position: relative;
+		grid-row: 1;
+		grid-column: 1;
 		z-index: 1;
 	}
 
