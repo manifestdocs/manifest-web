@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { components } from "$lib/api/schema.js";
     import {
+        BookIcon,
         GroupIcon,
-        ProjectIcon,
         StateIcon,
     } from "$lib/components/icons/index.js";
 
@@ -41,7 +41,8 @@
     const hasChildren = $derived(
         feature.children && feature.children.length > 0,
     );
-    const isRoot = $derived(feature.is_root ?? false);
+    // Root can be explicitly marked, or inferred from depth 0
+    const isRoot = $derived((feature.is_root ?? false) || depth === 0);
 
     function handleToggleClick(e: MouseEvent) {
         e.stopPropagation();
@@ -86,15 +87,15 @@
     {/if}
 
     {#if isRoot}
-        <span class="project-icon"><ProjectIcon size={15} /></span>
+        <span class="project-icon"><BookIcon size={16} /></span>
     {:else if hasChildren}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <span class="toggle-btn" onclick={handleToggleClick}>
             <svg
                 class="chevron"
                 class:expanded={isExpanded}
-                width="14"
-                height="14"
+                width="15"
+                height="15"
                 viewBox="0 0 16 16"
                 fill="none"
             >
@@ -107,17 +108,17 @@
                 />
             </svg>
         </span>
-        <span class="set-icon"><GroupIcon size={16} /></span>
+        <span class="set-icon"><GroupIcon size={18} /></span>
     {:else}
         <span class="toggle-spacer"></span>
-        <StateIcon state={feature.state} size={14} />
+        <StateIcon state={feature.state} size={15} />
     {/if}
 
     <span class="feature-title">{feature.title}</span>
 
     {#if hasChildren && !isRoot && hasFutureWork}
         <span class="future-work-indicator" title="Has incomplete work">
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
             </svg>
         </span>
@@ -135,23 +136,23 @@
 <style>
     .feature-row {
         /* Layout constants */
-        --row-height: 25px;
-        --indent-size: 16px;
-        --base-padding: 8px;
-        --root-padding: 8px;
+        --row-height: 28px;
+        --indent-size: 18px;
+        --base-padding: 9px;
+        --root-padding: 9px;
         --drag-handle-left: 4px;
         position: relative;
         flex: 0 0 var(--feature-col-width, 350px);
         min-width: 200px;
-        height: var(--row-height, 25px);
+        height: var(--row-height, 28px);
         padding-left: calc(
-            var(--depth, 0) * var(--indent-size, 16px) +
-                var(--base-padding, 13px)
+            var(--depth, 0) * var(--indent-size, 18px) +
+                var(--base-padding, 14px)
         );
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 13px;
+        gap: 7px;
+        font-size: 14px;
         color: var(--foreground);
         background: transparent;
         border: none;
@@ -214,8 +215,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         cursor: pointer;
         color: var(--foreground-subtle);
         flex-shrink: 0;
@@ -226,7 +227,7 @@
     }
 
     .toggle-spacer {
-        width: 16px;
+        width: 18px;
         flex-shrink: 0;
     }
 
@@ -259,8 +260,8 @@
 
     .pending-indicator {
         flex-shrink: 0;
-        width: 6px;
-        height: 6px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         background: var(--state-proposed);
     }

@@ -3,7 +3,7 @@ import type { components } from '$lib/api/schema.js';
 export type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 
 const STORAGE_KEY_PREFIX = 'manifest:ui:feature-expansion:';
-const ROW_HEIGHT = 25;
+const ROW_HEIGHT = 28;
 const STORAGE_VERSION = 2;
 
 interface StoredExpansionState {

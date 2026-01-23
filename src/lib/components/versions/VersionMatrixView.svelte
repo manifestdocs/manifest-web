@@ -667,7 +667,7 @@
 
 	.version-cell {
 		flex: 0 0 80px;
-		min-height: 25px;
+		min-height: 28px;
 		display: flex;
 		align-items: center;
 		justify-content: center;

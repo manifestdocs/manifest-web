@@ -69,7 +69,7 @@
 	}: Props = $props();
 
 	// Layout constant (matches CSS)
-	const ROW_HEIGHT = 25;
+	const ROW_HEIGHT = 28;
 
 	// Drag state - all centralized here
 	let dragState = $state<{
