@@ -39,14 +39,25 @@
 
 	const hasPendingChanges = $derived(!!feature?.desired_details);
 
-	// Reset editing state when feature changes
+	// Track which feature we're editing to detect navigation vs refresh
+	let currentFeatureId = $state<string | null>(null);
+
+	// Sync edit fields when feature changes - but only reset UI when navigating to different feature
 	$effect(() => {
-		if (feature) {
+		if (!feature) return;
+
+		const isNewFeature = feature.id !== currentFeatureId;
+
+		if (isNewFeature) {
+			// Navigated to different feature - reset everything
+			currentFeatureId = feature.id;
 			editTitle = feature.title;
 			editDetails = feature.details ?? '';
 			isEditing = false;
 			activeTab = 'view';
 		}
+		// When same feature is refreshed (e.g., after version change),
+		// don't update edit fields or change tabs - let user keep editing
 	});
 
 	let isLocked = $derived(feature?.state === 'in_progress');
@@ -428,7 +439,7 @@
 	}
 
 	.detail-header {
-		padding: 20px 24px 16px;
+		padding: 20px 36px 16px;
 		border-bottom: 1px solid var(--border-default);
 	}
 
@@ -520,7 +531,7 @@
 
 	.feature-title {
 		margin: 0;
-		font-size: 24px;
+		font-size: 26px;
 		font-weight: 600;
 		line-height: 1.25;
 		color: var(--foreground);
@@ -661,7 +672,7 @@
 		align-items: center;
 		gap: 12px;
 		margin-top: 8px;
-		font-size: 12px;
+		font-size: 13px;
 		color: var(--foreground-subtle);
 	}
 
@@ -677,7 +688,7 @@
 	.detail-content {
 		flex: 1;
 		overflow-y: auto;
-		padding: 20px 24px;
+		padding: 20px 36px;
 	}
 
 	.detail-content :global(.content-banner) {
