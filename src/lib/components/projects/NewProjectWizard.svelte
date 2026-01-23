@@ -23,6 +23,7 @@
 	// Form data
 	let projectName = $state('');
 	let projectDescription = $state('');
+	let initialVersion = $state('0.1.0');
 	let directoryPath = $state('');
 	let gitRemote = $state('');
 	let instructions = $state('');
@@ -39,6 +40,7 @@
 			currentStep = 0;
 			projectName = '';
 			projectDescription = '';
+			initialVersion = '0.1.0';
 			directoryPath = '';
 			gitRemote = '';
 			instructions = '';
@@ -48,7 +50,7 @@
 
 	function canProceed(): boolean {
 		if (currentStep === 0) {
-			return projectName.trim().length > 0;
+			return projectName.trim().length > 0 && initialVersion.trim().length > 0;
 		}
 		if (currentStep === 1) {
 			return directoryPath.trim().length > 0;
@@ -69,8 +71,8 @@
 	}
 
 	async function handleSubmit() {
-		if (!projectName.trim() || !directoryPath.trim()) {
-			error = 'Project name and directory are required';
+		if (!projectName.trim() || !directoryPath.trim() || !initialVersion.trim()) {
+			error = 'Project name, version, and directory are required';
 			return;
 		}
 
@@ -91,6 +93,19 @@
 
 			if (projectError || !project) {
 				throw new Error('Failed to create project');
+			}
+
+			// Create the initial version
+			const { error: versionError } = await api.POST('/projects/{id}/versions', {
+				params: { path: { id: project.id } },
+				body: {
+					name: initialVersion.trim()
+				}
+			});
+
+			if (versionError) {
+				console.error('Failed to create initial version:', versionError);
+				// Don't throw - project was created, version just failed
 			}
 
 			// Add the directory
@@ -115,7 +130,7 @@
 
 			// Close dialog and navigate to new project
 			onOpenChange(false);
-			goto(`/app/${project.id}`);
+			goto(`/app/${project.slug}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create project';
 		} finally {
@@ -161,6 +176,18 @@
 								bind:value={projectDescription}
 								disabled={isSubmitting}
 							/>
+						</div>
+						<div class="form-field">
+							<label for="initial-version" class="form-label">Initial Version</label>
+							<input
+								id="initial-version"
+								type="text"
+								class="form-input"
+								placeholder="e.g., 0.1.0"
+								bind:value={initialVersion}
+								disabled={isSubmitting}
+							/>
+							<span class="form-hint">Semantic version for release planning (e.g., 0.1.0, 1.0.0)</span>
 						</div>
 					</div>
 				{:else if currentStep === 1}
