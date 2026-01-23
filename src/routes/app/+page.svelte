@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { WelcomeScreen, NewProjectWizard } from '$lib/components/projects/index.js';
+	import { WelcomeScreen } from '$lib/components/projects/index.js';
 	import type { components } from '$lib/api/schema.js';
 
 	type Project = components['schemas']['Project'];
@@ -13,8 +13,6 @@
 	}
 
 	const projectsContext = getContext<ProjectsContext>('projects');
-
-	let wizardOpen = $state(false);
 
 	// Redirect to last viewed project (or first project) when projects are loaded
 	$effect(() => {
@@ -30,14 +28,6 @@
 			goto(`/app/${targetProject.slug}`, { replaceState: true });
 		}
 	});
-
-	function handleCreateProject() {
-		wizardOpen = true;
-	}
-
-	async function handleProjectCreated() {
-		await projectsContext.refresh();
-	}
 </script>
 
 {#if projectsContext.isLoading || projectsContext.projects.length > 0}
@@ -46,12 +36,7 @@
 		<span>Loading projects...</span>
 	</div>
 {:else}
-	<WelcomeScreen onCreateProject={handleCreateProject} />
-	<NewProjectWizard
-		open={wizardOpen}
-		onOpenChange={(open) => (wizardOpen = open)}
-		onCreated={handleProjectCreated}
-	/>
+	<WelcomeScreen />
 {/if}
 
 <style>

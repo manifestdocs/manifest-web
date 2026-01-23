@@ -1,99 +1,54 @@
 <script lang="ts">
 	import logotype from '$lib/assets/logotype.png';
-
-	interface Props {
-		onCreateProject: () => void;
-	}
-
-	let { onCreateProject }: Props = $props();
+	import OnboardingGuide from './OnboardingGuide.svelte';
 </script>
 
 <div class="welcome-screen">
-	<div class="welcome-content">
+	<div class="welcome-header">
 		<img src={logotype} alt="Manifest" class="welcome-logo" />
-		<h1 class="welcome-title">Welcome to Manifest</h1>
 		<p class="welcome-tagline">
-			Living documentation for feature-driven product engineering.
-			Track what your system does, not just what you've done.
+			Living documentation for feature-driven product engineering
 		</p>
-		<button class="btn btn-primary btn-large" onclick={onCreateProject}>
-			Create Your First Project
-		</button>
-		<p class="welcome-hint">
-			Projects created via CLI will appear here automatically.
-		</p>
+	</div>
+
+	<div class="welcome-content">
+		<OnboardingGuide scenario="no-projects" />
 	</div>
 </div>
 
 <style>
 	.welcome-screen {
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100vh;
+		flex-direction: column;
+		min-height: 100vh;
 		background: var(--background);
 	}
 
-	.welcome-content {
+	.welcome-header {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		max-width: 420px;
-		text-align: center;
-		padding: 32px;
+		padding: 48px 32px 24px;
+		border-bottom: 1px solid var(--border-default);
+		background: var(--background-subtle);
 	}
 
 	.welcome-logo {
-		width: 300px;
+		width: 280px;
 		height: auto;
-		margin-bottom: 12px;
-	}
-
-	.welcome-title {
-		font-size: 28px;
-		font-weight: 600;
-		color: var(--foreground);
-		margin: 0 0 12px;
+		margin-bottom: 8px;
 	}
 
 	.welcome-tagline {
-		font-size: 15px;
-		color: var(--foreground-subtle);
-		line-height: 1.6;
-		margin: 0 0 32px;
+		font-size: 14px;
+		color: var(--foreground-muted);
+		margin: 0;
 	}
 
-	.btn {
-		display: inline-flex;
+	.welcome-content {
+		flex: 1;
+		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 8px 16px;
-		font-size: 14px;
-		font-weight: 500;
-		border-radius: 2px;
-		border: 1px solid transparent;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.btn-large {
-		padding: 12px 24px;
-		font-size: 15px;
-	}
-
-	.btn-primary {
-		background: var(--accent-green);
-		color: #000;
-		border-color: var(--accent-green);
-	}
-
-	.btn-primary:hover {
-		filter: brightness(1.1);
-	}
-
-	.welcome-hint {
-		font-size: 13px;
-		color: var(--foreground-muted);
-		margin-top: 24px;
 	}
 </style>

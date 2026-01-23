@@ -5,3 +5,4 @@ export { default as DirectoryItem } from './DirectoryItem.svelte';
 export { default as DirectoryList } from './DirectoryList.svelte';
 export { default as ProjectSettingsDialog } from './ProjectSettingsDialog.svelte';
 export { default as EmptyProjectGuide } from './EmptyProjectGuide.svelte';
+export { default as OnboardingGuide } from './OnboardingGuide.svelte';

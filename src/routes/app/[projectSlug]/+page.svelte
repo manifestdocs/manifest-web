@@ -4,7 +4,7 @@
 	import type { components } from '$lib/api/schema.js';
 	import { FeatureTree, FeatureDetail, FeatureSidebar, CreateFeatureDialog, ArchiveFeatureDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
-	import { EmptyProjectGuide } from '$lib/components/projects/index.js';
+	import { EmptyProjectGuide, OnboardingGuide } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
@@ -32,6 +32,7 @@
 	let selectedFeature = $state<Feature | null>(null);
 	let versions = $state<Version[]>([]);
 	let gitRemote = $state<string | undefined>(undefined);
+	let hasDirectories = $state<boolean | null>(null); // null = loading, true/false = loaded
 	let isLoadingFeatures = $state(false);
 	let isLoadingFeature = $state(false);
 
@@ -82,6 +83,16 @@
 		return node?.parent_id ?? null;
 	});
 
+	// Merge is_root from tree node into selectedFeature for FeatureDetail
+	const selectedFeatureWithRoot = $derived.by(() => {
+		if (!selectedFeature || !selectedFeatureId) return selectedFeature;
+		const node = findInTree(featureTree, selectedFeatureId);
+		if (node?.is_root) {
+			return { ...selectedFeature, is_root: true };
+		}
+		return selectedFeature;
+	});
+
 	// Get parent feature title for dialog
 	const createDialogParentTitle = $derived.by(() => {
 		if (!createDialogParentId) return null;
@@ -92,12 +103,15 @@
 	// Check if the project is empty (no features)
 	const isProjectEmpty = $derived(!isLoadingFeatures && featureTree.length === 0);
 
-	// Load features, versions, and git remote when project changes and auth is ready
+	// Check if we need to show onboarding (no directories linked)
+	const needsOnboarding = $derived(hasDirectories === false);
+
+	// Load features, versions, and directories when project changes and auth is ready
 	$effect(() => {
 		if (projectId && authApi.isReady()) {
 			loadFeatureTree(projectId);
 			loadVersions(projectId);
-			loadGitRemote(projectId);
+			loadDirectories(projectId);
 		}
 	});
 
@@ -155,7 +169,12 @@
 	}
 
 	async function loadFeature(featureId: string) {
-		isLoadingFeature = true;
+		// Only show loading state when switching to a different feature
+		// (not when refreshing the current one, which would unmount FeatureDetail and lose edit state)
+		const isRefresh = selectedFeature?.id === featureId;
+		if (!isRefresh) {
+			isLoadingFeature = true;
+		}
 		try {
 			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/features/{id}', {
@@ -168,7 +187,9 @@
 			}
 			selectedFeature = data;
 		} finally {
-			isLoadingFeature = false;
+			if (!isRefresh) {
+				isLoadingFeature = false;
+			}
 		}
 	}
 
@@ -190,7 +211,7 @@
 		}
 	}
 
-	async function loadGitRemote(projectId: string) {
+	async function loadDirectories(projectId: string) {
 		try {
 			const api = await authApi.getClient();
 			const { data, error } = await api.GET('/projects/{id}/directories', {
@@ -198,12 +219,15 @@
 			});
 			if (error || !data) {
 				gitRemote = undefined;
+				hasDirectories = false;
 				return;
 			}
+			hasDirectories = data.length > 0;
 			const primary = data.find((d) => d.is_primary);
 			gitRemote = primary?.git_remote ?? data.find((d) => d.git_remote)?.git_remote ?? undefined;
 		} catch (e) {
 			gitRemote = undefined;
+			hasDirectories = false;
 		}
 	}
 
@@ -455,47 +479,52 @@
 	}
 </script>
 
-<div class="page-container">
-	<div class="page-content">
-		<aside class="sidebar" style="width: {sidebarWidth.value}px">
-			{#if isLoadingFeatures && featureTree.length === 0}
-				<div class="loading-state">Loading features...</div>
-			{:else}
-				<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onArchiveFeature={handleOpenArchiveDialog} onRestoreFeature={handleRestoreFeature} onDeleteFeature={handleDeleteFeature} />
-			{/if}
-		</aside>
-
-		<ResizeDivider onResize={handleResize} />
-
-		<section class="content">
-			{#if isProjectEmpty}
-				<EmptyProjectGuide onCreateFeature={() => handleOpenCreateDialog(null)} />
-			{:else if isLoadingFeature}
-				<div class="loading-state">Loading...</div>
-			{:else}
-				<FeatureDetail
-					feature={selectedFeature}
-					isGroup={selectedFeatureIsGroup}
-					{versions}
-					onSave={handleSaveFeature}
-					onVersionChange={handleVersionChange}
-					onArchive={handleArchiveFromDetail}
-					onRestore={handleRestoreFromDetail}
-					onDelete={handleDeleteFromDetail}
-				/>
-			{/if}
-		</section>
-
-		<FeatureSidebar
-			feature={selectedFeature}
-			featureTree={featureTree}
-			projectId={projectId!}
-			{projectSlug}
-			{gitRemote}
-		/>
+{#if needsOnboarding}
+	<div class="onboarding-container">
+		<OnboardingGuide scenario="no-directory" projectName={project?.name} />
 	</div>
+{:else}
+	<div class="page-container">
+		<div class="page-content">
+			<aside class="sidebar" style="width: {sidebarWidth.value}px">
+				{#if isLoadingFeatures && featureTree.length === 0}
+					<div class="loading-state">Loading features...</div>
+				{:else}
+					<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onArchiveFeature={handleOpenArchiveDialog} onRestoreFeature={handleRestoreFeature} onDeleteFeature={handleDeleteFeature} />
+				{/if}
+			</aside>
 
-	<div class="page-legend">
+			<ResizeDivider onResize={handleResize} />
+
+			<section class="content">
+				{#if isProjectEmpty}
+					<EmptyProjectGuide onCreateFeature={() => handleOpenCreateDialog(null)} />
+				{:else if isLoadingFeature}
+					<div class="loading-state">Loading...</div>
+				{:else}
+					<FeatureDetail
+						feature={selectedFeatureWithRoot}
+						isGroup={selectedFeatureIsGroup}
+						{versions}
+						onSave={handleSaveFeature}
+						onVersionChange={handleVersionChange}
+						onArchive={handleArchiveFromDetail}
+						onRestore={handleRestoreFromDetail}
+						onDelete={handleDeleteFromDetail}
+					/>
+				{/if}
+			</section>
+
+			<FeatureSidebar
+				feature={selectedFeature}
+				featureTree={featureTree}
+				projectId={projectId!}
+				{projectSlug}
+				{gitRemote}
+			/>
+		</div>
+
+		<div class="page-legend">
 		<div class="legend-item">
 			<StateIcon state="proposed" size={12} />
 			<span>Proposed</span>
@@ -510,6 +539,7 @@
 		</div>
 	</div>
 </div>
+{/if}
 
 <CreateFeatureDialog
 	open={createDialogOpen}
@@ -533,6 +563,14 @@
 {/if}
 
 <style>
+	.onboarding-container {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		background: var(--background);
+	}
+
 	.page-container {
 		display: flex;
 		flex-direction: column;
