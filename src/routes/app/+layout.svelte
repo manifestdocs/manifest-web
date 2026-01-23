@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api as unauthenticatedApi, createAuthenticatedClient } from '$lib/api/client.js';
+	import { api } from '$lib/api/client.js';
 	import { setAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { goto } from '$app/navigation';
@@ -9,36 +9,16 @@
 	import headerLogotype from '$lib/assets/manifest_header_logotype.png';
 	import { NewProjectWizard, ProjectSettingsDialog } from '$lib/components/projects/index.js';
 	import { SettingsIcon, PlusIcon } from '$lib/components/icons/index.js';
-	import { PUBLIC_MANIFEST_MODE, PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
-	// Clerk imports - only used in cloud mode, but must be imported statically
-	import { UserButton, SignedIn, SignedOut } from 'svelte-clerk';
-	import { useClerkContext } from 'svelte-clerk/client';
 
 	type Project = components['schemas']['Project'];
 
 	let { children } = $props();
 
-	// Check if we're in cloud mode with Clerk
-	const isCloudMode = PUBLIC_MANIFEST_MODE === 'cloud' && !!PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-	// Only call useClerkContext in cloud mode (it requires ClerkProvider)
-	// In local mode, clerkCtx will be undefined
-	const clerkCtx = isCloudMode ? useClerkContext() : undefined;
-
-	// Set up auth API context for child components
-	if (isCloudMode && clerkCtx) {
-		// Cloud mode: use Clerk for auth
-		setAuthApiContext(
-			() => clerkCtx.session?.getToken() ?? Promise.resolve(null),
-			() => clerkCtx.auth.userId !== undefined && clerkCtx.auth.userId !== null
-		);
-	} else {
-		// Local mode: no auth, always ready
-		setAuthApiContext(
-			() => Promise.resolve(null),
-			() => true
-		);
-	}
+	// Set up auth API context for child components (no auth in self-hosted mode)
+	setAuthApiContext(
+		() => Promise.resolve(null),
+		() => true
+	);
 
 	let projects = $state<Project[]>([]);
 	let isLoadingProjects = $state(true);
@@ -47,36 +27,14 @@
 	let newProjectWizardOpen = $state(false);
 	let settingsDialogOpen = $state(false);
 
-	// Load projects when ready
+	// Load projects on mount
 	$effect(() => {
-		if (isCloudMode && clerkCtx) {
-			// Cloud mode: wait for Clerk auth
-			if (clerkCtx.auth.userId !== undefined && clerkCtx.auth.userId !== null) {
-				loadProjects();
-			}
-		} else {
-			// Local mode: load immediately
-			loadProjects();
-		}
+		loadProjects();
 	});
 
 	async function loadProjects() {
 		isLoadingProjects = true;
 		try {
-			let api;
-			if (isCloudMode && clerkCtx) {
-				const token = await clerkCtx.session?.getToken();
-				if (!token) {
-					console.error('No auth token available');
-					isLoadingProjects = false;
-					return;
-				}
-				api = createAuthenticatedClient(token);
-			} else {
-				// Local mode: use unauthenticated client
-				api = unauthenticatedApi;
-			}
-
 			const { data, error } = await api.GET('/projects');
 			if (error || !data) {
 				console.error('Failed to load projects:', error);
@@ -205,14 +163,6 @@
 				<a href="{base}/docs" class="docs-link">
 					Docs
 				</a>
-				{#if isCloudMode}
-					<SignedIn>
-						<UserButton afterSignOutUrl="/" />
-					</SignedIn>
-					<SignedOut>
-						<a href="/sign-in" class="sign-in-link">Sign In</a>
-					</SignedOut>
-				{/if}
 			</div>
 		</header>
 
@@ -392,23 +342,6 @@
 		display: flex;
 		flex: 1;
 		overflow: hidden;
-	}
-
-	.sign-in-link {
-		padding: 6px 12px;
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--background);
-		border: 1px solid var(--border-default);
-		border-radius: 6px;
-		text-decoration: none;
-		transition: all 0.15s ease;
-	}
-
-	.sign-in-link:hover {
-		background: var(--background-emphasis);
-		border-color: var(--foreground-subtle);
 	}
 
 	.header-divider {

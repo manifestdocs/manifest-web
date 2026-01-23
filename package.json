@@ -6,7 +6,6 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:pages": "VITE_BUILD_TARGET=pages PUBLIC_MANIFEST_MODE=cloud vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -43,7 +42,6 @@
 		"highlight.js": "^11.11.1",
 		"marked": "^17.0.1",
 		"openapi-fetch": "^0.15.0",
-		"svelte-clerk": "^0.20.3",
 		"tailwind-merge": "^3.4.0",
 		"tailwind-variants": "^3.2.2"
 	}
