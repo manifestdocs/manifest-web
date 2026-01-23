@@ -8,7 +8,8 @@
 	import { setContext } from 'svelte';
 	import headerLogotype from '$lib/assets/manifest_header_logotype.png';
 	import { NewProjectWizard, ProjectSettingsDialog } from '$lib/components/projects/index.js';
-	import { SettingsIcon, PlusIcon } from '$lib/components/icons/index.js';
+	import { SettingsIcon, PlusIcon, SearchIcon } from '$lib/components/icons/index.js';
+	import { CommandPalette } from '$lib/components/command-palette/index.js';
 
 	type Project = components['schemas']['Project'];
 
@@ -26,6 +27,19 @@
 	// Dialog state
 	let newProjectWizardOpen = $state(false);
 	let settingsDialogOpen = $state(false);
+	let commandPaletteOpen = $state(false);
+
+	// Global keyboard shortcut for command palette
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		const target = e.target as HTMLElement;
+		if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+			return;
+		}
+		if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+			e.preventDefault();
+			commandPaletteOpen = true;
+		}
+	}
 
 	// Load projects on mount
 	$effect(() => {
@@ -94,6 +108,8 @@
 	});
 </script>
 
+<svelte:document onkeydown={handleGlobalKeydown} />
+
 {#if page.params.projectSlug}
 	<div class="app-layout">
 		<header class="app-header">
@@ -128,6 +144,16 @@
 				</nav>
 			</div>
 			<div class="header-right">
+				<button
+					class="search-btn"
+					onclick={() => (commandPaletteOpen = true)}
+					title="Search features (T)"
+				>
+					<SearchIcon size={14} />
+					<span class="search-label">Search</span>
+					<kbd class="search-kbd">T</kbd>
+				</button>
+				<div class="header-divider"></div>
 				<span class="project-label">Project</span>
 				<select
 					class="project-select"
@@ -186,6 +212,12 @@
 		onOpenChange={(open) => (settingsDialogOpen = open)}
 		project={selectedProject}
 		onUpdated={loadProjects}
+	/>
+	<CommandPalette
+		open={commandPaletteOpen}
+		onOpenChange={(open) => (commandPaletteOpen = open)}
+		projectId={selectedProject.id}
+		projectSlug={selectedProjectSlug || ''}
 	/>
 {/if}
 
@@ -364,5 +396,38 @@
 	.docs-link:hover {
 		color: var(--foreground);
 		background: var(--background);
+	}
+
+	.search-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 10px;
+		font-size: 13px;
+		color: var(--foreground-muted);
+		background: var(--background);
+		border: 1px solid var(--border-default);
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.search-btn:hover {
+		color: var(--foreground);
+		border-color: var(--foreground-subtle);
+	}
+
+	.search-label {
+		font-weight: 500;
+	}
+
+	.search-kbd {
+		padding: 2px 5px;
+		font-size: 11px;
+		font-family: var(--font-mono, monospace);
+		background: var(--background-subtle);
+		border: 1px solid var(--border-default);
+		border-radius: 3px;
+		color: var(--foreground-subtle);
 	}
 </style>
