@@ -304,8 +304,7 @@
 
 	<!-- Body - contains FeatureTree with version cells via rowExtras -->
 	<div class="matrix-body">
-		<div class="matrix-body-inner">
-		<!-- Full-height column backgrounds -->
+		<!-- Full-height column backgrounds (sticky to fill viewport) -->
 		<div class="column-backgrounds">
 			<div class="col-bg feature-col"></div>
 			{#each groupedVersions as group, groupIndex}
@@ -321,6 +320,7 @@
 			{/each}
 		</div>
 
+		<div class="matrix-body-inner">
 		<FeatureTree
 			bind:this={featureTreeRef}
 			{features}
@@ -600,25 +600,28 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		padding-bottom: 48px;
-	}
-
-	.matrix-body-inner {
-		display: grid;
-		grid-template: 1fr / 1fr;
-		/* Fill viewport height so backgrounds extend to bottom */
-		min-height: 100%;
+		position: relative;
 	}
 
 	.column-backgrounds {
-		grid-row: 1;
-		grid-column: 1;
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		margin-bottom: -100vh;
 		display: flex;
 		pointer-events: none;
 		overflow: hidden;
+		z-index: 0;
+	}
+
+	.matrix-body-inner {
+		position: relative;
+		z-index: 1;
 	}
 
 	.col-bg {
 		flex-shrink: 0;
+		height: 100%;
 	}
 
 	.col-bg.feature-col {
