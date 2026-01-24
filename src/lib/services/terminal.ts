@@ -52,6 +52,10 @@ export class TerminalService {
 	private disposed = false;
 	private resizeObserver: ResizeObserver | null = null;
 
+	// Write batching to prevent ANSI sequence splitting issues
+	private writeBuffer: string[] = [];
+	private writeScheduled = false;
+
 	constructor(config: TerminalConfig) {
 		this.config = config;
 
@@ -143,9 +147,9 @@ export class TerminalService {
 
 		this.socket.onmessage = (event) => {
 			if (event.data instanceof ArrayBuffer) {
-				// Binary frame: PTY output
+				// Binary frame: PTY output - use batched write to prevent ANSI splitting
 				const text = new TextDecoder().decode(event.data);
-				this.terminal.write(text);
+				this.batchedWrite(text);
 			} else if (typeof event.data === 'string') {
 				// Text frame: control message
 				try {
@@ -307,6 +311,26 @@ export class TerminalService {
 		if (this.reconnectTimeoutId) {
 			clearTimeout(this.reconnectTimeoutId);
 			this.reconnectTimeoutId = undefined;
+		}
+	}
+
+	/**
+	 * Batch writes using requestAnimationFrame to prevent ANSI sequence splitting.
+	 * Multiple rapid WebSocket messages get combined into a single terminal.write() call.
+	 */
+	private batchedWrite(text: string): void {
+		this.writeBuffer.push(text);
+
+		if (!this.writeScheduled) {
+			this.writeScheduled = true;
+			requestAnimationFrame(() => {
+				if (this.writeBuffer.length > 0) {
+					const combined = this.writeBuffer.join('');
+					this.writeBuffer = [];
+					this.terminal.write(combined);
+				}
+				this.writeScheduled = false;
+			});
 		}
 	}
 }
