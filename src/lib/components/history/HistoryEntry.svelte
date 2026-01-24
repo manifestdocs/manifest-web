@@ -66,14 +66,16 @@
 	{#if isReleaseEntry}
 		<!-- Release milestone styling -->
 		<div class="entry-header release-header">
-			<span class="release-icon">🚀</span>
+			<svg class="release-icon" width="15" height="15" viewBox="0 0 24 24" fill="var(--accent-green, #22c55e)" stroke="none">
+				<path d="M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z" />
+			</svg>
 			<span class="release-title">{headline}</span>
 		</div>
 	{:else}
 		<!-- Regular feature entry -->
 		<div class="entry-header">
 			<button type="button" class="feature-link" onclick={handleFeatureClick}>
-				<StateIcon state={entry.feature_state} size={12} />
+				<StateIcon state={entry.feature_state} size={15} />
 				<span class="feature-title">{entry.feature_title}</span>
 			</button>
 			{#if body}
@@ -122,7 +124,7 @@
 		flex-direction: column;
 		gap: 0;
 		padding: 4px 0;
-		font-size: 13px;
+		font-size: 14px;
 		line-height: 1.4;
 	}
 
@@ -153,8 +155,6 @@
 
 	.release-icon {
 		flex-shrink: 0;
-		font-size: 14px;
-		line-height: 1;
 	}
 
 	.release-title {
@@ -172,14 +172,14 @@
 	.feature-link {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: 6px;
 		background: none;
 		border: none;
 		padding: 0;
 		cursor: pointer;
 		color: var(--foreground);
 		font-weight: 500;
-		font-size: 13px;
+		font-size: 14px;
 	}
 
 	.feature-link:hover .feature-title {
