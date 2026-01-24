@@ -597,13 +597,16 @@
 		min-height: 0;
 		overflow-y: auto;
 		overflow-x: hidden;
-		display: grid;
-		grid-template: 1fr / 1fr;
+		padding-bottom: 48px;
+		position: relative;
 	}
 
 	.column-backgrounds {
-		grid-row: 1;
-		grid-column: 1;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		display: flex;
 		pointer-events: none;
 		overflow: hidden;
@@ -643,18 +646,26 @@
 
 	/* Style FeatureTree within matrix */
 	.matrix-body :global(.matrix-tree) {
-		grid-row: 1;
-		grid-column: 1;
+		position: relative;
 		z-index: 1;
 	}
 
+	.matrix-body :global(.tree-scroll-container) {
+		position: static;
+		overflow: visible;
+	}
+
 	.matrix-body :global(.tree-content) {
+		position: static;
 		overflow: visible;
 	}
 
 	.matrix-body :global(.tree-row) {
 		position: relative;
 		overflow: hidden;
+		height: 28px;
+		min-height: 28px;
+		flex-shrink: 0;
 	}
 
 	.matrix-body :global(.tree-row:hover) {

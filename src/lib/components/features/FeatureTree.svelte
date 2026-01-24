@@ -400,23 +400,25 @@
 		</div>
 	{/if}
 
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="tree-content"
-		class:scrollable
-		bind:this={treeContentRef}
-		oncontextmenu={handleTreeContextMenu}
-		onpointermove={handlePointerMove}
-		onpointerup={handlePointerUp}
-		onpointercancel={handlePointerCancel}
-	>
-		{#if features.length === 0}
-			<div class="empty-state">No features yet</div>
-		{:else}
-			{#each sortFeatures(displayFeatures) as node (node.id)}
-				{@render renderNode(node, 0)}
-			{/each}
-		{/if}
+	<div class="tree-scroll-container">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="tree-content"
+			class:scrollable
+			bind:this={treeContentRef}
+			oncontextmenu={handleTreeContextMenu}
+			onpointermove={handlePointerMove}
+			onpointerup={handlePointerUp}
+			onpointercancel={handlePointerCancel}
+		>
+			{#if features.length === 0}
+				<div class="empty-state">No features yet</div>
+			{:else}
+				{#each sortFeatures(displayFeatures) as node (node.id)}
+					{@render renderNode(node, 0)}
+				{/each}
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -535,20 +537,34 @@
 		border-bottom: 1px solid var(--border-default);
 	}
 
+	.tree-scroll-container {
+		flex: 1;
+		position: relative;
+		min-height: 0;
+		overflow: hidden;
+	}
+
 	.tree-content {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		display: flex;
 		flex-direction: column;
-		flex: 1;
-		min-height: 0;
 	}
 
 	.tree-content.scrollable {
 		overflow-y: auto;
 		overflow-x: hidden;
+		padding-bottom: 48px;
 	}
 
 	.tree-row {
 		display: flex;
+		height: 28px;
+		min-height: 28px;
+		flex-shrink: 0;
 		border-bottom: 1px solid var(--border-subtle);
 		transition: background-color 0.1s ease;
 	}

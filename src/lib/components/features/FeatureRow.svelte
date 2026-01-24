@@ -135,7 +135,7 @@
 
 <style>
     .feature-row {
-        /* Layout constants */
+        /* Layout constants - use fixed px values to prevent compression */
         --row-height: 28px;
         --indent-size: 18px;
         --base-padding: 9px;
@@ -144,10 +144,11 @@
         position: relative;
         flex: 0 0 var(--feature-col-width, 350px);
         min-width: 200px;
-        height: var(--row-height, 28px);
+        height: 28px;
+        min-height: 28px;
+        flex-shrink: 0;
         padding-left: calc(
-            var(--depth, 0) * var(--indent-size, 18px) +
-                var(--base-padding, 14px)
+            var(--depth, 0) * 18px + 9px
         );
         display: flex;
         align-items: center;
@@ -166,8 +167,7 @@
 
     .feature-row.is-root {
         padding-left: calc(
-            var(--depth, 0) * var(--indent-size, 16px) +
-                var(--root-padding, 8px)
+            var(--depth, 0) * 18px + 9px
         );
         background: var(--background-subtle);
         border-bottom: 1px solid var(--border-default);
