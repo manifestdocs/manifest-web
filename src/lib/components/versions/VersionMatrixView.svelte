@@ -304,6 +304,7 @@
 
 	<!-- Body - contains FeatureTree with version cells via rowExtras -->
 	<div class="matrix-body">
+		<div class="matrix-body-inner">
 		<!-- Full-height column backgrounds -->
 		<div class="column-backgrounds">
 			<div class="col-bg feature-col"></div>
@@ -372,6 +373,7 @@
 				{/each}
 			{/snippet}
 		</FeatureTree>
+		</div>
 	</div>
 
 	<div class="matrix-legend">
@@ -598,18 +600,22 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		padding-bottom: 48px;
-		position: relative;
+	}
+
+	.matrix-body-inner {
+		display: grid;
+		grid-template: 1fr / 1fr;
 	}
 
 	.column-backgrounds {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
+		grid-row: 1;
+		grid-column: 1;
 		display: flex;
 		pointer-events: none;
 		overflow: hidden;
+		/* Extend into parent's padding area */
+		margin-bottom: -48px;
+		padding-bottom: 48px;
 	}
 
 	.col-bg {
@@ -645,8 +651,9 @@
 	}
 
 	/* Style FeatureTree within matrix */
-	.matrix-body :global(.matrix-tree) {
-		position: relative;
+	.matrix-body-inner :global(.matrix-tree) {
+		grid-row: 1;
+		grid-column: 1;
 		z-index: 1;
 	}
 
