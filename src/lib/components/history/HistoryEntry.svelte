@@ -68,9 +68,6 @@
 		<div class="entry-header release-header">
 			<span class="release-icon">🚀</span>
 			<span class="release-title">{headline}</span>
-			{#if entry.version_name}
-				<span class="version-badge">{entry.version_name}</span>
-			{/if}
 		</div>
 	{:else}
 		<!-- Regular feature entry -->
@@ -163,14 +160,6 @@
 	.release-title {
 		font-weight: 600;
 		color: var(--foreground);
-	}
-
-	.version-badge {
-		font-size: 11px;
-		font-weight: 500;
-		padding: 2px 8px;
-		background: var(--accent-green, #22c55e);
-		color: white;
 	}
 
 	.entry-header {
