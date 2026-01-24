@@ -155,6 +155,8 @@
 
 	.release-icon {
 		flex-shrink: 0;
+		margin-left: -2px;
+		margin-top: 2px;
 	}
 
 	.release-title {

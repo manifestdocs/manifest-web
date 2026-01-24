@@ -638,7 +638,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/FeatureHistory"
+                  $ref: "#/components/schemas/ProjectHistoryEntry"
         "404":
           $ref: "#/components/responses/NotFound"
     post:

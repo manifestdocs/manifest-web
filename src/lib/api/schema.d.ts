@@ -1624,7 +1624,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeatureHistory"][];
+                    "application/json": components["schemas"]["ProjectHistoryEntry"][];
                 };
             };
             404: components["responses"]["NotFound"];

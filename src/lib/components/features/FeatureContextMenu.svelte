@@ -157,15 +157,16 @@
 	}
 
 	.menu-item-danger {
-		color: #f85149;
+		color: #ff9492;
 	}
 
 	.menu-item-danger:hover {
 		background: rgba(248, 81, 73, 0.15);
+		color: #ffb3b1;
 	}
 
 	.menu-item-danger svg {
-		color: #f85149;
+		color: currentColor;
 	}
 
 	.menu-item-warning {

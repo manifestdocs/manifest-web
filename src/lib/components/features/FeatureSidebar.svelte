@@ -123,6 +123,9 @@
 	async function loadHistory(node: typeof featureNode, group: boolean, root: boolean) {
 		if (!feature) return;
 
+		// Skip if already loading this feature
+		if (isLoadingHistory && feature.id === lastLoadedFeatureId) return;
+
 		// Only show loading state when switching to a different feature
 		// (not when refreshing the current one, which causes UI flicker)
 		const isRefresh = feature.id === lastLoadedFeatureId;
@@ -133,26 +136,36 @@
 		try {
 			const api = await authApi.getClient();
 
-			const { data, error } = await api.GET('/projects/{id}/history', {
-				params: { path: { id: projectId }, query: { limit: 100 } }
+			// Root feature: show recent project history
+			if (root) {
+				const { data, error } = await api.GET('/projects/{id}/history', {
+					params: { path: { id: projectId }, query: { limit: 20 } }
+				});
+
+				if (error || !data) {
+					console.error('Failed to load project history:', error);
+					history = [];
+					return;
+				}
+
+				history = data;
+				lastLoadedFeatureId = feature.id;
+				return;
+			}
+
+			// For leaf and group features, use the feature-specific endpoint
+			const { data, error } = await api.GET('/features/{id}/history', {
+				params: { path: { id: feature.id } }
 			});
 
 			if (error || !data) {
-				console.error('Failed to load history:', error);
+				console.error('Failed to load feature history:', error);
 				history = [];
 				return;
 			}
 
-			// Root feature shows all project history
-			if (root) {
-				history = data;
-			} else if (group && node) {
-				const descendantIds = new Set([feature.id, ...getDescendantIds(node)]);
-				history = data.filter((entry) => descendantIds.has(entry.feature_id));
-			} else {
-				history = data.filter((entry) => entry.feature_id === feature.id);
-			}
-
+			// Server now returns ProjectHistoryEntry[] directly
+			history = data;
 			lastLoadedFeatureId = feature.id;
 		} finally {
 			if (!isRefresh) {

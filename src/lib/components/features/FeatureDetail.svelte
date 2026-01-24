@@ -4,6 +4,7 @@
 	import { BookIcon, GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
 	import { InfoBanner } from '$lib/components/ui/index.js';
+	import DeleteFeatureDialog from './DeleteFeatureDialog.svelte';
 
 	// Get authenticated API client from context
 	const authApi = getAuthApiContext();
@@ -36,6 +37,7 @@
 	let activeTab = $state<'view' | 'edit' | 'diff'>('view');
 	let diffData = $state<FeatureDiff | null>(null);
 	let isLoadingDiff = $state(false);
+	let showDeleteDialog = $state(false);
 
 	const hasPendingChanges = $derived(!!feature?.desired_details);
 
@@ -264,7 +266,7 @@
 									<button class="btn btn-primary" onclick={onRestore} type="button">Restore</button>
 								{/if}
 								{#if onDelete}
-									<button class="btn btn-danger" onclick={onDelete} type="button">Delete Permanently</button>
+									<button class="btn btn-danger" onclick={() => (showDeleteDialog = true)} type="button">Delete Permanently</button>
 								{/if}
 							</div>
 						{:else}
@@ -413,6 +415,15 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
+
+	{#if feature && onDelete}
+		<DeleteFeatureDialog
+			open={showDeleteDialog}
+			onOpenChange={(open) => (showDeleteDialog = open)}
+			featureTitle={feature.title}
+			onDelete={onDelete}
+		/>
 	{/if}
 </div>
 
@@ -609,13 +620,13 @@
 	}
 
 	.btn-danger {
-		background: rgba(248, 81, 73, 0.2);
-		color: #f85149;
+		background: #f85149;
+		color: #fff;
 		border-color: #f85149;
 	}
 
 	.btn-danger:hover:not(:disabled) {
-		background: rgba(248, 81, 73, 0.3);
+		background: #ff6b61;
 	}
 
 	.btn-danger-subtle {

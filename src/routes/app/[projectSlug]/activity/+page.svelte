@@ -2,9 +2,8 @@
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { HistoryList } from '$lib/components/history/index.js';
-	import { FeatureTree } from '$lib/components/features/index.js';
+	import { ActivityNav } from '$lib/components/activity/index.js';
 	import { findFeature, getDescendantIds } from '$lib/components/features/featureTreeUtils.js';
-	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
 	import { sidebarWidth } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -120,17 +119,13 @@
 		gitRemote = primary?.git_remote ?? data.find((d) => d.git_remote)?.git_remote ?? undefined;
 	}
 
-	function handleSelectFeature(id: string) {
-		// Toggle selection: clicking already-selected feature deselects (clears filter)
-		if (id === selectedFeatureId) {
+	function handleSelectFeature(id: string | null) {
+		// null means "All Activity" - clear the filter
+		if (id === null || id === selectedFeatureId) {
 			goto(`/app/${projectSlug}/activity`, { replaceState: true });
 		} else {
 			goto(`/app/${projectSlug}/activity?feature=${id}`, { replaceState: true });
 		}
-	}
-
-	function handleResize(deltaX: number) {
-		sidebarWidth.resize(deltaX);
 	}
 
 	function handleFeatureClick(featureId: string) {
@@ -140,22 +135,19 @@
 </script>
 
 <div class="page-container">
-	<aside class="sidebar" style="width: {sidebarWidth.value}px">
+	<aside class="sidebar">
 		{#if isLoadingFeatures && featureTree.length === 0}
 			<div class="loading-state">Loading features...</div>
 		{:else}
-			<FeatureTree
+			<ActivityNav
 				features={featureTree}
+				projectTitle={project?.name ?? ''}
 				selectedId={selectedFeatureId}
-				projectId={projectId!}
-				featureColumnWidth={sidebarWidth.value}
-				showFilterButton={false}
+				width={sidebarWidth.value}
 				onSelect={handleSelectFeature}
 			/>
 		{/if}
 	</aside>
-
-	<ResizeDivider onResize={handleResize} />
 
 	<section class="content">
 		<HistoryList
@@ -176,9 +168,6 @@
 	}
 
 	.sidebar {
-		background: var(--background);
-		display: flex;
-		flex-direction: column;
 		flex-shrink: 0;
 		min-height: 0;
 		overflow: hidden;
@@ -190,9 +179,6 @@
 		min-height: 0;
 		overflow: hidden;
 		background: var(--background);
-		/* Align with tree content: header (36px) + subheader (27px) = 63px */
-		padding-top: 43px;
-		padding-left: 24px;
 	}
 
 	.loading-state {
