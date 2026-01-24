@@ -101,7 +101,7 @@
 	function handleClose() {
 		terminalService?.dispose();
 		terminalService = null;
-		sessionId = undefined;
+		currentProjectId = null;
 		onClose();
 	}
 
