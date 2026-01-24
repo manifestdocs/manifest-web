@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '@xterm/xterm/css/xterm.css';
+	import '@fontsource/fira-code/400.css';
+	import '@fontsource/fira-code/500.css';
 	import { TerminalService, type ConnectionState } from '$lib/services/terminal';
 
 	interface Props {

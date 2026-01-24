@@ -56,11 +56,11 @@ export class TerminalService {
 		this.config = config;
 
 		// Create terminal with sensible defaults
-		// Font stack: Prefer fonts with complete box-drawing/Unicode coverage
+		// Fira Code is loaded as a web font for guaranteed box-drawing/Unicode coverage
 		this.terminal = new Terminal({
 			cursorBlink: true,
 			fontSize: 13,
-			fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
+			fontFamily: "'Fira Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
 			theme: {
 				background: '#0d1117',
 				foreground: '#c9d1d9',
