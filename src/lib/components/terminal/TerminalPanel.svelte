@@ -1,13 +1,83 @@
 <script lang="ts">
+	import '@xterm/xterm/css/xterm.css';
+	import { TerminalService, type ConnectionState } from '$lib/services/terminal';
+
 	interface Props {
 		open: boolean;
+		projectId: string;
 		onClose: () => void;
 	}
 
-	let { open, onClose }: Props = $props();
+	let { open, projectId, onClose }: Props = $props();
 
-	let height = $state(50); // percentage of viewport height
+	let width = $state(50); // percentage of viewport width
 	let isDragging = $state(false);
+	let connectionState = $state<ConnectionState>('disconnected');
+	let connectionMessage = $state<string | undefined>();
+	let terminalContainer = $state<HTMLDivElement | null>(null);
+	let terminalService: TerminalService | null = null; // Not reactive to avoid effect loops
+	let currentProjectId: string | null = null; // Track which project the terminal is connected to
+
+	function initializeTerminal() {
+		if (!terminalContainer || !projectId) return;
+
+		// Clean up existing terminal if any
+		if (terminalService) {
+			terminalService.dispose();
+			terminalService = null;
+		}
+
+		currentProjectId = projectId;
+
+		terminalService = new TerminalService({
+			projectId,
+			sessionId: crypto.randomUUID(),
+			onConnectionStateChange: (state, message) => {
+				connectionState = state;
+				connectionMessage = message;
+			}
+		});
+
+		terminalService.mount(terminalContainer);
+		terminalService.connect();
+	}
+
+	function cleanupTerminal() {
+		if (terminalService) {
+			terminalService.dispose();
+			terminalService = null;
+		}
+		currentProjectId = null;
+		connectionState = 'disconnected';
+		connectionMessage = undefined;
+	}
+
+	// Initialize when container mounts and panel is open
+	$effect(() => {
+		if (open && terminalContainer && projectId) {
+			// Only initialize if not already connected to this project
+			if (currentProjectId !== projectId) {
+				initializeTerminal();
+			}
+		}
+	});
+
+	// Clean up when closing
+	$effect(() => {
+		if (!open) {
+			cleanupTerminal();
+		}
+	});
+
+	function handleReconnect() {
+		if (terminalService) {
+			terminalService.connect();
+		}
+	}
+
+	function handleClear() {
+		terminalService?.clear();
+	}
 
 	function handleResizeStart(e: PointerEvent) {
 		isDragging = true;
@@ -16,49 +86,109 @@
 
 	function handleResizeMove(e: PointerEvent) {
 		if (!isDragging) return;
-		const vh = window.innerHeight;
-		const newHeight = ((vh - e.clientY) / vh) * 100;
-		height = Math.min(90, Math.max(20, newHeight)); // Clamp between 20% and 90%
+		const vw = window.innerWidth;
+		const newWidth = ((vw - e.clientX) / vw) * 100;
+		width = Math.min(80, Math.max(25, newWidth)); // Clamp between 25% and 80%
+		// Notify terminal of resize
+		terminalService?.fit();
 	}
 
 	function handleResizeEnd(e: PointerEvent) {
 		isDragging = false;
 		(e.target as HTMLElement).releasePointerCapture(e.pointerId);
 	}
+
+	function handleClose() {
+		terminalService?.dispose();
+		terminalService = null;
+		sessionId = undefined;
+		onClose();
+	}
+
+	const statusColor = $derived.by(() => {
+		switch (connectionState) {
+			case 'connected':
+				return 'var(--state-implemented)';
+			case 'connecting':
+			case 'reconnecting':
+				return 'var(--state-in-progress)';
+			case 'disconnected':
+				return 'var(--state-deprecated)';
+		}
+	});
+
+	const statusLabel = $derived.by(() => {
+		switch (connectionState) {
+			case 'connected':
+				return 'Connected';
+			case 'connecting':
+				return 'Connecting...';
+			case 'reconnecting':
+				return 'Reconnecting...';
+			case 'disconnected':
+				return connectionMessage || 'Disconnected';
+		}
+	});
 </script>
 
 {#if open}
-	<div class="terminal-panel" style="height: {height}vh">
+	<div class="terminal-panel" style="width: {width}vw">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="resize-handle"
+			onpointerdown={handleResizeStart}
+			onpointermove={handleResizeMove}
+			onpointerup={handleResizeEnd}
+			onpointercancel={handleResizeEnd}
+		>
+			<div class="resize-bar"></div>
+		</div>
 		<div class="terminal-container">
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="resize-handle"
-				onpointerdown={handleResizeStart}
-				onpointermove={handleResizeMove}
-				onpointerup={handleResizeEnd}
-				onpointercancel={handleResizeEnd}
-			>
-				<div class="resize-bar"></div>
-			</div>
 			<div class="terminal-header">
-				<span class="terminal-title">Terminal</span>
-				<button class="close-btn" onclick={onClose} title="Close terminal">
-					<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-						<path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-					</svg>
-				</button>
-			</div>
-			<div class="terminal-content">
-				<div class="terminal-placeholder">
-					<span class="placeholder-icon">
-						<svg width="32" height="32" viewBox="0 0 16 16" fill="none">
-							<path d="M2 4L6 8L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-							<path d="M8 12H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+				<div class="header-left">
+					<span class="terminal-title">Terminal</span>
+					<span class="status-indicator" style="background: {statusColor}"></span>
+					<span class="status-text">{statusLabel}</span>
+				</div>
+				<div class="header-actions">
+					{#if connectionState === 'disconnected'}
+						<button class="action-btn" onclick={handleReconnect} title="Reconnect">
+							<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+								<path
+									d="M1.5 8a6.5 6.5 0 1 1 1.5 4.15"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+								<path
+									d="M1 4.5V8h3.5"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+					{/if}
+					<button class="action-btn" onclick={handleClear} title="Clear terminal">
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+							<path d="M2 4h12M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+							<path d="M13 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 						</svg>
-					</span>
-					<span class="placeholder-text">xterm.js terminal will render here</span>
+					</button>
+					<button class="close-btn" onclick={handleClose} title="Close terminal">
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+							<path
+								d="M4 4L12 12M12 4L4 12"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+							/>
+						</svg>
+					</button>
 				</div>
 			</div>
+			<div class="terminal-content" bind:this={terminalContainer}></div>
 		</div>
 	</div>
 {/if}
@@ -66,48 +196,27 @@
 <style>
 	.terminal-panel {
 		position: fixed;
-		bottom: 0;
-		left: 0;
+		top: 62px; /* Below header */
 		right: 0;
+		bottom: 33px; /* Above footer */
 		display: flex;
-		justify-content: center;
 		z-index: 50;
-		animation: slideUp 0.2s ease-out;
-	}
-
-	.terminal-container {
-		width: 100%;
-		min-width: 640px;
-		max-width: 960px;
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		background: var(--background);
-		border: 1px solid var(--border-default);
-		border-bottom: none;
-		border-radius: 8px 8px 0 0;
-		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
-		overflow: hidden;
+		animation: slideIn 0.2s ease-out;
 	}
 
 	.resize-handle {
-		position: absolute;
-		top: -4px;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 100%;
-		max-width: 960px;
-		height: 12px;
-		cursor: ns-resize;
+		width: 12px;
+		height: 100%;
+		cursor: ew-resize;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1;
+		flex-shrink: 0;
 	}
 
 	.resize-bar {
-		width: 48px;
-		height: 4px;
+		width: 4px;
+		height: 48px;
 		background: var(--border-default);
 		border-radius: 2px;
 		transition: background 0.15s ease;
@@ -117,13 +226,30 @@
 		background: var(--foreground-muted);
 	}
 
+	.terminal-container {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		background: var(--background);
+		border-left: 1px solid var(--border-default);
+		box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+		overflow: hidden;
+	}
+
 	.terminal-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 8px 12px;
+		height: 36px;
+		padding: 0 12px;
 		background: var(--background-subtle);
 		border-bottom: 1px solid var(--border-default);
+	}
+
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.terminal-title {
@@ -132,6 +258,42 @@
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
 		color: var(--foreground-muted);
+	}
+
+	.status-indicator {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+	}
+
+	.status-text {
+		font-size: 11px;
+		color: var(--foreground-subtle);
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.action-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		background: transparent;
+		border: none;
+		border-radius: 4px;
+		color: var(--foreground-muted);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.action-btn:hover {
+		background: var(--background-muted);
+		color: var(--foreground);
 	}
 
 	.close-btn {
@@ -156,34 +318,25 @@
 	.terminal-content {
 		flex: 1;
 		background: #0d1117;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		padding: 8px;
+		overflow: hidden;
 	}
 
-	.terminal-placeholder {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 12px;
-		color: var(--foreground-subtle);
+	/* Override xterm.js styles to ensure proper sizing */
+	.terminal-content :global(.xterm) {
+		height: 100%;
 	}
 
-	.placeholder-icon {
-		opacity: 0.5;
+	.terminal-content :global(.xterm-viewport) {
+		overflow-y: auto !important;
 	}
 
-	.placeholder-text {
-		font-size: 13px;
-		font-family: var(--font-mono, monospace);
-	}
-
-	@keyframes slideUp {
+	@keyframes slideIn {
 		from {
-			transform: translateY(100%);
+			transform: translateX(100%);
 		}
 		to {
-			transform: translateY(0);
+			transform: translateX(0);
 		}
 	}
 </style>

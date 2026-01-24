@@ -40,6 +40,8 @@
 	let showDeleteDialog = $state(false);
 
 	const hasPendingChanges = $derived(!!feature?.desired_details);
+	// View tab shows future state (desired_details) when pending changes exist
+	const displayContent = $derived(feature?.desired_details ?? feature?.details ?? null);
 
 	// Track which feature we're editing to detect navigation vs refresh
 	let currentFeatureId = $state<string | null>(null);
@@ -56,7 +58,14 @@
 			editTitle = feature.title;
 			editDetails = feature.details ?? '';
 			isEditing = false;
-			activeTab = 'view';
+
+			// Default to diff tab when feature has pending changes
+			if (feature.desired_details) {
+				activeTab = 'diff';
+				loadDiff();
+			} else {
+				activeTab = 'view';
+			}
 		}
 		// When same feature is refreshed (e.g., after version change),
 		// don't update edit fields or change tabs - let user keep editing
@@ -98,7 +107,7 @@
 
 		isSaving = true;
 		try {
-			const updates: { title?: string; details?: string | null } = {};
+			const updates: { title?: string; details?: string | null; desired_details?: string | null } = {};
 
 			if (editTitle !== feature.title) {
 				updates.title = editTitle;
@@ -106,13 +115,28 @@
 
 			const currentDetails = feature.details ?? '';
 			if (editDetails !== currentDetails) {
-				updates.details = editDetails || null;
+				// Implemented features: save to desired_details for review
+				// Other states: save directly to details
+				if (feature.state === 'implemented') {
+					updates.desired_details = editDetails || null;
+				} else {
+					updates.details = editDetails || null;
+				}
 			}
 
 			if (Object.keys(updates).length > 0) {
 				await onSave(feature.id, updates);
+
+				// If we saved to desired_details, show the diff immediately
+				if (updates.desired_details !== undefined) {
+					await loadDiff();
+					activeTab = 'diff';
+				} else {
+					activeTab = 'view';
+				}
+			} else {
+				activeTab = 'view';
 			}
-			activeTab = 'view';
 		} finally {
 			isSaving = false;
 		}
@@ -354,16 +378,10 @@
 				</InfoBanner>
 			{/if}
 
-			{#if hasPendingChanges && activeTab === 'view'}
-				<InfoBanner variant="warning" class="content-banner">
-					This feature has proposed changes. <button class="banner-link" onclick={handleViewDiff} type="button">Review changes</button> to apply or discard them.
-				</InfoBanner>
-			{/if}
-
 			{#if activeTab === 'view'}
 				<div class="details-view">
-					{#if feature.details}
-						<MarkdownView content={feature.details} />
+					{#if displayContent}
+						<MarkdownView content={displayContent} />
 					{:else}
 						<p class="no-details">
 							{isRoot
@@ -791,20 +809,6 @@
 		font-weight: 500;
 		background: rgba(204, 167, 0, 0.15);
 		color: var(--state-proposed);
-	}
-
-	.banner-link {
-		background: none;
-		border: none;
-		color: inherit;
-		font: inherit;
-		text-decoration: underline;
-		cursor: pointer;
-		padding: 0;
-	}
-
-	.banner-link:hover {
-		opacity: 0.8;
 	}
 
 	.loading-text {

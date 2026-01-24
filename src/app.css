@@ -80,6 +80,10 @@ body {
 	background: var(--foreground-subtle);
 }
 
+::-webkit-scrollbar-corner {
+	background: var(--background-subtle);
+}
+
 /* Monospace for code/markdown */
 code,
 pre,

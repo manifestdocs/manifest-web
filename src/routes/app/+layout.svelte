@@ -234,7 +234,13 @@
 	/>
 {/if}
 
-<TerminalPanel open={terminalOpen} onClose={() => (terminalOpen = false)} />
+{#if selectedProject}
+	<TerminalPanel
+		open={terminalOpen}
+		projectId={selectedProject.id}
+		onClose={() => (terminalOpen = false)}
+	/>
+{/if}
 
 <style>
 	.app-layout {
