@@ -66,9 +66,7 @@
 	{#if isReleaseEntry}
 		<!-- Release milestone styling -->
 		<div class="entry-header release-header">
-			<svg class="release-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-				<path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.828 1.828l1.937.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.828l-.645 1.937c-.11.33-.576.33-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645c-.33-.11-.33-.576 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828l.645-1.937zM13.78 1.22a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 0 1-1.06-1.06l1.5-1.5a.75.75 0 0 1 1.06 0zM11 4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5A.75.75 0 0 1 11 4zM8.5.75a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0V.75z"/>
-			</svg>
+			<span class="release-icon">🚀</span>
 			<span class="release-title">{headline}</span>
 			{#if entry.version_name}
 				<span class="version-badge">{entry.version_name}</span>
@@ -157,8 +155,9 @@
 	}
 
 	.release-icon {
-		color: var(--accent-green, #22c55e);
 		flex-shrink: 0;
+		font-size: 14px;
+		line-height: 1;
 	}
 
 	.release-title {
