@@ -146,9 +146,8 @@
 	.history-entry.release-entry {
 		padding: 8px 12px;
 		margin: 4px -12px;
-		background: linear-gradient(135deg, var(--accent-purple-subtle, rgba(139, 92, 246, 0.1)) 0%, var(--accent-blue-subtle, rgba(59, 130, 246, 0.08)) 100%);
-		border-radius: 6px;
-		border-left: 3px solid var(--accent-purple, #8b5cf6);
+		background: var(--accent-green-subtle, rgba(34, 197, 94, 0.1));
+		border-left: 3px solid var(--accent-green, #22c55e);
 	}
 
 	.release-header {
@@ -158,7 +157,7 @@
 	}
 
 	.release-icon {
-		color: var(--accent-purple, #8b5cf6);
+		color: var(--accent-green, #22c55e);
 		flex-shrink: 0;
 	}
 
@@ -171,9 +170,8 @@
 		font-size: 11px;
 		font-weight: 500;
 		padding: 2px 8px;
-		background: var(--accent-purple, #8b5cf6);
+		background: var(--accent-green, #22c55e);
 		color: white;
-		border-radius: 999px;
 	}
 
 	.entry-header {
