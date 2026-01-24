@@ -605,6 +605,8 @@
 	.matrix-body-inner {
 		display: grid;
 		grid-template: 1fr / 1fr;
+		/* Fill viewport height so backgrounds extend to bottom */
+		min-height: 100%;
 	}
 
 	.column-backgrounds {
@@ -613,13 +615,10 @@
 		display: flex;
 		pointer-events: none;
 		overflow: hidden;
-		/* Extend into parent's padding area */
-		margin-bottom: -48px;
-		padding-bottom: 48px;
 	}
 
 	.col-bg {
-		height: 100%;
+		flex-shrink: 0;
 	}
 
 	.col-bg.feature-col {
