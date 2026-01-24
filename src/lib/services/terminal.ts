@@ -9,6 +9,7 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
 import { API_BASE_URL } from '$lib/api/client';
 
 /** Control messages sent/received as JSON text frames */
@@ -65,6 +66,12 @@ export class TerminalService {
 			cursorBlink: true,
 			fontSize: 13,
 			fontFamily: "'Fira Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
+			// TUI app optimizations - prevent double line rendering
+			lineHeight: 1,
+			letterSpacing: 0,
+			convertEol: false,
+			allowTransparency: false,
+			scrollback: 10000,
 			theme: {
 				background: '#0d1117',
 				foreground: '#c9d1d9',
@@ -115,6 +122,18 @@ export class TerminalService {
 	 */
 	mount(container: HTMLElement): void {
 		this.terminal.open(container);
+
+		// Try WebGL renderer for better performance, fall back to canvas
+		try {
+			const webglAddon = new WebglAddon();
+			webglAddon.onContextLoss(() => {
+				webglAddon.dispose();
+			});
+			this.terminal.loadAddon(webglAddon);
+		} catch {
+			console.warn('WebGL renderer not available, using canvas');
+		}
+
 		this.fit();
 
 		// Set up resize observer with debounced fit
