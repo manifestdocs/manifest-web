@@ -12,6 +12,9 @@
 
 	let { entry, gitRemote, onFeatureClick }: Props = $props();
 
+	// Detect release entries (created on root feature with "Released X" summary)
+	let isReleaseEntry = $derived(entry.summary.startsWith('Released '));
+
 	// Convert git remote URL to GitHub web URL for commits
 	// e.g., "git@github.com:user/repo.git" -> "https://github.com/user/repo"
 	// e.g., "https://github.com/user/repo.git" -> "https://github.com/user/repo"
@@ -59,44 +62,58 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="history-entry" class:has-body={body !== null} onclick={handleEntryClick}>
-	<div class="entry-header">
-		<button type="button" class="feature-link" onclick={handleFeatureClick}>
-			<StateIcon state={entry.feature_state} size={12} />
-			<span class="feature-title">{entry.feature_title}</span>
-		</button>
-		{#if body}
-			<span class="twirl" class:expanded={isExpanded}>
-				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M3 2L7 5L3 8" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</span>
-		{:else}
-			<span class="separator">—</span>
-		{/if}
-		<span class="headline">{headline}</span>
-		{#if entry.commits && entry.commits.length > 0}
-			<span class="commits">
-				{#each entry.commits as commit, i}
-					{#if repoUrl}
-						<a
-							href="{repoUrl}/commit/{commit.sha}"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="sha-link"
-							title={commit.message}
-							onclick={(e) => e.stopPropagation()}
-						>
-							<code class="sha">{commit.sha.slice(0, 7)}</code>
-						</a>
-					{:else}
-						<code class="sha" title={commit.message}>{commit.sha.slice(0, 7)}</code>
-					{/if}
-					{#if i < entry.commits.length - 1},&nbsp;{/if}
-				{/each}
-			</span>
-		{/if}
-	</div>
+<div class="history-entry" class:has-body={body !== null} class:release-entry={isReleaseEntry} onclick={handleEntryClick}>
+	{#if isReleaseEntry}
+		<!-- Release milestone styling -->
+		<div class="entry-header release-header">
+			<svg class="release-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+				<path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.828 1.828l1.937.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.828l-.645 1.937c-.11.33-.576.33-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645c-.33-.11-.33-.576 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828l.645-1.937zM13.78 1.22a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 0 1-1.06-1.06l1.5-1.5a.75.75 0 0 1 1.06 0zM11 4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5A.75.75 0 0 1 11 4zM8.5.75a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0V.75z"/>
+			</svg>
+			<span class="release-title">{headline}</span>
+			{#if entry.version_name}
+				<span class="version-badge">{entry.version_name}</span>
+			{/if}
+		</div>
+	{:else}
+		<!-- Regular feature entry -->
+		<div class="entry-header">
+			<button type="button" class="feature-link" onclick={handleFeatureClick}>
+				<StateIcon state={entry.feature_state} size={12} />
+				<span class="feature-title">{entry.feature_title}</span>
+			</button>
+			{#if body}
+				<span class="twirl" class:expanded={isExpanded}>
+					<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M3 2L7 5L3 8" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</span>
+			{:else}
+				<span class="separator">—</span>
+			{/if}
+			<span class="headline">{headline}</span>
+			{#if entry.commits && entry.commits.length > 0}
+				<span class="commits">
+					{#each entry.commits as commit, i}
+						{#if repoUrl}
+							<a
+								href="{repoUrl}/commit/{commit.sha}"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="sha-link"
+								title={commit.message}
+								onclick={(e) => e.stopPropagation()}
+							>
+								<code class="sha">{commit.sha.slice(0, 7)}</code>
+							</a>
+						{:else}
+							<code class="sha" title={commit.message}>{commit.sha.slice(0, 7)}</code>
+						{/if}
+						{#if i < entry.commits.length - 1},&nbsp;{/if}
+					{/each}
+				</span>
+			{/if}
+		</div>
+	{/if}
 	{#if body && isExpanded}
 		<div class="entry-body">
 			<pre class="body-text">{body}</pre>
@@ -123,6 +140,40 @@
 		margin: 0 -8px;
 		padding: 4px 8px;
 		border-radius: 4px;
+	}
+
+	/* Release milestone styling */
+	.history-entry.release-entry {
+		padding: 8px 12px;
+		margin: 4px -12px;
+		background: linear-gradient(135deg, var(--accent-purple-subtle, rgba(139, 92, 246, 0.1)) 0%, var(--accent-blue-subtle, rgba(59, 130, 246, 0.08)) 100%);
+		border-radius: 6px;
+		border-left: 3px solid var(--accent-purple, #8b5cf6);
+	}
+
+	.release-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.release-icon {
+		color: var(--accent-purple, #8b5cf6);
+		flex-shrink: 0;
+	}
+
+	.release-title {
+		font-weight: 600;
+		color: var(--foreground);
+	}
+
+	.version-badge {
+		font-size: 11px;
+		font-weight: 500;
+		padding: 2px 8px;
+		background: var(--accent-purple, #8b5cf6);
+		color: white;
+		border-radius: 999px;
 	}
 
 	.entry-header {
