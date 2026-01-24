@@ -10,7 +10,7 @@
 
 	let { open, projectId, onClose }: Props = $props();
 
-	let height = $state(40); // percentage of viewport height
+	let height = $state(50); // percentage of viewport height
 	let isDragging = $state(false);
 	let connectionState = $state<ConnectionState>('disconnected');
 	let connectionMessage = $state<string | undefined>();
