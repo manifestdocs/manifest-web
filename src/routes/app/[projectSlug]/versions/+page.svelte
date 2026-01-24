@@ -58,6 +58,34 @@
 		return null;
 	}
 
+	// Compute suggested next version name from existing versions
+	function getNextVersionName(versions: Version[]): string | null {
+		if (versions.length === 0) return '0.1.0';
+
+		const parsed = versions
+			.map((v) => {
+				const match = v.name.match(/^v?(\d+)\.(\d+)\.(\d+)/);
+				if (!match) return null;
+				return {
+					major: parseInt(match[1], 10),
+					minor: parseInt(match[2], 10),
+					patch: parseInt(match[3], 10)
+				};
+			})
+			.filter((v): v is { major: number; minor: number; patch: number } => v !== null);
+
+		if (parsed.length === 0) return null;
+
+		const highest = parsed.reduce((max, v) => {
+			if (v.major > max.major) return v;
+			if (v.major === max.major && v.minor > max.minor) return v;
+			if (v.major === max.major && v.minor === max.minor && v.patch > max.patch) return v;
+			return max;
+		});
+
+		return `${highest.major}.${highest.minor + 1}.0`;
+	}
+
 	// Get parent title for create dialog
 	const createDialogParentTitle = $derived.by(() => {
 		if (!createDialogParentId) return null;
@@ -175,6 +203,15 @@
 		}
 		// Refresh both versions and features
 		await Promise.all([loadVersions(projectId), loadFeatureTree(projectId)]);
+
+		// Auto-create to maintain 4 unreleased versions
+		const unreleased = versions.filter((v) => !v.released_at);
+		if (unreleased.length < 4) {
+			const nextName = getNextVersionName(versions);
+			if (nextName) {
+				await handleCreateVersion(nextName);
+			}
+		}
 	}
 
 	function handleSelectFeature(id: string) {
