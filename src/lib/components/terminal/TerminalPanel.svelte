@@ -10,7 +10,7 @@
 
 	let { open, projectId, onClose }: Props = $props();
 
-	let width = $state(50); // percentage of viewport width
+	let height = $state(40); // percentage of viewport height
 	let isDragging = $state(false);
 	let connectionState = $state<ConnectionState>('disconnected');
 	let connectionMessage = $state<string | undefined>();
@@ -86,9 +86,9 @@
 
 	function handleResizeMove(e: PointerEvent) {
 		if (!isDragging) return;
-		const vw = window.innerWidth;
-		const newWidth = ((vw - e.clientX) / vw) * 100;
-		width = Math.min(80, Math.max(25, newWidth)); // Clamp between 25% and 80%
+		const vh = window.innerHeight;
+		const newHeight = ((vh - e.clientY) / vh) * 100;
+		height = Math.min(70, Math.max(20, newHeight)); // Clamp between 20% and 70%
 		// Notify terminal of resize
 		terminalService?.fit();
 	}
@@ -132,7 +132,7 @@
 </script>
 
 {#if open}
-	<div class="terminal-panel" style="width: {width}vw">
+	<div class="terminal-panel" style="height: {height}vh">
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="resize-handle"
@@ -196,18 +196,19 @@
 <style>
 	.terminal-panel {
 		position: fixed;
-		top: 62px; /* Below header */
+		left: 0;
 		right: 0;
-		bottom: 33px; /* Above footer */
+		bottom: 0;
 		display: flex;
+		flex-direction: column;
 		z-index: 50;
 		animation: slideIn 0.2s ease-out;
 	}
 
 	.resize-handle {
-		width: 12px;
-		height: 100%;
-		cursor: ew-resize;
+		width: 100%;
+		height: 12px;
+		cursor: ns-resize;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -215,8 +216,8 @@
 	}
 
 	.resize-bar {
-		width: 4px;
-		height: 48px;
+		width: 48px;
+		height: 4px;
 		background: var(--border-default);
 		border-radius: 2px;
 		transition: background 0.15s ease;
@@ -231,8 +232,8 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--background);
-		border-left: 1px solid var(--border-default);
-		box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+		border-top: 1px solid var(--border-default);
+		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
 		overflow: hidden;
 	}
 
@@ -333,10 +334,10 @@
 
 	@keyframes slideIn {
 		from {
-			transform: translateX(100%);
+			transform: translateY(100%);
 		}
 		to {
-			transform: translateX(0);
+			transform: translateY(0);
 		}
 	}
 </style>
