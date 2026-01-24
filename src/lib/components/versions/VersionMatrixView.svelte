@@ -422,6 +422,12 @@
 
 	:global(.feature-complete-banner .banner-content) {
 		max-width: 800px;
+		background: var(--state-implemented);
+		color: var(--background);
+	}
+
+	:global(.feature-complete-banner .banner-icon) {
+		color: var(--background);
 	}
 
 	.matrix-header {
