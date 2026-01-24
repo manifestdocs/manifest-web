@@ -44,6 +44,7 @@
 		onAddFeature?: (parentId: string | null) => void;
 		onReparent?: (featureId: string, newParentId: string | null) => void;
 		onCreateGroup?: (title: string, childIds: [string, string], parentId: string | null) => Promise<void>;
+		onWrapInGroup?: (featureId: string, featureTitle: string, parentId: string | null) => void;
 		onArchiveFeature?: (id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) => void;
 		onRestoreFeature?: (id: string) => Promise<void>;
 		onDeleteFeature?: (id: string) => Promise<void>;
@@ -63,6 +64,7 @@
 		onAddFeature,
 		onReparent,
 		onCreateGroup,
+		onWrapInGroup,
 		onArchiveFeature,
 		onRestoreFeature,
 		onDeleteFeature
@@ -307,6 +309,7 @@
 	);
 	const contextMenuFeatureTitle = $derived(contextMenuFeature?.title ?? null);
 	const contextMenuFeatureIsRoot = $derived(contextMenuFeature?.is_root ?? false);
+	const contextMenuFeatureIsGroup = $derived(contextMenuFeature ? contextMenuFeature.children.length > 0 : false);
 
 	function handleRowContextMenu(id: string, x: number, y: number) {
 		contextMenuFeatureId = id;
@@ -321,6 +324,17 @@
 
 	function handleContextMenuAddChild() {
 		onAddFeature?.(contextMenuFeatureId);
+	}
+
+	function handleContextMenuWrapInGroup() {
+		if (!contextMenuFeature || !onWrapInGroup) return;
+		if (contextMenuFeature.is_root) return;
+
+		onWrapInGroup(
+			contextMenuFeature.id,
+			contextMenuFeature.title,
+			contextMenuFeature.parent_id ?? null
+		);
 	}
 
 	function handleContextMenuArchive() {
@@ -481,9 +495,11 @@
 	y={contextMenuY}
 	featureTitle={contextMenuFeatureTitle}
 	isRoot={contextMenuFeatureIsRoot}
+	isGroup={contextMenuFeatureIsGroup}
 	isArchived={contextMenuFeature?.state === 'archived'}
 	onClose={handleContextMenuClose}
 	onAddChild={handleContextMenuAddChild}
+	onWrapInGroup={onWrapInGroup ? handleContextMenuWrapInGroup : undefined}
 	onArchive={onArchiveFeature ? handleContextMenuArchive : undefined}
 	onRestore={onRestoreFeature ? handleContextMenuRestore : undefined}
 	onDelete={onDeleteFeature ? handleContextMenuDelete : undefined}

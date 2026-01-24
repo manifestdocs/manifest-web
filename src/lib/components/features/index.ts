@@ -6,5 +6,6 @@ export { default as FeatureRow } from './FeatureRow.svelte';
 export { default as CreateFeatureDialog } from './CreateFeatureDialog.svelte';
 export { default as ArchiveFeatureDialog } from './ArchiveFeatureDialog.svelte';
 export { default as DeleteFeatureDialog } from './DeleteFeatureDialog.svelte';
+export { default as WrapInGroupDialog } from './WrapInGroupDialog.svelte';
 export { default as FeatureContextMenu } from './FeatureContextMenu.svelte';
 export * from './featureTreeUtils.js';

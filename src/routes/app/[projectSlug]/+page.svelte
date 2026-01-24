@@ -2,7 +2,7 @@
 	import { subscribeToProject } from '$lib/api/client.js';
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
-	import { FeatureTree, FeatureDetail, FeatureSidebar, CreateFeatureDialog, ArchiveFeatureDialog } from '$lib/components/features/index.js';
+	import { FeatureTree, FeatureDetail, FeatureSidebar, CreateFeatureDialog, ArchiveFeatureDialog, WrapInGroupDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import { EmptyProjectGuide, OnboardingGuide } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
@@ -47,6 +47,14 @@
 		title: string;
 		isGroup: boolean;
 		childCount: number;
+		parentId: string | null;
+	} | null>(null);
+
+	// Wrap in group dialog state
+	let wrapDialogOpen = $state(false);
+	let wrapTarget = $state<{
+		id: string;
+		title: string;
 		parentId: string | null;
 	} | null>(null);
 
@@ -364,6 +372,45 @@
 		archiveDialogOpen = true;
 	}
 
+	function handleOpenWrapDialog(featureId: string, featureTitle: string, parentId: string | null) {
+		wrapTarget = { id: featureId, title: featureTitle, parentId };
+		wrapDialogOpen = true;
+	}
+
+	async function handleWrapInGroup(title: string) {
+		if (!wrapTarget || !projectId) return;
+
+		const api = await authApi.getClient();
+
+		// 1. Create new group feature at the same level as the target
+		const { data: newGroup, error: createError } = await api.POST('/projects/{id}/features', {
+			params: { path: { id: projectId } },
+			body: { title, parent_id: wrapTarget.parentId }
+		});
+
+		if (createError || !newGroup) {
+			console.error('Failed to create group:', createError);
+			throw new Error('Failed to create feature set');
+		}
+
+		// 2. Reparent the target feature to the new group
+		const { error: reparentError } = await api.PUT('/features/{id}', {
+			params: { path: { id: wrapTarget.id } },
+			body: { parent_id: newGroup.id }
+		});
+
+		if (reparentError) {
+			console.error('Failed to reparent feature:', reparentError);
+			throw new Error('Failed to move feature into group');
+		}
+
+		// 3. Refresh tree and select the new group
+		await loadFeatureTree(projectId);
+		goto(`/app/${projectSlug}?feature=${newGroup.id}`);
+
+		wrapTarget = null;
+	}
+
 	function handleArchiveFromDetail() {
 		if (!selectedFeature) return;
 		const node = findInTree(featureTree, selectedFeature.id);
@@ -490,7 +537,7 @@
 				{#if isLoadingFeatures && featureTree.length === 0}
 					<div class="loading-state">Loading features...</div>
 				{:else}
-					<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onArchiveFeature={handleOpenArchiveDialog} onRestoreFeature={handleRestoreFeature} onDeleteFeature={handleDeleteFeature} />
+					<FeatureTree features={featureTree} selectedId={selectedFeatureId} projectId={projectId!} featureColumnWidth={sidebarWidth.value} onSelect={handleSelectFeature} onAddFeature={handleOpenCreateDialog} onReparent={handleReparentFeature} onCreateGroup={handleCreateGroup} onWrapInGroup={handleOpenWrapDialog} onArchiveFeature={handleOpenArchiveDialog} onRestoreFeature={handleRestoreFeature} onDeleteFeature={handleDeleteFeature} />
 				{/if}
 			</aside>
 
@@ -559,6 +606,18 @@
 		isGroup={archiveTarget.isGroup}
 		childCount={archiveTarget.childCount}
 		onArchive={handleArchiveFeature}
+	/>
+{/if}
+
+{#if wrapTarget}
+	<WrapInGroupDialog
+		open={wrapDialogOpen}
+		onOpenChange={(open) => {
+			wrapDialogOpen = open;
+			if (!open) wrapTarget = null;
+		}}
+		featureTitle={wrapTarget.title}
+		onCreate={handleWrapInGroup}
 	/>
 {/if}
 

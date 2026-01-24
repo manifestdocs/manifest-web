@@ -5,9 +5,11 @@
 		y: number;
 		featureTitle?: string | null;
 		isRoot?: boolean;
+		isGroup?: boolean;
 		isArchived?: boolean;
 		onClose: () => void;
 		onAddChild: () => void;
+		onWrapInGroup?: () => void;
 		onArchive?: () => void;
 		onRestore?: () => void;
 		onDelete?: () => void;
@@ -19,9 +21,11 @@
 		y,
 		featureTitle = null,
 		isRoot = false,
+		isGroup = false,
 		isArchived = false,
 		onClose,
 		onAddChild,
+		onWrapInGroup,
 		onArchive,
 		onRestore,
 		onDelete
@@ -29,6 +33,11 @@
 
 	function handleAddChild() {
 		onAddChild();
+		onClose();
+	}
+
+	function handleWrapInGroup() {
+		onWrapInGroup?.();
 		onClose();
 	}
 
@@ -93,12 +102,25 @@
 				{/if}
 			{:else}
 				<!-- Normal feature options -->
-				<button type="button" class="menu-item" role="menuitem" onclick={handleAddChild}>
-					<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-						<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-					</svg>
-					<span>{featureTitle ? 'Add Child Feature' : 'Add Feature'}</span>
-				</button>
+				{#if isRoot || isGroup}
+					<button type="button" class="menu-item" role="menuitem" onclick={handleAddChild}>
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+							<path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+						</svg>
+						<span>{featureTitle ? 'Add Child Feature' : 'Add Feature'}</span>
+					</button>
+				{/if}
+				{#if onWrapInGroup && !isRoot}
+					<button type="button" class="menu-item" role="menuitem" onclick={handleWrapInGroup}>
+						<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+							<circle cx="5" cy="5" r="2" fill="currentColor" />
+							<circle cx="11" cy="5" r="2" fill="currentColor" />
+							<circle cx="5" cy="11" r="2" fill="currentColor" />
+							<circle cx="11" cy="11" r="2" fill="currentColor" />
+						</svg>
+						<span>Group in Feature Set</span>
+					</button>
+				{/if}
 				{#if onArchive && !isRoot}
 					<div class="menu-separator"></div>
 					<button type="button" class="menu-item menu-item-warning" role="menuitem" onclick={handleArchive}>
