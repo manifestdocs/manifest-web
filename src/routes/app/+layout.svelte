@@ -10,6 +10,7 @@
 	import { NewProjectWizard, ProjectSettingsDialog } from '$lib/components/projects/index.js';
 	import { SettingsIcon, PlusIcon, SearchIcon } from '$lib/components/icons/index.js';
 	import { CommandPalette } from '$lib/components/command-palette/index.js';
+	import { TerminalPanel } from '$lib/components/terminal/index.js';
 
 	type Project = components['schemas']['Project'];
 
@@ -28,6 +29,7 @@
 	let newProjectWizardOpen = $state(false);
 	let settingsDialogOpen = $state(false);
 	let commandPaletteOpen = $state(false);
+	let terminalOpen = $state(false);
 
 	// Global keyboard shortcut for command palette
 	function handleGlobalKeydown(e: KeyboardEvent) {
@@ -153,6 +155,17 @@
 					<span class="search-label">Search</span>
 					<kbd class="search-kbd">T</kbd>
 				</button>
+				<button
+					class="icon-btn"
+					class:active={terminalOpen}
+					onclick={() => (terminalOpen = !terminalOpen)}
+					title="Toggle terminal"
+				>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<path d="M2 4L6 8L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+						<path d="M8 12H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+					</svg>
+				</button>
 				<div class="header-divider"></div>
 				<span class="project-label">Project</span>
 				<select
@@ -220,6 +233,8 @@
 		projectSlug={selectedProjectSlug || ''}
 	/>
 {/if}
+
+<TerminalPanel open={terminalOpen} onClose={() => (terminalOpen = false)} />
 
 <style>
 	.app-layout {
@@ -318,6 +333,12 @@
 		background: var(--background-emphasis);
 		color: var(--foreground);
 		border-color: var(--foreground-subtle);
+	}
+
+	.icon-btn.active {
+		background: rgba(156, 220, 254, 0.2);
+		color: var(--state-implemented);
+		border-color: var(--state-implemented);
 	}
 
 	.view-nav {
