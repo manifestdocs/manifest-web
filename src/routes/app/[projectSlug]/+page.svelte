@@ -132,6 +132,10 @@
 		source.addEventListener('change', () => {
 			// Refetch the feature tree when any feature changes
 			loadFeatureTree(projectId);
+			// Also refresh the selected feature if one is active
+			if (selectedFeatureId) {
+				loadFeature(selectedFeatureId, true);
+			}
 		});
 
 		source.onerror = () => {
@@ -176,7 +180,14 @@
 		}
 	}
 
-	async function loadFeature(featureId: string) {
+	let lastLoadedFeatureId: string | null = null;
+
+	async function loadFeature(featureId: string, force = false) {
+		// Skip if we already have this feature loaded (prevent unnecessary refetches)
+		if (!force && selectedFeature?.id === featureId && lastLoadedFeatureId === featureId) {
+			return;
+		}
+
 		// Only show loading state when switching to a different feature
 		// (not when refreshing the current one, which would unmount FeatureDetail and lose edit state)
 		const isRefresh = selectedFeature?.id === featureId;
@@ -191,9 +202,11 @@
 			if (error || !data) {
 				console.error('Failed to load feature:', error);
 				selectedFeature = null;
+				lastLoadedFeatureId = null;
 				return;
 			}
 			selectedFeature = data;
+			lastLoadedFeatureId = featureId;
 		} finally {
 			if (!isRefresh) {
 				isLoadingFeature = false;
