@@ -62,22 +62,26 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - minimal floating bar, no track */
 ::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+	width: 6px;
+	height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-	background: var(--background-subtle);
+	background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: var(--background-emphasis);
+	background: rgba(156, 220, 254, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: var(--foreground-subtle);
+	background: rgba(156, 220, 254, 0.3);
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
 }
 
 /* Monospace for code/markdown */
