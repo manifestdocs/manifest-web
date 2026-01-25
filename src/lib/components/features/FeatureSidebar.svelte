@@ -2,6 +2,8 @@
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
 	import type { components } from '$lib/api/schema.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
+	import { rightSidebarWidth } from '$lib/stores/index.js';
+	import AiChat from './AiChat.svelte';
 
 	const authApi = getAuthApiContext();
 
@@ -27,6 +29,39 @@
 	let history = $state<ProjectHistoryEntry[]>([]);
 	let isLoadingHistory = $state(false);
 	let lastLoadedFeatureId = $state<string | null>(null);
+	let activeTab = $state<'ai' | 'activity'>('ai');
+
+	// Resize state
+	let isResizing = $state(false);
+	let sidebarElement: HTMLDivElement | undefined = $state();
+
+	function handleResizeStart(e: PointerEvent) {
+		e.preventDefault();
+		isResizing = true;
+		document.body.style.cursor = 'col-resize';
+		document.body.style.userSelect = 'none';
+
+		const startX = e.clientX;
+		const startWidth = rightSidebarWidth.value;
+
+		function handleMove(e: PointerEvent) {
+			// Moving left increases width (sidebar is on right)
+			const delta = startX - e.clientX;
+			const newWidth = Math.max(rightSidebarWidth.MIN_WIDTH, Math.min(rightSidebarWidth.MAX_WIDTH, startWidth + delta));
+			rightSidebarWidth.set(newWidth);
+		}
+
+		function handleUp() {
+			isResizing = false;
+			document.body.style.cursor = '';
+			document.body.style.userSelect = '';
+			document.removeEventListener('pointermove', handleMove);
+			document.removeEventListener('pointerup', handleUp);
+		}
+
+		document.addEventListener('pointermove', handleMove);
+		document.addEventListener('pointerup', handleUp);
+	}
 
 	// Find feature node in tree
 	function findInTree(nodes: FeatureTreeNode[], id: string): FeatureTreeNode | null {
@@ -123,8 +158,8 @@
 	async function loadHistory(node: typeof featureNode, group: boolean, root: boolean) {
 		if (!feature) return;
 
-		// Skip if already loading this feature
-		if (isLoadingHistory && feature.id === lastLoadedFeatureId) return;
+		// Skip if we already have this feature's history loaded (prevent unnecessary refetches)
+		if (feature.id === lastLoadedFeatureId) return;
 
 		// Only show loading state when switching to a different feature
 		// (not when refreshing the current one, which causes UI flicker)
@@ -198,13 +233,48 @@
 	const repoUrl = $derived(getRepoUrl(gitRemote));
 </script>
 
-<div class="feature-sidebar">
+<div class="feature-sidebar" bind:this={sidebarElement} style="width: {rightSidebarWidth.value}px">
+	<div
+		class="resize-handle"
+		class:resizing={isResizing}
+		onpointerdown={handleResizeStart}
+		role="separator"
+		aria-orientation="vertical"
+		aria-label="Resize sidebar"
+		tabindex="0"
+	></div>
 	{#if !feature}
 		<div class="empty-state">Select a feature</div>
 	{:else}
-		<div class="sidebar-section history-section">
-			<h3 class="section-title">Recent Activity</h3>
+		<div class="sidebar-tabs">
+			<button
+				class="tab-button"
+				class:active={activeTab === 'ai'}
+				onclick={() => (activeTab = 'ai')}
+				type="button"
+			>
+				AI Assistance
+			</button>
+			<button
+				class="tab-button"
+				class:active={activeTab === 'activity'}
+				onclick={() => (activeTab = 'activity')}
+				type="button"
+			>
+				Activity
+			</button>
+		</div>
 
+		<div class="sidebar-section ai-section" class:hidden={activeTab !== 'ai'}>
+			<AiChat
+				featureId={feature.id}
+				featureTitle={feature.title}
+				featureDetails={feature.details ?? ''}
+				isLeaf={!isGroup}
+			/>
+		</div>
+
+		<div class="sidebar-section history-section" class:hidden={activeTab !== 'activity'}>
 			{#if isLoadingHistory}
 				<div class="loading-state">Loading...</div>
 			{:else if history.length === 0}
@@ -267,12 +337,34 @@
 
 <style>
 	.feature-sidebar {
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		width: 350px;
 		min-width: 250px;
+		max-width: 600px;
 		border-left: 1px solid var(--border-default);
 		background: var(--background);
+	}
+
+	.resize-handle {
+		position: absolute;
+		left: -3px;
+		top: 0;
+		bottom: 0;
+		width: 6px;
+		cursor: col-resize;
+		z-index: 10;
+	}
+
+	.resize-handle:hover,
+	.resize-handle.resizing {
+		background: var(--accent-blue);
+		opacity: 0.5;
+	}
+
+	.resize-handle:focus-visible {
+		outline: 2px solid var(--accent-blue);
+		outline-offset: -2px;
 	}
 
 	.empty-state {
@@ -284,15 +376,56 @@
 		font-size: 13px;
 	}
 
+	.sidebar-tabs {
+		display: flex;
+		height: 36px;
+		border-bottom: 1px solid var(--border-default);
+	}
+
+	.tab-button {
+		flex: 1;
+		height: 100%;
+		padding: 0 16px;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--foreground-muted);
+		background: var(--background-subtle);
+		border: none;
+		border-bottom: 2px solid transparent;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.tab-button:hover {
+		color: var(--foreground);
+	}
+
+	.tab-button.active {
+		color: var(--foreground);
+		background: var(--background);
+		border-bottom-color: var(--accent-blue);
+	}
+
 	.sidebar-section {
 		padding: 16px;
 		border-bottom: 1px solid var(--border-default);
 	}
 
-	.history-section {
+	.history-section,
+	.ai-section {
 		display: flex;
 		flex-direction: column;
 		border-bottom: none;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.history-section.hidden,
+	.ai-section.hidden {
+		display: none;
 	}
 
 	.section-title {
