@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getAuthApiContext } from '$lib/api/auth-context.js';
+	import { API_BASE_URL } from '$lib/api/client.js';
 	import type { components } from '$lib/api/schema.js';
 	import { BookIcon, GroupIcon, ProjectIcon, StateIcon } from '$lib/components/icons/index.js';
 	import { DiffView, MarkdownEditor, MarkdownView } from '$lib/components/markdown/index.js';
@@ -32,12 +33,15 @@
 
 	let isEditing = $state(false);
 	let isSaving = $state(false);
+	let isEnhancing = $state(false);
 	let editTitle = $state('');
 	let editDetails = $state('');
 	let activeTab = $state<'view' | 'edit' | 'diff'>('view');
 	let diffData = $state<FeatureDiff | null>(null);
 	let isLoadingDiff = $state(false);
 	let showDeleteDialog = $state(false);
+	let previousDetails = $state<string | null>(null);
+	let showHighlight = $state(false);
 
 	const hasPendingChanges = $derived(!!feature?.desired_details);
 
@@ -49,17 +53,26 @@
 		if (!feature) return;
 
 		const isNewFeature = feature.id !== currentFeatureId;
+		const incomingDetails = feature.details ?? '';
 
 		if (isNewFeature) {
 			// Navigated to different feature - reset everything
 			currentFeatureId = feature.id;
 			editTitle = feature.title;
-			editDetails = feature.details ?? '';
+			editDetails = incomingDetails;
+			previousDetails = incomingDetails;
+			showHighlight = false;
 			isEditing = false;
 			activeTab = 'view';
+		} else {
+			// Same feature refreshed (SSE update)
+			// Highlight if: details changed AND not in edit mode AND not first load
+			if (activeTab !== 'edit' && previousDetails !== null && incomingDetails !== previousDetails) {
+				showHighlight = true;
+				setTimeout(() => { showHighlight = false; }, 1500);
+			}
+			previousDetails = incomingDetails;
 		}
-		// When same feature is refreshed (e.g., after version change),
-		// don't update edit fields or change tabs - let user keep editing
 	});
 
 	let isLocked = $derived(feature?.state === 'in_progress');
@@ -197,6 +210,101 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
+	}
+
+	async function handleEnhance() {
+		if (!feature || isEnhancing) return;
+
+		isEnhancing = true;
+
+		const prompt = `Based on the current content, enhance this feature documentation to be more detailed and well-structured. Maintain the existing style and add:
+- Clearer user stories if applicable
+- Technical considerations
+- Edge cases or acceptance criteria
+Keep the response concise and actionable. Return ONLY the enhanced documentation, no explanations.`;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/assist/enhance`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream'
+				},
+				body: JSON.stringify({
+					prompt,
+					feature_id: feature.id
+				})
+			});
+
+			if (!response.ok) {
+				console.error('Enhance request failed:', response.status);
+				return;
+			}
+
+			const reader = response.body?.getReader();
+			if (!reader) return;
+
+			const decoder = new TextDecoder();
+			let sseBuffer = '';
+			let pendingText = '';
+			let lastUpdate = 0;
+			const UPDATE_INTERVAL = 50; // Batch updates every 50ms
+
+			// Add separator if there's existing content
+			if (editDetails.trim()) {
+				editDetails += '\n\n---\n\n**AI Enhanced:**\n\n';
+			}
+
+			// Flush pending text to editDetails
+			const flushPending = () => {
+				if (pendingText) {
+					editDetails += pendingText;
+					pendingText = '';
+					lastUpdate = Date.now();
+				}
+			};
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) {
+					flushPending();
+					break;
+				}
+
+				sseBuffer += decoder.decode(value, { stream: true });
+
+				// Process complete SSE events
+				const lines = sseBuffer.split('\n');
+				sseBuffer = lines.pop() ?? '';
+
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						const jsonStr = line.slice(6);
+						try {
+							const chunk = JSON.parse(jsonStr) as { text: string; done: boolean };
+							if (chunk.text) {
+								pendingText += chunk.text;
+								// Batch updates - only update DOM periodically
+								if (Date.now() - lastUpdate >= UPDATE_INTERVAL) {
+									flushPending();
+								}
+							}
+							if (chunk.done) {
+								flushPending();
+								isEnhancing = false;
+								return;
+							}
+						} catch {
+							// Ignore malformed JSON
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.error('Enhance failed:', error);
+		} finally {
+			isEnhancing = false;
+		}
 	}
 </script>
 
@@ -361,7 +469,7 @@
 			{/if}
 
 			{#if activeTab === 'view'}
-				<div class="details-view">
+				<div class="details-view" class:highlight={showHighlight}>
 					{#if feature.details}
 						<MarkdownView content={feature.details} />
 					{:else}
@@ -399,6 +507,17 @@
 										<option value={version.id}>{version.name}</option>
 									{/each}
 								</select>
+							</div>
+							<div class="sidebar-field">
+								<span class="field-label">AI Assist</span>
+								<button
+									class="btn btn-enhance"
+									onclick={handleEnhance}
+									disabled={isEnhancing}
+									type="button"
+								>
+									{isEnhancing ? 'Enhancing...' : 'Enhance'}
+								</button>
 							</div>
 						</div>
 					{/if}
@@ -653,6 +772,23 @@
 		border-color: #d29922;
 	}
 
+	.btn-enhance {
+		width: 100%;
+		background: rgba(168, 85, 247, 0.15);
+		color: #a855f7;
+		border-color: #a855f7;
+	}
+
+	.btn-enhance:hover:not(:disabled) {
+		background: rgba(168, 85, 247, 0.25);
+	}
+
+	.btn-enhance:disabled {
+		background: rgba(168, 85, 247, 0.1);
+		color: rgba(168, 85, 247, 0.6);
+		border-color: rgba(168, 85, 247, 0.4);
+	}
+
 	.header-actions {
 		display: flex;
 		gap: 8px;
@@ -713,6 +849,22 @@
 		max-width: 800px;
 	}
 
+	@keyframes detailsHighlight {
+		0% {
+			background-color: rgba(168, 85, 247, 0.15);
+			box-shadow: inset 0 0 0 2px rgba(168, 85, 247, 0.3);
+		}
+		100% {
+			background-color: transparent;
+			box-shadow: inset 0 0 0 2px transparent;
+		}
+	}
+
+	.details-view.highlight {
+		animation: detailsHighlight 1.5s ease-out;
+		border-radius: 6px;
+	}
+
 	.no-details {
 		color: var(--foreground-subtle);
 		font-style: italic;
@@ -736,6 +888,9 @@
 	.editor-sidebar {
 		width: 200px;
 		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
 	}
 
 	.sidebar-field {
