@@ -10,6 +10,8 @@
 	import { NewProjectWizard, ProjectSettingsDialog } from '$lib/components/projects/index.js';
 	import { SettingsIcon, PlusIcon, SearchIcon } from '$lib/components/icons/index.js';
 	import { CommandPalette } from '$lib/components/command-palette/index.js';
+	import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
+	import { debugEmptyState, type DebugEmptyState } from '$lib/stores/index.js';
 
 	type Project = components['schemas']['Project'];
 
@@ -28,6 +30,12 @@
 	let newProjectWizardOpen = $state(false);
 	let settingsDialogOpen = $state(false);
 	let commandPaletteOpen = $state(false);
+
+	// Debug state change handler
+	function handleDebugStateChange(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		debugEmptyState.set(select.value as DebugEmptyState);
+	}
 
 	// Global keyboard shortcut for command palette
 	function handleGlobalKeydown(e: KeyboardEvent) {
@@ -189,8 +197,25 @@
 				<a href="{base}/docs" class="docs-link">
 					Docs
 				</a>
+				{#if import.meta.env.DEV}
+				<div class="header-divider"></div>
+				<select
+					class="debug-select"
+					class:active={debugEmptyState.isActive}
+					value={debugEmptyState.value}
+					onchange={handleDebugStateChange}
+					title="Debug: Test empty states"
+				>
+					<option value="none">Debug</option>
+					<option value="no-projects">No Projects</option>
+					<option value="no-directory">No Directory</option>
+					<option value="no-features">No Features</option>
+				</select>
+			{/if}
 			</div>
 		</header>
+
+		<UpdateBanner />
 
 		<main class="app-main">
 			{@render children()}
@@ -432,5 +457,36 @@
 		border: 1px solid var(--border-default);
 		border-radius: 3px;
 		color: var(--foreground-subtle);
+	}
+
+	.debug-select {
+		padding: 4px 24px 4px 8px;
+		font-size: 11px;
+		font-weight: 500;
+		background: var(--background);
+		border: 1px solid var(--border-default);
+		border-radius: 4px;
+		color: var(--foreground-muted);
+		cursor: pointer;
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 4px center;
+	}
+
+	.debug-select:hover {
+		border-color: var(--foreground-subtle);
+		color: var(--foreground);
+	}
+
+	.debug-select:focus {
+		outline: none;
+		border-color: var(--accent-blue);
+	}
+
+	.debug-select.active {
+		background-color: #f59e0b;
+		border-color: #f59e0b;
+		color: black;
 	}
 </style>

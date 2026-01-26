@@ -4,9 +4,9 @@
 	import type { components } from '$lib/api/schema.js';
 	import { FeatureTree, FeatureDetail, FeatureSidebar, CreateFeatureDialog, ArchiveFeatureDialog, WrapInGroupDialog } from '$lib/components/features/index.js';
 	import { StateIcon } from '$lib/components/icons/index.js';
-	import { EmptyProjectGuide, OnboardingGuide } from '$lib/components/projects/index.js';
+	import { EmptyProjectGuide, OnboardingGuide, WelcomeScreen } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
-	import { sidebarWidth } from '$lib/stores/index.js';
+	import { sidebarWidth, debugEmptyState } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
@@ -108,11 +108,20 @@
 		return node?.title ?? null;
 	});
 
-	// Check if the project is empty (no features)
-	const isProjectEmpty = $derived(!isLoadingFeatures && featureTree.length === 0);
+	// Debug: show no-projects welcome screen
+	const showNoProjects = $derived(debugEmptyState.value === 'no-projects');
 
-	// Check if we need to show onboarding (no directories linked)
-	const needsOnboarding = $derived(hasDirectories === false);
+	// Check if the project is empty (no features) - includes debug override
+	const isProjectEmpty = $derived(
+		debugEmptyState.value === 'no-features' ||
+		(!isLoadingFeatures && featureTree.length === 0)
+	);
+
+	// Check if we need to show onboarding (no directories linked) - includes debug override
+	const needsOnboarding = $derived(
+		debugEmptyState.value === 'no-directory' ||
+		hasDirectories === false
+	);
 
 	// Load features, versions, and directories when project changes and auth is ready
 	$effect(() => {
@@ -539,7 +548,9 @@
 	}
 </script>
 
-{#if needsOnboarding}
+{#if showNoProjects}
+	<WelcomeScreen />
+{:else if needsOnboarding}
 	<div class="onboarding-container">
 		<OnboardingGuide scenario="no-directory" projectName={project?.name} />
 	</div>

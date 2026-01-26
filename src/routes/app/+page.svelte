@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { WelcomeScreen } from '$lib/components/projects/index.js';
 	import type { components } from '$lib/api/schema.js';
+	import { debugEmptyState } from '$lib/stores/index.js';
 
 	type Project = components['schemas']['Project'];
 
@@ -14,8 +15,17 @@
 
 	const projectsContext = getContext<ProjectsContext>('projects');
 
+	// Check if we should show empty state due to debug mode
+	const showNoProjectsState = $derived(
+		debugEmptyState.value === 'no-projects' ||
+		(!projectsContext.isLoading && projectsContext.projects.length === 0)
+	);
+
 	// Redirect to last viewed project (or first project) when projects are loaded
 	$effect(() => {
+		// Skip redirect if debug mode is forcing no-projects view
+		if (debugEmptyState.value === 'no-projects') return;
+
 		if (!projectsContext.isLoading && projectsContext.projects.length > 0) {
 			const lastProjectKey = typeof localStorage !== 'undefined'
 				? localStorage.getItem('manifest_last_project')
@@ -30,7 +40,9 @@
 	});
 </script>
 
-{#if projectsContext.isLoading || projectsContext.projects.length > 0}
+{#if showNoProjectsState}
+	<WelcomeScreen />
+{:else if projectsContext.isLoading || projectsContext.projects.length > 0}
 	<div class="loading-container">
 		<div class="spinner"></div>
 		<span>Loading projects...</span>
