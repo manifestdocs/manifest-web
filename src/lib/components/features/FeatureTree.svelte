@@ -6,7 +6,7 @@
 	import FeatureContextMenu from './FeatureContextMenu.svelte';
 	import CreateGroupDialog from './CreateGroupDialog.svelte';
 	import FeatureTreeActions from './FeatureTreeActions.svelte';
-	import { featureExpansion } from '$lib/stores/index.js';
+	import { featureExpansion, featureFilter } from '$lib/stores/index.js';
 	import {
 		findFeature,
 		getDescendantIds,
@@ -96,6 +96,13 @@
 	let previousFeatureVersion = $state(0);
 	let showProposedOnly = $state(false);
 	let lastExpandedToId = $state<string | null>(null);
+
+	// Initialize filter state from store when projectId is available
+	$effect(() => {
+		if (projectId) {
+			showProposedOnly = featureFilter.init(projectId);
+		}
+	});
 
 	// Apply filter if showProposedOnly is enabled
 	const displayFeatures = $derived(showProposedOnly ? filterProposed(features) : features);
@@ -384,14 +391,14 @@
 	}
 
 	export function setShowProposedOnly(value: boolean): void {
-		showProposedOnly = value;
+		showProposedOnly = featureFilter.set(value);
 	}
 
 	// Export methods for external control
 	export { expandAll, collapseAll, showProposedOnly };
 
 	export function toggleFilter(): void {
-		showProposedOnly = !showProposedOnly;
+		showProposedOnly = featureFilter.toggle();
 	}
 </script>
 
@@ -407,7 +414,7 @@
 				showAddButton={!!onAddFeature}
 				{showFilterButton}
 				onAddFeature={handleAddFeature}
-				onToggleFilter={() => (showProposedOnly = !showProposedOnly)}
+				onToggleFilter={() => (showProposedOnly = featureFilter.toggle())}
 				onExpandAll={expandAll}
 				onCollapseAll={collapseAll}
 			/>
