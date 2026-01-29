@@ -9,15 +9,6 @@
 	} from '$lib/api/chat.js';
 	import MarkdownView from '$lib/components/markdown/MarkdownView.svelte';
 	import { RobotIcon } from '$lib/components/icons/index.js';
-	import CommandAutocomplete from './CommandAutocomplete.svelte';
-	import {
-		matchCommands,
-		parseCommand,
-		buildPromptWithCommand,
-		getCommand,
-		type SlashCommand,
-		type CommandContext
-	} from '@manifest/svelte/commands';
 
 	interface Props {
 		featureId: string | null;
@@ -36,26 +27,6 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let messagesContainer: HTMLDivElement | undefined = $state();
-
-	// Command palette state
-	let showCommandPalette = $state(false);
-	let selectedCommandIndex = $state(0);
-	let textareaRef: HTMLTextAreaElement | undefined = $state();
-
-	// Derive command context from props
-	const commandContext = $derived<CommandContext>({
-		featureId: featureId ?? undefined,
-		featureTitle: featureTitle || undefined,
-		featureDetails: featureDetails || undefined,
-		projectId: projectId,
-		isLeaf: isLeaf
-	});
-
-	// Derive matched commands from input
-	const matchedCommands = $derived.by(() => {
-		if (!showCommandPalette) return [];
-		return matchCommands(inputValue, commandContext);
-	});
 
 
 	// Auto-scroll to bottom when messages change
@@ -76,32 +47,13 @@
 		const userInput = inputValue.trim();
 		if (!userInput || isLoading) return;
 
-		// Close command palette if open
-		showCommandPalette = false;
-		selectedCommandIndex = 0;
-
 		error = null;
-
-		// Check if input is a command
-		let systemPrompt: string | undefined;
-		let displayMessage = userInput;
-		const parsed = parseCommand(userInput);
-
-		if (parsed) {
-			const command = getCommand(parsed.commandId);
-			if (command) {
-				// Build prompt with command context
-				const result = buildPromptWithCommand(userInput, command, commandContext);
-				systemPrompt = result.systemPrompt;
-				displayMessage = `/${command.id} ${result.userMessage}`.trim();
-			}
-		}
 
 		// Add user message
 		const userMessage: ChatMessage = {
 			id: generateMessageId(),
 			role: 'user',
-			content: createTextContent(displayMessage),
+			content: createTextContent(userInput),
 			createdAt: new Date().toISOString()
 		};
 		messages = [...messages, userMessage];
@@ -121,18 +73,10 @@
 		isLoading = true;
 
 		// Build message history for context
-		let messageHistory = messages.slice(0, -1).map((m) => ({
-			role: m.role as 'user' | 'assistant' | 'system',
+		const messageHistory = messages.slice(0, -1).map((m) => ({
+			role: m.role,
 			content: getTextFromContent(m.content)
 		}));
-
-		// If a command was used, prepend the system prompt
-		if (systemPrompt) {
-			messageHistory = [
-				{ role: 'system' as const, content: systemPrompt },
-				...messageHistory
-			];
-		}
 
 		await chatClient.sendMessage(
 			{
@@ -231,64 +175,10 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		// Command palette navigation
-		if (showCommandPalette && matchedCommands.length > 0) {
-			switch (e.key) {
-				case 'ArrowDown':
-					e.preventDefault();
-					selectedCommandIndex = (selectedCommandIndex + 1) % matchedCommands.length;
-					return;
-				case 'ArrowUp':
-					e.preventDefault();
-					selectedCommandIndex =
-						selectedCommandIndex === 0
-							? matchedCommands.length - 1
-							: selectedCommandIndex - 1;
-					return;
-				case 'Tab':
-				case 'Enter':
-					if (!e.shiftKey) {
-						e.preventDefault();
-						selectCommand(matchedCommands[selectedCommandIndex]);
-						return;
-					}
-					break;
-				case 'Escape':
-					e.preventDefault();
-					closeCommandPalette();
-					return;
-			}
-		}
-
-		// Normal submit on Enter
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			handleSubmit(e);
 		}
-	}
-
-	function handleInput() {
-		// Show command palette when typing / at the start
-		if (inputValue.startsWith('/')) {
-			showCommandPalette = true;
-			selectedCommandIndex = 0;
-		} else {
-			showCommandPalette = false;
-		}
-	}
-
-	function selectCommand(command: SlashCommand) {
-		// Replace input with command
-		inputValue = `/${command.id} `;
-		showCommandPalette = false;
-		selectedCommandIndex = 0;
-		// Focus back on textarea
-		textareaRef?.focus();
-	}
-
-	function closeCommandPalette() {
-		showCommandPalette = false;
-		selectedCommandIndex = 0;
 	}
 
 	function clearChat() {
@@ -492,21 +382,10 @@
 	{/if}
 
 	<form class="chat-input-form" onsubmit={handleSubmit}>
-		{#if showCommandPalette}
-			<CommandAutocomplete
-				query={inputValue}
-				commands={matchedCommands}
-				selectedIndex={selectedCommandIndex}
-				onSelect={selectCommand}
-				onClose={closeCommandPalette}
-			/>
-		{/if}
 		<textarea
 			class="chat-input"
-			placeholder={featureId ? 'Type / for commands, or describe what to manifest...' : 'Manifest something...'}
+			placeholder="Manifest something..."
 			bind:value={inputValue}
-			bind:this={textareaRef}
-			oninput={handleInput}
 			onkeydown={handleKeydown}
 			disabled={isLoading}
 			rows={3}
