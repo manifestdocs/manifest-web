@@ -114,6 +114,11 @@
 		},
 		refresh: loadProjects
 	});
+
+	// Expose wizard control to child routes (e.g., WelcomeScreen)
+	setContext('newProjectWizard', {
+		open: () => { newProjectWizardOpen = true; }
+	});
 </script>
 
 <svelte:document onkeydown={handleGlobalKeydown} />

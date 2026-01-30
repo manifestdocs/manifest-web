@@ -502,7 +502,6 @@
 				matches={commandMatches}
 				selectedIndex={selectedCommandIndex}
 				onSelect={selectCommand}
-				onDismiss={dismissCommandMenu}
 			/>
 		{/if}
 		<textarea

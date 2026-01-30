@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { Dialog } from 'bits-ui';
-	import { getAuthApiContext } from '$lib/api/auth-context.js';
-	import type { components } from '$lib/api/schema.js';
-	import DirectoryList from './DirectoryList.svelte';
+	import { Dialog } from "$lib/components/ui/dialog/index.js";
+	import { getAuthApiContext } from "$lib/api/auth-context.js";
+	import type { components } from "$lib/api/schema.js";
+	import DirectoryList from "./DirectoryList.svelte";
 
 	// Get authenticated API client from context
 	const authApi = getAuthApiContext();
 
-	type Project = components['schemas']['Project'];
-	type ProjectDirectory = components['schemas']['ProjectDirectory'];
+	type Project = components["schemas"]["Project"];
+	type ProjectDirectory = components["schemas"]["ProjectDirectory"];
 
 	interface Props {
 		open: boolean;
@@ -20,10 +20,11 @@
 	let { open, onOpenChange, project, onUpdated }: Props = $props();
 
 	// Tab state
-	let activeTab = $state<'general' | 'directories'>('general');
+	let activeTab = $state<"general" | "directories" | "defaults">("general");
 
 	// Form state
-	let name = $state('');
+	let name = $state("");
+	let defaultFeatureDestination = $state<"backlog" | "now">("backlog");
 	let isSaving = $state(false);
 	let error = $state<string | null>(null);
 
@@ -35,8 +36,11 @@
 	$effect(() => {
 		if (open) {
 			name = project.name;
+			defaultFeatureDestination =
+				(project.default_feature_destination as "backlog" | "now") ??
+				"backlog";
 			error = null;
-			activeTab = 'general';
+			activeTab = "general";
 			loadDirectories();
 		}
 	});
@@ -45,11 +49,14 @@
 		isLoadingDirectories = true;
 		try {
 			const api = await authApi.getClient();
-			const { data, error: fetchError } = await api.GET('/projects/{id}/directories', {
-				params: { path: { id: project.id } }
-			});
+			const { data, error: fetchError } = await api.GET(
+				"/projects/{id}/directories",
+				{
+					params: { path: { id: project.id } },
+				},
+			);
 			if (fetchError) {
-				console.error('Failed to load directories:', fetchError);
+				console.error("Failed to load directories:", fetchError);
 				directories = [];
 				return;
 			}
@@ -61,7 +68,7 @@
 
 	async function handleSaveGeneral() {
 		if (!name.trim()) {
-			error = 'Project name is required';
+			error = "Project name is required";
 			return;
 		}
 
@@ -71,15 +78,15 @@
 		try {
 			const api = await authApi.getClient();
 			// Only update the name (syncs to root feature title on server)
-			const { error: updateError } = await api.PUT('/projects/{id}', {
+			const { error: updateError } = await api.PUT("/projects/{id}", {
 				params: { path: { id: project.id } },
 				body: {
-					name: name.trim()
-				}
+					name: name.trim(),
+				},
 			});
 
 			if (updateError) {
-				throw new Error('Failed to update project');
+				throw new Error("Failed to update project");
 			}
 
 			if (onUpdated) {
@@ -88,7 +95,38 @@
 
 			onOpenChange(false);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to save changes';
+			error =
+				err instanceof Error ? err.message : "Failed to save changes";
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function handleSaveDefaults() {
+		isSaving = true;
+		error = null;
+
+		try {
+			const api = await authApi.getClient();
+			const { error: updateError } = await api.PUT("/projects/{id}", {
+				params: { path: { id: project.id } },
+				body: {
+					default_feature_destination: defaultFeatureDestination,
+				},
+			});
+
+			if (updateError) {
+				throw new Error("Failed to update project defaults");
+			}
+
+			if (onUpdated) {
+				await onUpdated();
+			}
+
+			onOpenChange(false);
+		} catch (err) {
+			error =
+				err instanceof Error ? err.message : "Failed to save changes";
 		} finally {
 			isSaving = false;
 		}
@@ -96,17 +134,20 @@
 
 	async function handleAddDirectory(path: string, gitRemote: string | null) {
 		const api = await authApi.getClient();
-		const { error: addError } = await api.POST('/projects/{id}/directories', {
-			params: { path: { id: project.id } },
-			body: {
-				path,
-				git_remote: gitRemote,
-				is_primary: directories.length === 0
-			}
-		});
+		const { error: addError } = await api.POST(
+			"/projects/{id}/directories",
+			{
+				params: { path: { id: project.id } },
+				body: {
+					path,
+					git_remote: gitRemote,
+					is_primary: directories.length === 0,
+				},
+			},
+		);
 
 		if (addError) {
-			throw new Error('Failed to add directory');
+			throw new Error("Failed to add directory");
 		}
 
 		await loadDirectories();
@@ -114,12 +155,12 @@
 
 	async function handleRemoveDirectory(directoryId: string) {
 		const api = await authApi.getClient();
-		const { error: removeError } = await api.DELETE('/directories/{id}', {
-			params: { path: { id: directoryId } }
+		const { error: removeError } = await api.DELETE("/directories/{id}", {
+			params: { path: { id: directoryId } },
 		});
 
 		if (removeError) {
-			throw new Error('Failed to remove directory');
+			throw new Error("Failed to remove directory");
 		}
 
 		await loadDirectories();
@@ -139,26 +180,36 @@
 				<button
 					type="button"
 					class="tab"
-					class:active={activeTab === 'general'}
-					onclick={() => (activeTab = 'general')}
+					class:active={activeTab === "general"}
+					onclick={() => (activeTab = "general")}
 				>
 					Project Name
 				</button>
 				<button
 					type="button"
 					class="tab"
-					class:active={activeTab === 'directories'}
-					onclick={() => (activeTab = 'directories')}
+					class:active={activeTab === "directories"}
+					onclick={() => (activeTab = "directories")}
 				>
 					Working Directories
+				</button>
+				<button
+					type="button"
+					class="tab"
+					class:active={activeTab === "defaults"}
+					onclick={() => (activeTab = "defaults")}
+				>
+					Defaults
 				</button>
 			</div>
 
 			<div class="tab-content">
-				{#if activeTab === 'general'}
+				{#if activeTab === "general"}
 					<div class="general-form">
 						<div class="form-field">
-							<label for="project-name" class="form-label">Name</label>
+							<label for="project-name" class="form-label"
+								>Name</label
+							>
 							<input
 								id="project-name"
 								type="text"
@@ -166,13 +217,18 @@
 								bind:value={name}
 								disabled={isSaving}
 							/>
-							<span class="form-hint">The project name is shown in the feature tree and synced to the root feature title.</span>
+							<span class="form-hint"
+								>The project name is shown in the feature tree
+								and synced to the root feature title.</span
+							>
 						</div>
 
 						<div class="form-field instructions-notice">
 							<p class="notice-text">
-								Project instructions are now managed through the root feature in the feature tree.
-								Select the project root (with the folder icon) to edit instructions.
+								Project instructions are now managed through the
+								root feature in the feature tree. Select the
+								project root (with the folder icon) to edit
+								instructions.
 							</p>
 						</div>
 
@@ -195,14 +251,16 @@
 								onclick={handleSaveGeneral}
 								disabled={isSaving || !name.trim()}
 							>
-								{isSaving ? 'Saving...' : 'Save Changes'}
+								{isSaving ? "Saving..." : "Save Changes"}
 							</button>
 						</div>
 					</div>
-				{:else}
+				{:else if activeTab === "directories"}
 					<div class="directories-section">
 						{#if isLoadingDirectories}
-							<div class="loading-state">Loading directories...</div>
+							<div class="loading-state">
+								Loading directories...
+							</div>
 						{:else}
 							<DirectoryList
 								{directories}
@@ -211,6 +269,72 @@
 							/>
 						{/if}
 					</div>
+				{:else if activeTab === "defaults"}
+					<div class="general-form">
+						<div class="form-field">
+							<label class="form-label"
+								>Where should new features go?</label
+							>
+							<div class="radio-group">
+								<label class="radio-option">
+									<input
+										type="radio"
+										name="feature-destination"
+										value="backlog"
+										bind:group={defaultFeatureDestination}
+										disabled={isSaving}
+									/>
+									<div class="radio-content">
+										<span class="radio-label">Backlog</span>
+										<span class="form-hint"
+											>New features start unscheduled
+											until manually assigned to a
+											version.</span
+										>
+									</div>
+								</label>
+								<label class="radio-option">
+									<input
+										type="radio"
+										name="feature-destination"
+										value="now"
+										bind:group={defaultFeatureDestination}
+										disabled={isSaving}
+									/>
+									<div class="radio-content">
+										<span class="radio-label">Now</span>
+										<span class="form-hint"
+											>New features go directly into the
+											current version.</span
+										>
+									</div>
+								</label>
+							</div>
+						</div>
+
+						{#if error}
+							<div class="form-error">{error}</div>
+						{/if}
+
+						<div class="form-actions">
+							<button
+								type="button"
+								class="btn btn-secondary"
+								onclick={() => onOpenChange(false)}
+								disabled={isSaving}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="btn btn-primary"
+								onclick={handleSaveDefaults}
+								disabled={isSaving}
+							>
+								{isSaving ? "Saving..." : "Save Changes"}
+							</button>
+						</div>
+					</div>
 				{/if}
 			</div>
 		</Dialog.Content>
@@ -218,29 +342,7 @@
 </Dialog.Root>
 
 <style>
-	:global(.dialog-overlay) {
-		position: fixed;
-		inset: 0;
-		z-index: 50;
-		background: rgba(0, 0, 0, 0.5);
-		animation: fadeIn 0.15s ease;
-	}
-
-	:global(.dialog-content) {
-		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		z-index: 51;
-		width: 100%;
-		max-width: 420px;
-		background: var(--background);
-		border: 1px solid var(--border-default);
-		border-radius: 12px;
-		padding: 24px;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-		animation: slideIn 0.15s ease;
-	}
+	/* Styles handled by globally imported dialog.css */
 
 	:global(.settings-content) {
 		width: 1000px;
@@ -252,19 +354,6 @@
 		display: flex;
 		flex-direction: column;
 		border-radius: 0;
-	}
-
-	:global(.dialog-title) {
-		font-size: 18px;
-		font-weight: 600;
-		color: var(--foreground);
-		margin: 0 0 4px;
-	}
-
-	:global(.dialog-description) {
-		font-size: 13px;
-		color: var(--foreground-subtle);
-		margin: 0 0 20px;
 	}
 
 	.tabs {
@@ -310,81 +399,6 @@
 		height: 100%;
 	}
 
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.form-label {
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--foreground);
-	}
-
-	.form-input,
-	.form-textarea {
-		padding: 8px 12px;
-		font-size: 14px;
-		background: var(--background-subtle);
-		border: 1px solid var(--border-default);
-		border-radius: 6px;
-		color: var(--foreground);
-		transition: border-color 0.15s ease;
-	}
-
-	.form-input:focus,
-	.form-textarea:focus {
-		outline: none;
-		border-color: var(--accent-blue);
-	}
-
-	.form-input:disabled,
-	.form-textarea:disabled {
-		opacity: 0.6;
-	}
-
-	.form-textarea {
-		resize: vertical;
-		min-height: 100px;
-		font-family: inherit;
-	}
-
-	.form-field-grow {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-	}
-
-	.editor-wrapper {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-	}
-
-	.editor-wrapper :global(.markdown-editor) {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.editor-wrapper :global(.editor-body) {
-		flex: 1;
-		min-height: 0;
-	}
-
-	.editor-wrapper :global(.editor-textarea) {
-		height: 100%;
-		min-height: 200px;
-	}
-
-	.form-hint {
-		font-size: 12px;
-		color: var(--foreground-muted);
-	}
-
 	.instructions-notice {
 		padding: 16px;
 		background: var(--background-subtle);
@@ -399,16 +413,54 @@
 		line-height: 1.5;
 	}
 
-	.form-error {
-		font-size: 13px;
-		color: var(--accent-red, #f85149);
-	}
-
 	.form-actions {
 		display: flex;
 		justify-content: flex-end;
 		gap: 8px;
 		margin-top: 8px;
+	}
+
+	.radio-group {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.radio-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 12px;
+		border: 1px solid var(--border-default);
+		border-radius: 6px;
+		cursor: pointer;
+		transition: border-color 0.15s ease;
+	}
+
+	.radio-option:hover {
+		border-color: var(--foreground-subtle);
+	}
+
+	.radio-option:has(input:checked) {
+		border-color: var(--accent-blue);
+		background: color-mix(in srgb, var(--accent-blue) 5%, transparent);
+	}
+
+	.radio-option input[type="radio"] {
+		margin-top: 2px;
+		accent-color: var(--accent-blue);
+	}
+
+	.radio-content {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.radio-label {
+		font-size: 14px;
+		font-weight: 500;
+		color: var(--foreground);
 	}
 
 	.directories-section {
@@ -422,63 +474,5 @@
 		height: 100px;
 		color: var(--foreground-subtle);
 		font-size: 13px;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 8px 16px;
-		font-size: 13px;
-		font-weight: 500;
-		border-radius: 2px;
-		border: 1px solid transparent;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-primary {
-		background: var(--accent-green);
-		color: #000;
-		border-color: var(--accent-green);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		filter: brightness(1.1);
-	}
-
-	.btn-secondary {
-		background: transparent;
-		color: var(--foreground);
-		border-color: var(--border-default);
-	}
-
-	.btn-secondary:hover:not(:disabled) {
-		background: var(--background-muted);
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes slideIn {
-		from {
-			opacity: 0;
-			transform: translate(-50%, -48%);
-		}
-		to {
-			opacity: 1;
-			transform: translate(-50%, -50%);
-		}
 	}
 </style>

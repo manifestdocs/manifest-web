@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { getContext } from 'svelte';
 
 	type Scenario = 'no-projects' | 'no-directory';
 
@@ -11,79 +12,119 @@
 	let { scenario, projectName }: Props = $props();
 
 	const isNoProjects = $derived(scenario === 'no-projects');
+
+	const wizardContext = getContext<{ open: () => void } | undefined>('newProjectWizard');
 </script>
 
 <div class="onboarding-guide">
-	<div class="guide-icon">
-		<svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-			<rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2" />
-			<path d="M16 20L20 24L16 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-			<path d="M24 28H32" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-		</svg>
-	</div>
+	{#if isNoProjects}
+		<div class="guide-icon">
+			<svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+				<path d="M8 14V38C8 39.1046 8.89543 40 10 40H38C39.1046 40 40 39.1046 40 38V18C40 16.8954 39.1046 16 38 16H24L20 10H10C8.89543 10 8 10.8954 8 12V14Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+				<path d="M20 28L24 24L28 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				<path d="M24 24V34" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			</svg>
+		</div>
 
-	<h2 class="guide-title">
-		{#if isNoProjects}
-			Initialize Your First Project
-		{:else}
-			Link a Working Directory
-		{/if}
-	</h2>
+		<h2 class="guide-title">Create Your First Project</h2>
+		<div class="method-cards">
+			<div class="method-panel">
+				<h3 class="method-title">Web UI</h3>
+				<p class="method-description">
+					Use the setup wizard to create a project.
+				</p>
+				<button
+					type="button"
+					class="btn btn-primary method-action"
+					onclick={() => wizardContext?.open()}
+				>
+					Create Project
+				</button>
+			</div>
 
-	<p class="guide-description">
-		{#if isNoProjects}
-			Manifest projects are initialized from your codebase using a CLI-based coding assistant.
-			This allows AI-powered analysis of your code structure and git history.
-		{:else}
-			<strong>{projectName}</strong> needs a working directory to enable codebase analysis
-			and feature discovery.
-		{/if}
-	</p>
+			<div class="method-separator"></div>
 
-	<div class="steps">
-		<div class="step">
-			<span class="step-number">1</span>
-			<div class="step-content">
-				<span class="step-title">Open your project directory</span>
-				<span class="step-detail">In Claude Code, Cursor, or another CLI coding assistant</span>
+			<div class="method-panel">
+				<h3 class="method-title">CLI Coding Agent</h3>
+				<p class="method-description">
+					Initialize from your codebase with automatic code and git analysis.
+				</p>
+				<div class="steps">
+					<div class="step">
+						<span class="step-number">1</span>
+						<div class="step-content">
+							<span class="step-title">Open your project in a coding agent</span>
+						</div>
+					</div>
+					<div class="step">
+						<span class="step-number">2</span>
+						<div class="step-content">
+							<code class="step-command">"Initialize this project in Manifest"</code>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 
-		<div class="step">
-			<span class="step-number">2</span>
-			<div class="step-content">
-				<span class="step-title">Install the Manifest plugin</span>
-				<span class="step-detail">Add the MCP plugin to your assistant's configuration</span>
+		<a href="{base}/docs/getting-started" class="docs-link">
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+				<path d="M6 3H3C2.44772 3 2 3.44772 2 4V13C2 13.5523 2.44772 14 3 14H12C12.5523 14 13 13.5523 13 13V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				<path d="M7 9L14 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				<path d="M10 2H14V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+			View setup documentation
+		</a>
+	{:else}
+		<div class="directory-guide">
+			<div class="guide-icon">
+				<svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+					<rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2" />
+					<path d="M16 20L20 24L16 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+					<path d="M24 28H32" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+				</svg>
 			</div>
-		</div>
 
-		<div class="step">
-			<span class="step-number">3</span>
-			<div class="step-content">
-				<span class="step-title">Ask your assistant</span>
-				<code class="step-command">
-					{#if isNoProjects}
-						"Initialize this project in Manifest"
-					{:else}
-						"Link this directory to {projectName} in Manifest"
-					{/if}
-				</code>
+			<h2 class="guide-title">Link a Working Directory</h2>
+
+			<p class="guide-description">
+				<strong>{projectName}</strong> needs a working directory to enable codebase analysis
+				and feature discovery.
+			</p>
+
+			<div class="steps">
+				<div class="step">
+					<span class="step-number">1</span>
+					<div class="step-content">
+						<span class="step-title">Open your project directory</span>
+						<span class="step-detail">In Claude Code or another CLI-based coding agent</span>
+					</div>
+				</div>
+
+				<div class="step">
+					<span class="step-number">2</span>
+					<div class="step-content">
+						<span class="step-title">Ask your assistant</span>
+						<code class="step-command">
+							"Link this directory to {projectName} in Manifest"
+						</code>
+					</div>
+				</div>
 			</div>
+
+			<p class="guide-note">
+				This is a one-time setup. Once linked, your directory will be recognized automatically.
+			</p>
+
+			<a href="{base}/docs/getting-started" class="docs-link">
+				<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+					<path d="M6 3H3C2.44772 3 2 3.44772 2 4V13C2 13.5523 2.44772 14 3 14H12C12.5523 14 13 13.5523 13 13V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					<path d="M7 9L14 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					<path d="M10 2H14V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				View setup documentation
+			</a>
 		</div>
-	</div>
-
-	<p class="guide-note">
-		This is a one-time setup. Once initialized, your project will appear here automatically.
-	</p>
-
-	<a href="{base}/docs/getting-started" class="docs-link">
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-			<path d="M6 3H3C2.44772 3 2 3.44772 2 4V13C2 13.5523 2.44772 14 3 14H12C12.5523 14 13 13.5523 13 13V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-			<path d="M7 9L14 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-			<path d="M10 2H14V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-		</svg>
-		View setup documentation
-	</a>
+	{/if}
 </div>
 
 <style>
@@ -91,24 +132,17 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		height: 100%;
-		padding: 48px 32px;
+		padding: 0 32px 12vh;
 		text-align: center;
-		max-width: 480px;
-		margin: 0 auto;
-	}
-
-	.guide-icon {
-		color: var(--foreground-muted);
-		margin-bottom: 24px;
+		width: 100%;
+		max-width: 960px;
 	}
 
 	.guide-title {
 		font-size: 22px;
 		font-weight: 600;
 		color: var(--foreground);
-		margin: 0 0 12px;
+		margin: 0 0 8px;
 	}
 
 	.guide-description {
@@ -122,11 +156,69 @@
 		color: var(--foreground);
 	}
 
+	/* Method cards layout */
+	.method-cards {
+		display: flex;
+		align-items: flex-start;
+		gap: 0;
+		width: 100%;
+		margin-bottom: 28px;
+	}
+
+	.method-panel {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 0 24px;
+	}
+
+	.method-title {
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--foreground);
+		margin: 0 0 8px;
+	}
+
+	.method-description {
+		font-size: 13px;
+		color: var(--foreground-subtle);
+		line-height: 1.5;
+		margin: 0 0 16px;
+	}
+
+	.method-action {
+		margin-top: 0;
+	}
+
+	.method-separator {
+		width: 1px;
+		align-self: stretch;
+		background: var(--border-default);
+		flex-shrink: 0;
+		margin: 0 24px;
+	}
+
+	/* Directory guide (no-directory scenario) */
+	.directory-guide {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+
+	.guide-icon {
+		color: var(--foreground-muted);
+		margin-bottom: 24px;
+	}
+
 	.steps {
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
 		width: 100%;
+		max-width: 480px;
 		text-align: left;
 		margin-bottom: 24px;
 	}

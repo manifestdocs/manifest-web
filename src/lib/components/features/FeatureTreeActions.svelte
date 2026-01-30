@@ -1,16 +1,18 @@
 <script lang="ts">
+	import type { FilterableState } from '$lib/stores/featureFilter.svelte.js';
+
 	interface Props {
-		showProposedOnly: boolean;
+		activeFilters: Set<FilterableState>;
 		showAddButton?: boolean;
 		showFilterButton?: boolean;
 		onAddFeature?: () => void;
-		onToggleFilter: () => void;
+		onToggleFilter: (state: FilterableState) => void;
 		onExpandAll: () => void;
 		onCollapseAll: () => void;
 	}
 
 	let {
-		showProposedOnly,
+		activeFilters,
 		showAddButton = true,
 		showFilterButton = true,
 		onAddFeature,
@@ -18,6 +20,9 @@
 		onExpandAll,
 		onCollapseAll
 	}: Props = $props();
+
+	const proposedActive = $derived(activeFilters.has('proposed'));
+	const inProgressActive = $derived(activeFilters.has('in_progress'));
 </script>
 
 <div class="tree-actions">
@@ -30,19 +35,36 @@
 	{/if}
 	{#if showFilterButton}
 		<button
-			class="action-btn filter-btn"
-			class:active={showProposedOnly}
-			onclick={onToggleFilter}
-			title={showProposedOnly ? 'Show all features' : 'Show proposed only'}
+			class="action-btn filter-btn proposed"
+			class:active={proposedActive}
+			onclick={() => onToggleFilter('proposed')}
+			title={proposedActive ? 'Hide proposed filter' : 'Show proposed'}
 			type="button"
 		>
-			{#if showProposedOnly}
+			{#if proposedActive}
 				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M8 2L14 8L8 14L2 8L8 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
 				</svg>
 			{:else}
 				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M8 2L14 8L8 14L2 8L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+				</svg>
+			{/if}
+		</button>
+		<button
+			class="action-btn filter-btn in-progress"
+			class:active={inProgressActive}
+			onclick={() => onToggleFilter('in_progress')}
+			title={inProgressActive ? 'Hide in progress filter' : 'Show in progress'}
+			type="button"
+		>
+			{#if inProgressActive}
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+					<circle cx="8" cy="8" r="6" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
+				</svg>
+			{:else}
+				<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+					<circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
 				</svg>
 			{/if}
 		</button>
@@ -94,8 +116,13 @@
 		color: var(--foreground);
 	}
 
-	.action-btn.filter-btn.active {
+	.action-btn.filter-btn.proposed.active {
 		background: transparent;
 		color: var(--state-proposed);
+	}
+
+	.action-btn.filter-btn.in-progress.active {
+		background: transparent;
+		color: var(--state-in-progress);
 	}
 </style>

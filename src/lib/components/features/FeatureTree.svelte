@@ -1,21 +1,22 @@
 <script lang="ts">
-	import type { components } from '$lib/api/schema.js';
-	import type { Snippet } from 'svelte';
-	import FeatureRow from './FeatureRow.svelte';
-	import FeatureDragPreview from './FeatureDragPreview.svelte';
-	import FeatureContextMenu from './FeatureContextMenu.svelte';
-	import CreateGroupDialog from './CreateGroupDialog.svelte';
-	import FeatureTreeActions from './FeatureTreeActions.svelte';
-	import { featureExpansion, featureFilter } from '$lib/stores/index.js';
+	import type { components } from "$lib/api/schema.js";
+	import type { Snippet } from "svelte";
+	import FeatureRow from "./FeatureRow.svelte";
+	import FeatureDragPreview from "./FeatureDragPreview.svelte";
+	import FeatureContextMenu from "./FeatureContextMenu.svelte";
+	import CreateGroupDialog from "./CreateGroupDialog.svelte";
+	import FeatureTreeActions from "./FeatureTreeActions.svelte";
+	import { featureExpansion, featureFilter } from "$lib/stores/index.js";
 	import {
 		findFeature,
-		getDescendantIds,
-		filterProposed,
+		filterByStates,
 		computeFeatureVersion,
-		sortFeatures
-	} from './featureTreeUtils.js';
+		sortFeatures,
+	} from "./featureTreeUtils.js";
+	import type { FilterableState } from "$lib/stores/featureFilter.svelte.js";
+	import { useDragAndDrop } from "$lib/composables/useDragAndDrop.svelte.js";
 
-	type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
+	type FeatureTreeNode = components["schemas"]["FeatureTreeNode"];
 	type GroupMetadata = { hasFutureWork: boolean };
 
 	// Row context passed to rowExtras snippet
@@ -43,9 +44,23 @@
 		onSelect: (id: string) => void;
 		onAddFeature?: (parentId: string | null) => void;
 		onReparent?: (featureId: string, newParentId: string | null) => void;
-		onCreateGroup?: (title: string, childIds: [string, string], parentId: string | null) => Promise<void>;
-		onWrapInGroup?: (featureId: string, featureTitle: string, parentId: string | null) => void;
-		onArchiveFeature?: (id: string, title: string, isGroup: boolean, childCount: number, parentId: string | null) => void;
+		onCreateGroup?: (
+			title: string,
+			childIds: [string, string],
+			parentId: string | null,
+		) => Promise<void>;
+		onWrapInGroup?: (
+			featureId: string,
+			featureTitle: string,
+			parentId: string | null,
+		) => void;
+		onArchiveFeature?: (
+			id: string,
+			title: string,
+			isGroup: boolean,
+			childCount: number,
+			parentId: string | null,
+		) => void;
 		onRestoreFeature?: (id: string) => Promise<void>;
 		onDeleteFeature?: (id: string) => Promise<void>;
 	}
@@ -58,7 +73,7 @@
 		showHeader = true,
 		showFilterButton = true,
 		scrollable = true,
-		class: className = '',
+		class: className = "",
 		rowExtras,
 		onSelect,
 		onAddFeature,
@@ -67,74 +82,19 @@
 		onWrapInGroup,
 		onArchiveFeature,
 		onRestoreFeature,
-		onDeleteFeature
+		onDeleteFeature,
 	}: Props = $props();
 
 	// Layout constant (matches CSS)
 	const ROW_HEIGHT = 28;
 
-	// Drag state - all centralized here
-	let dragState = $state<{
-		featureId: string;
-		feature: FeatureTreeNode;
-		parentId: string | null;
-		descendantIds: Set<string>;
-		pointerId: number;
-	} | null>(null);
-	let dragPosition = $state({ x: 0, y: 0 });
-	let dropTarget = $state<{ id: string; isLeafTarget: boolean } | null>(null);
-
-	// Group creation dialog state
-	let groupDialogOpen = $state(false);
-	let pendingGroupData = $state<{ childIds: [string, string]; childTitles: [string, string]; parentId: string | null } | null>(null);
-
-	// Expansion state
-	let expandedIds = $state(new Set<string>());
-	let treeContentRef = $state<HTMLElement | null>(null);
-	let containerHeight = $state(0);
-	let initialized = $state(false);
-	let previousFeatureVersion = $state(0);
-	let showProposedOnly = $state(false);
-	let lastExpandedToId = $state<string | null>(null);
-
-	// Initialize filter state from store when projectId is available
-	$effect(() => {
-		if (projectId) {
-			showProposedOnly = featureFilter.init(projectId);
-		}
-	});
-
-	// Apply filter if showProposedOnly is enabled
-	const displayFeatures = $derived(showProposedOnly ? filterProposed(features) : features);
+	// Drag and Drop (extracted)
 
 	// Context menu state
 	let contextMenuOpen = $state(false);
 	let contextMenuX = $state(0);
 	let contextMenuY = $state(0);
 	let contextMenuFeatureId = $state<string | null>(null);
-
-	// Build a map of feature positions for drop detection
-	type FeaturePosition = { id: string; top: number; bottom: number; isGroup: boolean; isRoot: boolean; isLeaf: boolean; parentId: string | null };
-	let featurePositions = $derived.by(() => {
-		if (!treeContentRef) return [];
-		const positions: FeaturePosition[] = [];
-		let y = 0;
-
-		function traverse(nodes: FeatureTreeNode[], parentId: string | null) {
-			for (const node of sortFeatures(nodes)) {
-				const isGroup = node.children.length > 0;
-				const isRoot = node.is_root ?? false;
-				const isLeaf = !isGroup && !isRoot;
-				positions.push({ id: node.id, top: y, bottom: y + ROW_HEIGHT, isGroup, isRoot, isLeaf, parentId });
-				y += ROW_HEIGHT;
-				if ((isRoot || expandedIds.has(node.id)) && node.children.length > 0) {
-					traverse(node.children, node.id);
-				}
-			}
-		}
-		traverse(displayFeatures, null);
-		return positions;
-	});
 
 	// Measure container height with ResizeObserver
 	$effect(() => {
@@ -147,10 +107,64 @@
 		}
 	});
 
-	// Initialize expansion state once we have all required data
+	// Group creation dialog state
+	let groupDialogOpen = $state(false);
+	let pendingGroupData = $state<{
+		childIds: [string, string];
+		childTitles: [string, string];
+		parentId: string | null;
+	} | null>(null);
+
+	// Expansion state
+	let expandedIds = $state(new Set<string>());
+	let treeContentRef = $state<HTMLElement | null>(null);
+	let containerHeight = $state(0);
+	let initialized = $state(false);
+	let previousFeatureVersion = $state(0);
+	let activeFilters = $state<Set<FilterableState>>(new Set());
+	let lastExpandedToId = $state<string | null>(null);
+
+	// Initialize filter state from store when projectId is available
 	$effect(() => {
-		if (projectId && features.length > 0 && containerHeight > 0 && !initialized) {
-			expandedIds = featureExpansion.init(projectId, features, containerHeight);
+		if (projectId) {
+			activeFilters = featureFilter.init(projectId);
+		}
+	});
+
+	// Apply filter if any state filters are active
+	const displayFeatures = $derived(
+		activeFilters.size > 0 ? filterByStates(features, activeFilters) : features,
+	);
+
+	// Drag and Drop (extracted)
+	const dnd = useDragAndDrop({
+		features: () => displayFeatures,
+		expandedIds: () => expandedIds,
+		treeContentRef: () => treeContentRef,
+		rowHeight: ROW_HEIGHT,
+		onReparent,
+		onCreateGroupRequest: (data) => {
+			pendingGroupData = data;
+			groupDialogOpen = true;
+		},
+		onExpandOnDrop: (id) => {
+			if (!expandedIds.has(id)) {
+				expandedIds = new Set([...expandedIds, id]);
+			}
+		},
+	});
+	$effect(() => {
+		if (
+			projectId &&
+			features.length > 0 &&
+			containerHeight > 0 &&
+			!initialized
+		) {
+			expandedIds = featureExpansion.init(
+				projectId,
+				features,
+				containerHeight,
+			);
 			previousFeatureVersion = computeFeatureVersion(features);
 			initialized = true;
 		}
@@ -167,7 +181,10 @@
 		if (!initialized) return;
 		const currentVersion = computeFeatureVersion(features);
 		if (currentVersion !== previousFeatureVersion) {
-			expandedIds = featureExpansion.handleTreeUpdate(features, expandedIds);
+			expandedIds = featureExpansion.handleTreeUpdate(
+				features,
+				expandedIds,
+			);
 			previousFeatureVersion = currentVersion;
 		}
 	});
@@ -177,7 +194,11 @@
 		if (!initialized || !selectedId || features.length === 0) return;
 		if (selectedId === lastExpandedToId) return;
 
-		const newExpanded = featureExpansion.expandToFeature(features, selectedId, expandedIds);
+		const newExpanded = featureExpansion.expandToFeature(
+			features,
+			selectedId,
+			expandedIds,
+		);
 		if (newExpanded && newExpanded !== expandedIds) {
 			expandedIds = newExpanded;
 		}
@@ -200,123 +221,30 @@
 		onAddFeature?.(selectedId);
 	}
 
-	// Check if a feature is a valid drop target
-	function isValidDropTarget(targetId: string): boolean {
-		if (!dragState) return false;
-		if (targetId === dragState.featureId) return false;
-		if (targetId === dragState.parentId) return false;
-		if (dragState.descendantIds.has(targetId)) return false;
-		return true;
-	}
-
-	// Check if the dragged feature is a leaf
-	function isDraggingLeaf(): boolean {
-		return dragState !== null && dragState.feature.children.length === 0;
-	}
-
-	// Find drop target from mouse position (using tree structure, not DOM)
-	function findDropTarget(clientY: number): { id: string; isLeafTarget: boolean } | null {
-		if (!treeContentRef || !dragState) return null;
-
-		const rect = treeContentRef.getBoundingClientRect();
-		const scrollTop = treeContentRef.scrollTop;
-		const relativeY = clientY - rect.top + scrollTop;
-
-		// Find which feature row we're over
-		for (const pos of featurePositions) {
-			if (relativeY >= pos.top && relativeY < pos.bottom) {
-				// Groups and root can always be drop targets
-				if ((pos.isGroup || pos.isRoot) && isValidDropTarget(pos.id)) {
-					return { id: pos.id, isLeafTarget: false };
-				}
-				// Leaf-on-leaf: allow if dragging a leaf onto another leaf
-				if (pos.isLeaf && isDraggingLeaf() && isValidDropTarget(pos.id)) {
-					return { id: pos.id, isLeafTarget: true };
-				}
-				return null;
-			}
-		}
-		return null;
-	}
-
-	// Drag handlers
-	function handleDragStart(featureId: string, e: PointerEvent) {
-		const node = findFeature(features, featureId);
-		if (!node) return;
-
-		dragState = {
-			featureId,
-			feature: node,
-			parentId: node.parent_id ?? null,
-			descendantIds: getDescendantIds(node),
-			pointerId: e.pointerId
-		};
-		dragPosition = { x: e.clientX, y: e.clientY };
-
-		// Capture pointer on the tree content for move/up events
-		(e.target as HTMLElement).setPointerCapture(e.pointerId);
-	}
-
-	function handlePointerMove(e: PointerEvent) {
-		if (!dragState || e.pointerId !== dragState.pointerId) return;
-
-		dragPosition = { x: e.clientX, y: e.clientY };
-		dropTarget = findDropTarget(e.clientY);
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (!dragState || e.pointerId !== dragState.pointerId) return;
-
-		const target = findDropTarget(e.clientY);
-
-		if (target && isValidDropTarget(target.id)) {
-			if (target.isLeafTarget && onCreateGroup) {
-				// Leaf-on-leaf drop: show dialog to create group
-				const targetFeature = findFeature(features, target.id);
-				const targetPos = featurePositions.find(p => p.id === target.id);
-				if (targetFeature) {
-					pendingGroupData = {
-						childIds: [dragState.featureId, target.id],
-						childTitles: [dragState.feature.title, targetFeature.title],
-						parentId: targetPos?.parentId ?? null
-					};
-					groupDialogOpen = true;
-				}
-			} else {
-				// Regular group/root drop
-				if (!expandedIds.has(target.id)) {
-					expandedIds = new Set([...expandedIds, target.id]);
-				}
-				onReparent?.(dragState.featureId, target.id);
-			}
-		}
-
-		// Reset drag state
-		(e.target as HTMLElement).releasePointerCapture(e.pointerId);
-		dragState = null;
-		dropTarget = null;
-	}
-
-	function handlePointerCancel(e: PointerEvent) {
-		if (!dragState || e.pointerId !== dragState.pointerId) return;
-		dragState = null;
-		dropTarget = null;
-	}
-
 	// Handle group creation from dialog
 	async function handleCreateGroup(title: string) {
 		if (!pendingGroupData || !onCreateGroup) return;
-		await onCreateGroup(title, pendingGroupData.childIds, pendingGroupData.parentId);
+		await onCreateGroup(
+			title,
+			pendingGroupData.childIds,
+			pendingGroupData.parentId,
+		);
 		pendingGroupData = null;
 	}
 
 	// Context menu handlers
 	const contextMenuFeature = $derived(
-		contextMenuFeatureId ? findFeature(features, contextMenuFeatureId) : null
+		contextMenuFeatureId
+			? findFeature(features, contextMenuFeatureId)
+			: null,
 	);
 	const contextMenuFeatureTitle = $derived(contextMenuFeature?.title ?? null);
-	const contextMenuFeatureIsRoot = $derived(contextMenuFeature?.is_root ?? false);
-	const contextMenuFeatureIsGroup = $derived(contextMenuFeature ? contextMenuFeature.children.length > 0 : false);
+	const contextMenuFeatureIsRoot = $derived(
+		contextMenuFeature?.is_root ?? false,
+	);
+	const contextMenuFeatureIsGroup = $derived(
+		contextMenuFeature ? contextMenuFeature.children.length > 0 : false,
+	);
 
 	function handleRowContextMenu(id: string, x: number, y: number) {
 		contextMenuFeatureId = id;
@@ -340,7 +268,7 @@
 		onWrapInGroup(
 			contextMenuFeature.id,
 			contextMenuFeature.title,
-			contextMenuFeature.parent_id ?? null
+			contextMenuFeature.parent_id ?? null,
 		);
 	}
 
@@ -353,7 +281,7 @@
 			contextMenuFeature.title,
 			contextMenuFeature.children.length > 0,
 			contextMenuFeature.children.length,
-			contextMenuFeature.parent_id ?? null
+			contextMenuFeature.parent_id ?? null,
 		);
 	}
 
@@ -386,23 +314,26 @@
 		expandedIds = ids;
 	}
 
-	export function isShowingProposedOnly(): boolean {
-		return showProposedOnly;
+	export function isFilterActive(state: FilterableState): boolean {
+		return activeFilters.has(state);
 	}
 
-	export function setShowProposedOnly(value: boolean): void {
-		showProposedOnly = featureFilter.set(value);
+	export function getActiveFilters(): Set<FilterableState> {
+		return new Set(activeFilters);
 	}
 
 	// Export methods for external control
-	export { expandAll, collapseAll, showProposedOnly };
+	export { expandAll, collapseAll, activeFilters };
 
-	export function toggleFilter(): void {
-		showProposedOnly = featureFilter.toggle();
+	export function toggleFilter(state: FilterableState): void {
+		activeFilters = featureFilter.toggle(state);
 	}
 </script>
 
-<div class="feature-tree {className}" style="--feature-col-width: {featureColumnWidth}px">
+<div
+	class="feature-tree {className}"
+	style="--feature-col-width: {featureColumnWidth}px"
+>
 	{#if showHeader}
 		<div class="tree-header">
 			<span class="tree-title">Feature Tree</span>
@@ -410,11 +341,12 @@
 
 		<div class="tree-subheader">
 			<FeatureTreeActions
-				{showProposedOnly}
+				{activeFilters}
 				showAddButton={!!onAddFeature}
 				{showFilterButton}
 				onAddFeature={handleAddFeature}
-				onToggleFilter={() => (showProposedOnly = featureFilter.toggle())}
+				onToggleFilter={(state) =>
+					(activeFilters = featureFilter.toggle(state))}
 				onExpandAll={expandAll}
 				onCollapseAll={collapseAll}
 			/>
@@ -428,9 +360,9 @@
 			class:scrollable
 			bind:this={treeContentRef}
 			oncontextmenu={handleTreeContextMenu}
-			onpointermove={handlePointerMove}
-			onpointerup={handlePointerUp}
-			onpointercancel={handlePointerCancel}
+			onpointermove={dnd.handlePointerMove}
+			onpointerup={dnd.handlePointerUp}
+			onpointercancel={dnd.handlePointerCancel}
 		>
 			{#if features.length === 0}
 				<div class="empty-state">No features yet</div>
@@ -448,10 +380,14 @@
 	{@const isRoot = feature.is_root ?? false}
 	{@const isLeaf = !hasChildren && !isRoot}
 	{@const isGroup = hasChildren || isRoot}
-	{@const groupMeta = isGroup ? featureExpansion.getGroupMetadata(feature) : null}
-	{@const isDragging = dragState?.featureId === feature.id}
-	{@const isDropHovered = dropTarget?.id === feature.id && !dropTarget?.isLeafTarget}
-	{@const isLeafDropTarget = dropTarget?.id === feature.id && dropTarget?.isLeafTarget}
+	{@const groupMeta = isGroup
+		? featureExpansion.getGroupMetadata(feature)
+		: null}
+	{@const isDragging = dnd.dragState?.featureId === feature.id}
+	{@const isDropHovered =
+		dnd.dropTarget?.id === feature.id && !dnd.dropTarget?.isLeafTarget}
+	{@const isLeafDropTarget =
+		dnd.dropTarget?.id === feature.id && dnd.dropTarget?.isLeafTarget}
 	{@const isExpanded = isRoot || expandedIds.has(feature.id)}
 	{@const rowContext: RowContext = { feature, depth, isExpanded, hasChildren, isGroup, isLeaf, isRoot, groupMeta }}
 
@@ -478,7 +414,7 @@
 			{onSelect}
 			onToggle={handleToggle}
 			onContextMenu={handleRowContextMenu}
-			onDragStart={handleDragStart}
+			onDragStart={dnd.handleDragStart}
 		/>
 		{#if rowExtras}
 			{@render rowExtras(rowContext)}
@@ -492,8 +428,12 @@
 	{/if}
 {/snippet}
 
-{#if dragState}
-	<FeatureDragPreview feature={dragState.feature} x={dragPosition.x} y={dragPosition.y} />
+{#if dnd.dragState}
+	<FeatureDragPreview
+		feature={dnd.dragState.feature}
+		x={dnd.dragPosition.x}
+		y={dnd.dragPosition.y}
+	/>
 {/if}
 
 <FeatureContextMenu
@@ -503,7 +443,7 @@
 	featureTitle={contextMenuFeatureTitle}
 	isRoot={contextMenuFeatureIsRoot}
 	isGroup={contextMenuFeatureIsGroup}
-	isArchived={contextMenuFeature?.state === 'archived'}
+	isArchived={contextMenuFeature?.state === "archived"}
 	onClose={handleContextMenuClose}
 	onAddChild={handleContextMenuAddChild}
 	onWrapInGroup={onWrapInGroup ? handleContextMenuWrapInGroup : undefined}

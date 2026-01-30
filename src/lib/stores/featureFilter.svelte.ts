@@ -1,12 +1,15 @@
 /**
  * Shared store for feature tree filter state.
  * Persists filter settings per project across view changes.
+ * Supports multiple additive state filters (e.g. proposed + in_progress).
  */
 
 const STORAGE_KEY_PREFIX = 'manifest:ui:feature-filter:';
 
+export type FilterableState = 'proposed' | 'in_progress';
+
 interface StoredFilterState {
-	showProposedOnly: boolean;
+	activeFilters: FilterableState[];
 }
 
 function getStorageKey(projectId: string): string {
@@ -20,7 +23,12 @@ function loadFromStorage(projectId: string): StoredFilterState | null {
 	if (!stored) return null;
 
 	try {
-		return JSON.parse(stored) as StoredFilterState;
+		const parsed = JSON.parse(stored);
+		// Migrate old boolean format
+		if ('showProposedOnly' in parsed) {
+			return { activeFilters: parsed.showProposedOnly ? ['proposed'] : [] };
+		}
+		return parsed as StoredFilterState;
 	} catch {
 		return null;
 	}
@@ -33,68 +41,65 @@ function saveToStorage(projectId: string, state: StoredFilterState): void {
 
 // Current project state - shared across all views
 let currentProjectId: string | null = null;
-let currentShowProposedOnly = false;
+let currentActiveFilters: Set<FilterableState> = new Set();
+
+function persist(): void {
+	if (currentProjectId) {
+		saveToStorage(currentProjectId, {
+			activeFilters: [...currentActiveFilters]
+		});
+	}
+}
 
 function createFeatureFilterStore() {
 	return {
 		/**
 		 * Initialize filter state for a project.
-		 * Returns persisted state if available, or defaults to false.
+		 * Returns the set of active filters.
 		 */
-		init(projectId: string): boolean {
-			// Same project - return current state
+		init(projectId: string): Set<FilterableState> {
 			if (projectId === currentProjectId) {
-				return currentShowProposedOnly;
+				return new Set(currentActiveFilters);
 			}
 
-			// Different project - load from storage or default
 			currentProjectId = projectId;
 			const stored = loadFromStorage(projectId);
 
 			if (stored) {
-				currentShowProposedOnly = stored.showProposedOnly;
+				currentActiveFilters = new Set(stored.activeFilters);
 			} else {
-				currentShowProposedOnly = false;
+				currentActiveFilters = new Set();
 			}
 
-			return currentShowProposedOnly;
+			return new Set(currentActiveFilters);
 		},
 
 		/**
-		 * Get the current filter state.
+		 * Get the current active filters.
 		 */
-		get(): boolean {
-			return currentShowProposedOnly;
+		get(): Set<FilterableState> {
+			return new Set(currentActiveFilters);
 		},
 
 		/**
-		 * Toggle the proposed-only filter. Persists the change.
+		 * Toggle a specific state filter on/off. Persists the change.
 		 */
-		toggle(): boolean {
-			currentShowProposedOnly = !currentShowProposedOnly;
-
-			if (currentProjectId) {
-				saveToStorage(currentProjectId, {
-					showProposedOnly: currentShowProposedOnly
-				});
+		toggle(state: FilterableState): Set<FilterableState> {
+			if (currentActiveFilters.has(state)) {
+				currentActiveFilters.delete(state);
+			} else {
+				currentActiveFilters.add(state);
 			}
-
-			return currentShowProposedOnly;
+			currentActiveFilters = new Set(currentActiveFilters);
+			persist();
+			return new Set(currentActiveFilters);
 		},
 
 		/**
-		 * Set the filter state explicitly. Persists the change.
+		 * Check if a specific state filter is active.
 		 */
-		set(value: boolean): boolean {
-			currentShowProposedOnly = value;
-
-			if (currentProjectId) {
-				saveToStorage(currentProjectId, {
-					showProposedOnly: currentShowProposedOnly
-				});
-			}
-
-			return currentShowProposedOnly;
+		has(state: FilterableState): boolean {
+			return currentActiveFilters.has(state);
 		},
 
 		/**
@@ -102,7 +107,7 @@ function createFeatureFilterStore() {
 		 */
 		reset(): void {
 			currentProjectId = null;
-			currentShowProposedOnly = false;
+			currentActiveFilters = new Set();
 		}
 	};
 }

@@ -55,6 +55,27 @@ export function filterProposed(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
 }
 
 /**
+ * Check if a node or any of its descendants matches one of the given states.
+ */
+export function hasDescendantWithState(node: FeatureTreeNode, states: Set<string>): boolean {
+	if (states.has(node.state)) return true;
+	return node.children.some(child => hasDescendantWithState(child, states));
+}
+
+/**
+ * Filter features to only show features matching any of the given states,
+ * plus groups containing matching descendants.
+ */
+export function filterByStates(nodes: FeatureTreeNode[], states: Set<string>): FeatureTreeNode[] {
+	return nodes
+		.filter(node => hasDescendantWithState(node, states))
+		.map(node => ({
+			...node,
+			children: filterByStates(node.children, states)
+		}));
+}
+
+/**
  * Compute a hash-based version number for the feature tree structure.
  * Used to detect tree changes (e.g., from SSE updates).
  */

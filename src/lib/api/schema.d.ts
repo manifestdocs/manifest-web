@@ -484,6 +484,12 @@ export interface components {
              * @description ID of the current/active version for this project
              */
             current_version_id?: string | null;
+            /**
+             * @description Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
+             * @default backlog
+             * @enum {string}
+             */
+            default_feature_destination: "backlog" | "now";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -516,6 +522,11 @@ export interface components {
              * @description Set the current/active version for this project
              */
             current_version_id?: string | null;
+            /**
+             * @description Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
+             * @enum {string}
+             */
+            default_feature_destination?: "backlog" | "now";
         };
         ProjectDirectory: {
             /** Format: uuid */
@@ -1624,7 +1635,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectHistoryEntry"][];
+                    "application/json": components["schemas"]["FeatureHistory"][];
                 };
             };
             404: components["responses"]["NotFound"];

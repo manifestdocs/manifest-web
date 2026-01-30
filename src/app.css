@@ -9,6 +9,7 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 @import 'tailwindcss';
+@import '$lib/components/ui/dialog/dialog.css';
 
 :root {
 	/* Dark theme colors */
@@ -37,6 +38,7 @@
 	/* Borders */
 	--border-default: #30363d;
 	--border-muted: #21262d;
+	--border-subtle: #262c34;
 
 	/* Semantic */
 	--primary: var(--accent-green);
@@ -177,7 +179,7 @@ pre,
 	margin-bottom: 4px;
 }
 
-.prose li + li {
+.prose li+li {
 	margin-top: 4px;
 }
 

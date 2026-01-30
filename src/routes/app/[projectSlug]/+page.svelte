@@ -490,9 +490,9 @@
 		}
 	}
 
-	function handleDeleteFromDetail() {
+	async function handleDeleteFromDetail() {
 		if (!selectedFeature) return;
-		handleDeleteFeature(selectedFeature.id);
+		await handleDeleteFeature(selectedFeature.id);
 	}
 
 	async function handleArchiveFeature(moveChildrenToParent: boolean) {
