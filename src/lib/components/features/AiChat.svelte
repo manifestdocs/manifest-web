@@ -5,10 +5,19 @@
 		createTextContent,
 		getTextFromContent,
 		type ChatMessage,
-		type ContentBlock
+		type ContentBlock,
+		type MessageRole
 	} from '$lib/api/chat.js';
 	import MarkdownView from '$lib/components/markdown/MarkdownView.svelte';
 	import { RobotIcon } from '$lib/components/icons/index.js';
+	import {
+		matchCommands,
+		parseCommand,
+		buildPromptWithCommand,
+		type CommandContext,
+		type CommandMatch
+	} from '@manifest/svelte/commands';
+	import CommandAutocomplete from './CommandAutocomplete.svelte';
 
 	interface Props {
 		featureId: string | null;
@@ -27,7 +36,51 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let messagesContainer: HTMLDivElement | undefined = $state();
+	let sessionId = $state<string | null>(null);
 
+	// Command menu state
+	let commandMenuDismissed = $state(false);
+	let selectedCommandIndex = $state(0);
+
+	let commandContext = $derived<CommandContext>({
+		featureId,
+		featureTitle,
+		featureDetails,
+		projectId,
+		isLeaf,
+	});
+
+	let commandMatches = $derived.by(() => {
+		const val = inputValue;
+		if (val.startsWith('/') && !val.includes(' ') && !commandMenuDismissed) {
+			return matchCommands(val.slice(1), commandContext);
+		}
+		return [];
+	});
+
+	let showCommandMenu = $derived(commandMatches.length > 0);
+
+	function selectCommand(match: CommandMatch) {
+		inputValue = `/${match.command.name} `;
+		commandMenuDismissed = true;
+	}
+
+	function dismissCommandMenu() {
+		commandMenuDismissed = true;
+	}
+
+	function handleInput() {
+		// Reset dismiss flag and selection when input changes
+		commandMenuDismissed = false;
+		selectedCommandIndex = 0;
+	}
+
+	// Reset session when feature changes
+	$effect(() => {
+		featureId; // track dependency
+		sessionId = null;
+		messages = [];
+	});
 
 	// Auto-scroll to bottom when messages change
 	$effect(() => {
@@ -48,12 +101,21 @@
 		if (!userInput || isLoading) return;
 
 		error = null;
+		commandMenuDismissed = true;
+
+		// Check for slash command
+		const parsed = parseCommand(userInput);
+		const commandPrompt = buildPromptWithCommand(parsed, commandContext);
+
+		// Display text: show the full input for regular messages, or the command for slash commands
+		const displayText = userInput;
+		const actualUserMessage = commandPrompt?.userMessage ?? userInput;
 
 		// Add user message
 		const userMessage: ChatMessage = {
 			id: generateMessageId(),
 			role: 'user',
-			content: createTextContent(userInput),
+			content: createTextContent(displayText),
 			createdAt: new Date().toISOString()
 		};
 		messages = [...messages, userMessage];
@@ -73,10 +135,32 @@
 		isLoading = true;
 
 		// Build message history for context
-		const messageHistory = messages.slice(0, -1).map((m) => ({
-			role: m.role,
-			content: getTextFromContent(m.content)
-		}));
+		const messageHistory: Array<{ role: MessageRole; content: string }> = [];
+
+		if (commandPrompt) {
+			messageHistory.push({ role: 'system', content: commandPrompt.systemPrompt });
+		}
+
+		if (sessionId) {
+			// Resuming: Claude has prior context, just send the new message
+			messageHistory.push({ role: 'user', content: actualUserMessage });
+		} else {
+			// First turn: send full history
+			for (const m of messages.slice(0, -1)) {
+				messageHistory.push({
+					role: m.role,
+					content: getTextFromContent(m.content)
+				});
+			}
+
+			// Replace the last user message content with the actual user message (args or default)
+			if (commandPrompt && messageHistory.length > 0) {
+				messageHistory[messageHistory.length - 1] = {
+					role: 'user',
+					content: actualUserMessage
+				};
+			}
+		}
 
 		await chatClient.sendMessage(
 			{
@@ -88,9 +172,14 @@
 					projectId: projectId,
 					isLeaf: isLeaf
 				},
+				sessionId: sessionId ?? undefined,
 				stream: true
 			},
 			{
+				onSession: (sid) => {
+					sessionId = sid;
+				},
+
 				onTextDelta: (text) => {
 					messages = messages.map((m) => {
 						if (m.id === assistantId) {
@@ -175,6 +264,30 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		// Command menu navigation takes priority
+		if (showCommandMenu) {
+			if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				selectedCommandIndex = (selectedCommandIndex + 1) % commandMatches.length;
+				return;
+			}
+			if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				selectedCommandIndex = (selectedCommandIndex - 1 + commandMatches.length) % commandMatches.length;
+				return;
+			}
+			if (e.key === 'Enter' || e.key === 'Tab') {
+				e.preventDefault();
+				selectCommand(commandMatches[selectedCommandIndex]);
+				return;
+			}
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				dismissCommandMenu();
+				return;
+			}
+		}
+
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			handleSubmit(e);
@@ -184,6 +297,7 @@
 	function clearChat() {
 		messages = [];
 		error = null;
+		sessionId = null;
 	}
 
 	/** Check if tool is a Manifest MCP tool */
@@ -304,7 +418,7 @@
 <div class="ai-chat">
 	<div class="chat-messages" bind:this={messagesContainer}>
 		{#if messages.length === 0}
-			<div class="empty-chat">
+			<div class="empty-chat" class:menu-open={showCommandMenu}>
 				<div class="empty-icon">
 					<RobotIcon size={48} />
 				</div>
@@ -382,10 +496,20 @@
 	{/if}
 
 	<form class="chat-input-form" onsubmit={handleSubmit}>
+		{#if showCommandMenu}
+			<CommandAutocomplete
+				query={inputValue.slice(1)}
+				matches={commandMatches}
+				selectedIndex={selectedCommandIndex}
+				onSelect={selectCommand}
+				onDismiss={dismissCommandMenu}
+			/>
+		{/if}
 		<textarea
 			class="chat-input"
 			placeholder="Manifest something..."
 			bind:value={inputValue}
+			oninput={handleInput}
 			onkeydown={handleKeydown}
 			disabled={isLoading}
 			rows={3}
@@ -445,6 +569,11 @@
 		text-align: center;
 		padding: 20px;
 		gap: 8px;
+		transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	.empty-chat.menu-open {
+		transform: translateY(-40px);
 	}
 
 	.empty-icon {

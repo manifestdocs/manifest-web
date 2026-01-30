@@ -43,6 +43,7 @@ export type StreamEventType =
 	| 'message_stop'
 	| 'tool_call'
 	| 'tool_call_update'
+	| 'session'
 	| 'error';
 
 export interface StreamEvent {
@@ -60,6 +61,8 @@ export interface StreamEvent {
 	};
 	// For tool_call_update
 	status?: 'pending' | 'in_progress' | 'completed' | 'failed';
+	// For session
+	session_id?: string;
 	// For error
 	error?: {
 		message: string;
@@ -86,6 +89,7 @@ export interface ChatRequest {
 	};
 	model?: string; // 'local' | 'gemini-2.5-flash' | etc.
 	stream?: boolean;
+	sessionId?: string;
 }
 
 export interface ChatStreamCallbacks {
@@ -93,6 +97,7 @@ export interface ChatStreamCallbacks {
 	onTextDelta?: (text: string) => void;
 	onToolCall?: (tool: { id: string; name: string; input?: Record<string, unknown> }) => void;
 	onToolUpdate?: (toolId: string, status: string, result?: string) => void;
+	onSession?: (sessionId: string) => void;
 	onComplete?: () => void;
 	onError?: (error: Error) => void;
 }
@@ -207,6 +212,12 @@ export class ChatClient {
 			case 'tool_call_update':
 				if (event.tool?.id && event.status) {
 					callbacks.onToolUpdate?.(event.tool.id, event.status);
+				}
+				break;
+
+			case 'session':
+				if (event.session_id) {
+					callbacks.onSession?.(event.session_id);
 				}
 				break;
 
