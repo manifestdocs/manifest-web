@@ -11,6 +11,8 @@
 	import { SettingsIcon, PlusIcon, SearchIcon } from '$lib/components/icons/index.js';
 	import { CommandPalette } from '$lib/components/command-palette/index.js';
 	import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
+	import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
+	import { ServerSettingsDialog } from '$lib/components/settings/index.js';
 	import { debugEmptyState, type DebugEmptyState } from '$lib/stores/index.js';
 
 	type Project = components['schemas']['Project'];
@@ -29,6 +31,7 @@
 	// Dialog state
 	let newProjectWizardOpen = $state(false);
 	let settingsDialogOpen = $state(false);
+	let serverSettingsOpen = $state(false);
 	let commandPaletteOpen = $state(false);
 
 	// Debug state change handler
@@ -198,6 +201,17 @@
 				>
 					<PlusIcon size={16} />
 				</button>
+				<button
+					class="icon-btn"
+					onclick={() => (serverSettingsOpen = true)}
+					title="Server settings"
+				>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<ellipse cx="12" cy="5" rx="9" ry="3" />
+						<path d="M3 5V12a9 3 0 0 0 18 0V5" />
+						<path d="M3 12a9 3 0 0 0 18 0" />
+					</svg>
+				</button>
 				<div class="header-divider"></div>
 				<a href="{base}/docs" class="docs-link">
 					Docs
@@ -220,6 +234,7 @@
 			</div>
 		</header>
 
+		<ConnectionBanner />
 		<UpdateBanner />
 
 		<main class="app-main">
@@ -234,6 +249,11 @@
 	open={newProjectWizardOpen}
 	onOpenChange={(open) => (newProjectWizardOpen = open)}
 	onCreated={loadProjects}
+/>
+
+<ServerSettingsDialog
+	open={serverSettingsOpen}
+	onOpenChange={(open) => (serverSettingsOpen = open)}
 />
 
 {#if selectedProject}

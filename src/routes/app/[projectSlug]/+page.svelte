@@ -6,7 +6,7 @@
 	import { StateIcon } from '$lib/components/icons/index.js';
 	import { EmptyProjectGuide, OnboardingGuide, WelcomeScreen } from '$lib/components/projects/index.js';
 	import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
-	import { sidebarWidth, debugEmptyState } from '$lib/stores/index.js';
+	import { sidebarWidth, debugEmptyState, serverConnection } from '$lib/stores/index.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { getContext } from 'svelte';
@@ -138,6 +138,15 @@
 
 		const source = subscribeToProject(projectId);
 
+		source.onopen = () => {
+			serverConnection.setConnected();
+			// Reload data on reconnect in case we missed events while disconnected
+			loadFeatureTree(projectId);
+			if (selectedFeatureId) {
+				loadFeature(selectedFeatureId, true);
+			}
+		};
+
 		source.addEventListener('change', () => {
 			// Refetch the feature tree when any feature changes
 			loadFeatureTree(projectId);
@@ -148,7 +157,7 @@
 		});
 
 		source.onerror = () => {
-			// SSE connection failed - that's okay, we'll just use manual refresh
+			serverConnection.setDisconnected();
 			console.debug('SSE connection closed or failed');
 		};
 
