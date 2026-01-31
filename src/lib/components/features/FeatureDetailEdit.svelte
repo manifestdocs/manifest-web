@@ -39,8 +39,10 @@
             value={editDetails}
             onchange={onDetailsChange}
             placeholder={isRoot
-                ? "Project-wide instructions for AI agents. Include coding guidelines, conventions, and any context that should apply to all features..."
-                : "Add feature details, user stories, technical notes..."}
+                ? "Project-wide instructions.\n\n## Tech Stack\nLanguage, framework, database...\n\n## Conventions\nCoding patterns, error handling, naming...\n\n## Decisions\nKey architectural choices and rationale...\n\n## Boundaries\nSecurity constraints, what agents should never do..."
+                : isGroup
+                    ? "Shared context for child features.\n\n## Architecture\nHow this area is structured...\n\n## Patterns\nShared interfaces, common approaches...\n\n## Constraints\nCross-cutting requirements for all children..."
+                    : "Feature specification.\n\n## Story\nAs a [user], I can [capability] so that [benefit].\n\n## Acceptance Criteria\n- Given [precondition], when [action], then [expected outcome]\n\n## Constraints\n- Technical constraints, performance requirements..."}
             rows={20}
         />
     </div>

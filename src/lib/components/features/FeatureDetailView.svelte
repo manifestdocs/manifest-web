@@ -26,11 +26,11 @@
 
 {#if isRoot}
     <InfoBanner class="content-banner">
-        Context here applies project-wide.
+        Project instructions — all agents read this. Include tech stack, conventions, and decisions.
     </InfoBanner>
 {:else if isGroup}
     <InfoBanner class="content-banner">
-        Context here applies to all features in this set.
+        Shared context — flows to all child features. Include architecture and constraints for this area.
     </InfoBanner>
 {/if}
 
@@ -50,8 +50,10 @@
     {:else}
         <p class="no-details">
             {isRoot
-                ? "No project instructions yet. Click Edit to add guidelines for AI agents."
-                : "No details yet. Click Edit to add a description."}
+                ? "No project instructions yet. Click Edit to add tech stack, conventions, and decisions."
+                : isGroup
+                    ? "No shared context yet. Click Edit to add architectural decisions and constraints for child features."
+                    : "No specification yet. Click Edit to add a user story, acceptance criteria, and constraints."}
         </p>
     {/if}
 </div>
