@@ -53,7 +53,7 @@
                 ? "No project instructions yet. Click Edit to add tech stack, conventions, and decisions."
                 : isGroup
                     ? "No shared context yet. Click Edit to add architectural decisions and constraints for child features."
-                    : "No specification yet. Click Edit to add a user story, acceptance criteria, and constraints."}
+                    : "No specification yet. Click Edit to describe what this feature does — goal, constraints, and key interfaces."}
         </p>
     {/if}
 </div>
