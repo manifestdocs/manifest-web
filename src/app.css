@@ -12,102 +12,108 @@
 @import '$lib/components/ui/dialog/dialog.css';
 
 :root {
-	/* Dark theme colors */
-	--background: #0d1117;
-	--background-subtle: #141b24;
-	--background-muted: #21262d;
-	--background-emphasis: #30363d;
+  /* Dark theme colors */
+  --background: #0d1117;
+  --background-subtle: #141b24;
+  --background-muted: #21262d;
+  --background-emphasis: #30363d;
 
-	--foreground: #e6edf3;
-	--foreground-muted: #8b949e;
-	--foreground-subtle: #6e7681;
+  --foreground: #e6edf3;
+  --foreground-muted: #8b949e;
+  --foreground-subtle: #6e7681;
 
-	/* Feature state colors */
-	--state-proposed: #cca700;
-	--state-in-progress: #89d185;
-	--state-implemented: #9cdcfe;
-	--state-archived: #6e6e6e;
+  /* Feature state colors */
+  --state-proposed: #cca700;
+  --state-in-progress: #89d185;
+  --state-implemented: #9cdcfe;
+  --state-archived: #6e6e6e;
 
-	/* Accents */
-	--accent-blue: #58a6ff;
-	--accent-green: #89d185;
-	--accent-red: #f85149;
-	--accent-orange: #d29922;
-	--accent-purple: #a371f7;
+  /* Accents */
+  --accent-blue: #58a6ff;
+  --accent-green: #89d185;
+  --accent-red: #f85149;
+  --accent-orange: #d29922;
+  --accent-purple: #a371f7;
 
-	/* Borders */
-	--border-default: #30363d;
-	--border-muted: #21262d;
-	--border-subtle: #262c34;
+  /* Borders */
+  --border-default: #30363d;
+  --border-muted: #21262d;
+  --border-subtle: #262c34;
 
-	/* Semantic */
-	--primary: var(--accent-green);
-	--secondary: var(--accent-blue);
-	--destructive: var(--accent-red);
+  /* Semantic */
+  --primary: var(--accent-green);
+  --secondary: var(--accent-blue);
+  --destructive: var(--accent-red);
 }
 
 * {
-	box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html,
 body {
-	margin: 0;
-	padding: 0;
-	height: 100%;
-	background: var(--background);
-	color: var(--foreground);
-	font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	font-size: 14px;
-	line-height: 1.5;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    'IBM Plex Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Scrollbar styling - minimal floating bar, no track */
 ::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-	background: transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: rgba(156, 220, 254, 0.2);
+  background: rgba(156, 220, 254, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: rgba(156, 220, 254, 0.3);
+  background: rgba(156, 220, 254, 0.3);
 }
 
 ::-webkit-scrollbar-corner {
-	background: transparent;
+  background: transparent;
 }
 
 /* Monospace for code/markdown */
 code,
 pre,
 .font-mono {
-	font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Monaco, 'Andale Mono', monospace;
+  font-family:
+    'IBM Plex Mono', ui-monospace, 'SF Mono', Monaco, 'Andale Mono', monospace;
 }
 
 /* Focus styles */
 :focus-visible {
-	outline: 2px solid var(--accent-blue);
-	outline-offset: 2px;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 /* Selection */
 ::selection {
-	background: rgba(88, 166, 255, 0.3);
+  background: rgba(88, 166, 255, 0.3);
 }
 
 /* Prose styling for rendered markdown */
 .prose {
-	color: var(--foreground);
-	line-height: 1.7;
+  color: var(--foreground);
+  line-height: 1.7;
 }
 
 .prose h1,
@@ -116,148 +122,193 @@ pre,
 .prose h4,
 .prose h5,
 .prose h6 {
-	margin-top: 24px;
-	margin-bottom: 16px;
-	font-weight: 600;
-	line-height: 1.25;
-	color: var(--foreground);
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--foreground);
 }
 
 .prose h1 {
-	font-size: 2em;
+  font-size: 2em;
 }
 
 .prose h2 {
-	font-size: 1.5em;
+  font-size: 1.5em;
 }
 
 .prose h3 {
-	font-size: 1.25em;
+  font-size: 1.25em;
 }
 
 .prose h4 {
-	font-size: 1em;
+  font-size: 1em;
 }
 
 .prose h1:first-child,
 .prose h2:first-child,
 .prose h3:first-child {
-	margin-top: 0;
+  margin-top: 0;
 }
 
 .prose p {
-	margin-top: 0;
-	margin-bottom: 16px;
+  margin-top: 0;
+  margin-bottom: 16px;
 }
 
 .prose a {
-	color: var(--accent-blue);
-	text-decoration: none;
+  color: var(--accent-blue);
+  text-decoration: none;
 }
 
 .prose a:hover {
-	text-decoration: underline;
+  text-decoration: underline;
 }
 
 .prose strong {
-	font-weight: 600;
-	color: var(--foreground);
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .prose em {
-	font-style: italic;
+  font-style: italic;
 }
 
 .prose ul,
 .prose ol {
-	margin-top: 0;
-	margin-bottom: 16px;
-	padding-left: 2em;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-left: 2em;
 }
 
 .prose li {
-	margin-bottom: 4px;
+  margin-bottom: 4px;
 }
 
-.prose li+li {
-	margin-top: 4px;
+.prose li + li {
+  margin-top: 4px;
 }
 
 .prose ul ul,
 .prose ol ol,
 .prose ul ol,
 .prose ol ul {
-	margin-top: 0;
-	margin-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .prose blockquote {
-	margin: 0 0 16px;
-	padding: 0 1em;
-	color: var(--foreground-muted);
-	border-left: 4px solid var(--border-default);
+  margin: 0 0 16px;
+  padding: 0 1em;
+  color: var(--foreground-muted);
+  border-left: 4px solid var(--border-default);
 }
 
 .prose code {
-	padding: 0.2em 0.4em;
-	font-size: 85%;
-	background: var(--background-muted);
-	font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Monaco, monospace;
+  padding: 0.2em 0.4em;
+  font-size: 85%;
+  background: var(--background-muted);
+  font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Monaco, monospace;
 }
 
 .prose pre {
-	margin: 0 0 16px;
-	padding: 16px;
-	overflow-x: auto;
-	font-size: 85%;
-	line-height: 1.45;
-	background: var(--background-muted);
-	border: 1px solid var(--border-muted);
+  margin: 0 0 16px;
+  padding: 16px;
+  overflow-x: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background: var(--background-muted);
+  border: 1px solid var(--border-muted);
 }
 
 .prose pre code {
-	padding: 0;
-	font-size: 100%;
-	background: transparent;
-	border-radius: 0;
+  padding: 0;
+  font-size: 100%;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* Syntax highlighting - GitHub Dark inspired palette */
+.prose pre code .hljs-keyword,
+.prose pre code .hljs-deletion {
+  color: #ff7b72;
+}
+
+.prose pre code .hljs-attr,
+.prose pre code .hljs-section,
+.prose pre code .hljs-title,
+.prose pre code .hljs-name {
+  color: #7ee787;
+}
+
+.prose pre code .hljs-string,
+.prose pre code .hljs-doctag,
+.prose pre code .hljs-addition {
+  color: #a5d6ff;
+}
+
+.prose pre code .hljs-number,
+.prose pre code .hljs-literal,
+.prose pre code .hljs-built_in {
+  color: #79c0ff;
+}
+
+.prose pre code .hljs-type,
+.prose pre code .hljs-params {
+  color: #ffa657;
+}
+
+.prose pre code .hljs-comment,
+.prose pre code .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.prose pre code .hljs-meta {
+  color: #d2a8ff;
+}
+
+.prose pre code .hljs-punctuation,
+.prose pre code .hljs-variable {
+  color: #c9d1d9;
 }
 
 .prose hr {
-	height: 1px;
-	margin: 24px 0;
-	background: var(--border-default);
-	border: 0;
+  height: 1px;
+  margin: 24px 0;
+  background: var(--border-default);
+  border: 0;
 }
 
 .prose table {
-	width: 100%;
-	margin-bottom: 16px;
-	border-spacing: 0;
-	border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+  border-spacing: 0;
+  border-collapse: collapse;
 }
 
 .prose table th,
 .prose table td {
-	padding: 6px 13px;
-	border: 1px solid var(--border-default);
+  padding: 6px 13px;
+  border: 1px solid var(--border-default);
 }
 
 .prose table th {
-	font-weight: 600;
-	background: var(--background-muted);
+  font-weight: 600;
+  background: var(--background-muted);
 }
 
 .prose table tr:nth-child(2n) {
-	background: var(--background-subtle);
+  background: var(--background-subtle);
 }
 
 .prose img {
-	max-width: 100%;
-	height: auto;
+  max-width: 100%;
+  height: auto;
 }
 
 /* Task list styling */
-.prose input[type="checkbox"] {
-	margin-right: 8px;
-	vertical-align: middle;
+.prose input[type='checkbox'] {
+  margin-right: 8px;
+  vertical-align: middle;
 }
