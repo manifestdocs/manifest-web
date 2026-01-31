@@ -1,890 +1,1125 @@
 <script lang="ts">
-	import {
-		chatClient,
-		generateMessageId,
-		createTextContent,
-		getTextFromContent,
-		type ChatMessage,
-		type ContentBlock,
-		type MessageRole
-	} from '$lib/api/chat.js';
-	import MarkdownView from '$lib/components/markdown/MarkdownView.svelte';
-	import { RobotIcon } from '$lib/components/icons/index.js';
-	import {
-		matchCommands,
-		parseCommand,
-		buildPromptWithCommand,
-		type CommandContext,
-		type CommandMatch
-	} from '@manifest/svelte/commands';
-	import CommandAutocomplete from './CommandAutocomplete.svelte';
+  import {
+    chatClient,
+    generateMessageId,
+    createTextContent,
+    getTextFromContent,
+    type ChatMessage,
+    type ContentBlock,
+    type MessageRole,
+  } from '$lib/api/chat.js';
+  import { API_BASE_URL } from '$lib/api/client.js';
+  import MarkdownView from '$lib/components/markdown/MarkdownView.svelte';
+  import {
+    RobotIcon,
+    StateIcon,
+    BookIcon,
+    GroupIcon,
+  } from '$lib/components/icons/index.js';
+  import type { components } from '$lib/api/schema.js';
+  import {
+    matchCommands,
+    parseCommand,
+    buildPromptWithCommand,
+    type CommandContext,
+    type CommandMatch,
+  } from '@manifest/svelte/commands';
+  import CommandAutocomplete from './CommandAutocomplete.svelte';
 
-	interface Props {
-		featureId: string | null;
-		featureTitle?: string;
-		featureDetails?: string;
-		projectId?: string;
-		/** Whether this is a leaf feature (true) or a feature set with children (false) */
-		isLeaf?: boolean;
-	}
+  interface Props {
+    featureId: string | null;
+    featureTitle?: string;
+    featureDetails?: string;
+    featureState?: components['schemas']['FeatureState'];
+    projectId?: string;
+    /** Whether this is a leaf feature (true) or a feature set with children (false) */
+    isLeaf?: boolean;
+    /** Whether this is the project root feature */
+    isProjectRoot?: boolean;
+  }
 
-	let { featureId, featureTitle = '', featureDetails = '', projectId, isLeaf = true }: Props = $props();
+  let {
+    featureId,
+    featureTitle = '',
+    featureDetails = '',
+    featureState,
+    projectId,
+    isLeaf = true,
+    isProjectRoot = false,
+  }: Props = $props();
 
-	// Chat state
-	let messages = $state<ChatMessage[]>([]);
-	let inputValue = $state('');
-	let isLoading = $state(false);
-	let error = $state<string | null>(null);
-	let messagesContainer: HTMLDivElement | undefined = $state();
-	let sessionId = $state<string | null>(null);
+  // Chat state
+  let messages = $state<ChatMessage[]>([]);
+  let inputValue = $state('');
+  let isLoading = $state(false);
+  let error = $state<string | null>(null);
+  let messagesContainer: HTMLDivElement | undefined = $state();
+  let sessionId = $state<string | null>(null);
 
-	// Command menu state
-	let commandMenuDismissed = $state(false);
-	let selectedCommandIndex = $state(0);
+  // Agent indicator
+  let activeAgent = $state('claude');
 
-	let commandContext = $derived<CommandContext>({
-		featureId,
-		featureTitle,
-		featureDetails,
-		projectId,
-		isLeaf,
-	});
+  // Command menu state
+  let commandMenuDismissed = $state(false);
+  let selectedCommandIndex = $state(0);
 
-	let commandMatches = $derived.by(() => {
-		const val = inputValue;
-		if (val.startsWith('/') && !val.includes(' ') && !commandMenuDismissed) {
-			return matchCommands(val.slice(1), commandContext);
-		}
-		return [];
-	});
+  let commandContext = $derived<CommandContext>({
+    featureId,
+    featureTitle,
+    featureDetails,
+    projectId,
+    isLeaf,
+    isProjectRoot,
+  });
 
-	let showCommandMenu = $derived(commandMatches.length > 0);
+  let commandMatches = $derived.by(() => {
+    const val = inputValue;
+    if (val.startsWith('/') && !val.includes(' ') && !commandMenuDismissed) {
+      return matchCommands(val.slice(1), commandContext);
+    }
+    return [];
+  });
 
-	function selectCommand(match: CommandMatch) {
-		inputValue = `/${match.command.name} `;
-		commandMenuDismissed = true;
-	}
+  let showCommandMenu = $derived(commandMatches.length > 0);
 
-	function dismissCommandMenu() {
-		commandMenuDismissed = true;
-	}
+  function selectCommand(match: CommandMatch) {
+    inputValue = `/${match.command.name} `;
+    commandMenuDismissed = true;
+  }
 
-	function handleInput() {
-		// Reset dismiss flag and selection when input changes
-		commandMenuDismissed = false;
-		selectedCommandIndex = 0;
-	}
+  function dismissCommandMenu() {
+    commandMenuDismissed = true;
+  }
 
-	// Reset session when feature changes
-	$effect(() => {
-		featureId; // track dependency
-		sessionId = null;
-		messages = [];
-	});
+  function handleInput() {
+    // Reset dismiss flag and selection when input changes
+    commandMenuDismissed = false;
+    selectedCommandIndex = 0;
+  }
 
-	// Auto-scroll to bottom when messages change
-	$effect(() => {
-		if (messages.length > 0 && messagesContainer) {
-			// Use requestAnimationFrame to ensure DOM has updated
-			requestAnimationFrame(() => {
-				if (messagesContainer) {
-					messagesContainer.scrollTop = messagesContainer.scrollHeight;
-				}
-			});
-		}
-	});
+  // Load active agent from server settings
+  $effect(() => {
+    fetch(`${API_BASE_URL}/settings`)
+      .then((res) => res.json())
+      .then((data) => {
+        activeAgent = data.default_agent ?? 'claude';
+      })
+      .catch(() => {
+        // Silently fall back to claude
+      });
+  });
 
-	async function handleSubmit(e: Event) {
-		e.preventDefault();
+  // Reset session when feature changes
+  $effect(() => {
+    featureId; // track dependency
+    sessionId = null;
+    messages = [];
+  });
 
-		const userInput = inputValue.trim();
-		if (!userInput || isLoading) return;
+  // Auto-scroll to bottom when messages change
+  $effect(() => {
+    if (messages.length > 0 && messagesContainer) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      });
+    }
+  });
 
-		error = null;
-		commandMenuDismissed = true;
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
 
-		// Check for slash command
-		const parsed = parseCommand(userInput);
-		const commandPrompt = buildPromptWithCommand(parsed, commandContext);
+    const userInput = inputValue.trim();
+    if (!userInput || isLoading) return;
 
-		// Display text: show the full input for regular messages, or the command for slash commands
-		const displayText = userInput;
-		const actualUserMessage = commandPrompt?.userMessage ?? userInput;
+    error = null;
+    commandMenuDismissed = true;
 
-		// Add user message
-		const userMessage: ChatMessage = {
-			id: generateMessageId(),
-			role: 'user',
-			content: createTextContent(displayText),
-			createdAt: new Date().toISOString()
-		};
-		messages = [...messages, userMessage];
-		inputValue = '';
+    // Check for slash command
+    const parsed = parseCommand(userInput);
+    const commandPrompt = buildPromptWithCommand(parsed, commandContext);
 
-		// Add placeholder assistant message
-		const assistantId = generateMessageId();
-		const assistantMessage: ChatMessage = {
-			id: assistantId,
-			role: 'assistant',
-			content: [],
-			createdAt: new Date().toISOString(),
-			isStreaming: true
-		};
-		messages = [...messages, assistantMessage];
+    // Display text: show the full input for regular messages, or the command for slash commands
+    const displayText = userInput;
+    const actualUserMessage = commandPrompt?.userMessage ?? userInput;
 
-		isLoading = true;
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: generateMessageId(),
+      role: 'user',
+      content: createTextContent(displayText),
+      createdAt: new Date().toISOString(),
+    };
+    messages = [...messages, userMessage];
+    inputValue = '';
 
-		// Build message history for context
-		const messageHistory: Array<{ role: MessageRole; content: string }> = [];
+    // Add placeholder assistant message
+    const assistantId = generateMessageId();
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: [],
+      createdAt: new Date().toISOString(),
+      isStreaming: true,
+    };
+    messages = [...messages, assistantMessage];
 
-		if (commandPrompt) {
-			messageHistory.push({ role: 'system', content: commandPrompt.systemPrompt });
-		}
+    isLoading = true;
 
-		if (sessionId) {
-			// Resuming: Claude has prior context, just send the new message
-			messageHistory.push({ role: 'user', content: actualUserMessage });
-		} else {
-			// First turn: send full history
-			for (const m of messages.slice(0, -1)) {
-				messageHistory.push({
-					role: m.role,
-					content: getTextFromContent(m.content)
-				});
-			}
+    // Build message history for context
+    const messageHistory: Array<{ role: MessageRole; content: string }> = [];
 
-			// Replace the last user message content with the actual user message (args or default)
-			if (commandPrompt && messageHistory.length > 0) {
-				messageHistory[messageHistory.length - 1] = {
-					role: 'user',
-					content: actualUserMessage
-				};
-			}
-		}
+    if (commandPrompt) {
+      messageHistory.push({
+        role: 'system',
+        content: commandPrompt.systemPrompt,
+      });
+    }
 
-		await chatClient.sendMessage(
-			{
-				messages: messageHistory,
-				context: {
-					featureId: featureId ?? undefined,
-					featureTitle: featureTitle || undefined,
-					featureDetails: featureDetails || undefined,
-					projectId: projectId,
-					isLeaf: isLeaf
-				},
-				sessionId: sessionId ?? undefined,
-				stream: true
-			},
-			{
-				onSession: (sid) => {
-					sessionId = sid;
-				},
+    if (sessionId) {
+      // Resuming: Claude has prior context, just send the new message
+      messageHistory.push({ role: 'user', content: actualUserMessage });
+    } else {
+      // First turn: send full history
+      for (const m of messages.slice(0, -1)) {
+        messageHistory.push({
+          role: m.role,
+          content: getTextFromContent(m.content),
+        });
+      }
 
-				onTextDelta: (text) => {
-					messages = messages.map((m) => {
-						if (m.id === assistantId) {
-							const content = [...m.content];
-							const lastBlock = content[content.length - 1];
+      // Replace the last user message content with the actual user message (args or default)
+      if (commandPrompt && messageHistory.length > 0) {
+        messageHistory[messageHistory.length - 1] = {
+          role: 'user',
+          content: actualUserMessage,
+        };
+      }
+    }
 
-							// If last block is text, append to it; otherwise create new text block
-							if (lastBlock?.type === 'text' && lastBlock.text !== undefined) {
-								content[content.length - 1] = {
-									...lastBlock,
-									text: lastBlock.text + text
-								};
-							} else {
-								content.push({ type: 'text', text });
-							}
+    await chatClient.sendMessage(
+      {
+        messages: messageHistory,
+        context: {
+          featureId: featureId ?? undefined,
+          featureTitle: featureTitle || undefined,
+          featureDetails: featureDetails || undefined,
+          projectId: projectId,
+          isLeaf: isLeaf,
+        },
+        sessionId: sessionId ?? undefined,
+        stream: true,
+      },
+      {
+        onSession: (sid) => {
+          sessionId = sid;
+        },
 
-							return { ...m, content };
-						}
-						return m;
-					});
-				},
+        onTextDelta: (text) => {
+          messages = messages.map((m) => {
+            if (m.id === assistantId) {
+              const content = [...m.content];
+              const lastBlock = content[content.length - 1];
 
-				onToolCall: (tool) => {
-					messages = messages.map((m) => {
-						if (m.id === assistantId) {
-							return {
-								...m,
-								content: [
-									...m.content,
-									{
-										type: 'tool_use' as const,
-										toolId: tool.id,
-										toolName: tool.name,
-										toolStatus: 'running' as const,
-										toolInput: tool.input
-									}
-								]
-							};
-						}
-						return m;
-					});
-				},
+              // If last block is text, append to it; otherwise create new text block
+              if (lastBlock?.type === 'text' && lastBlock.text !== undefined) {
+                content[content.length - 1] = {
+                  ...lastBlock,
+                  text: lastBlock.text + text,
+                };
+              } else {
+                content.push({ type: 'text', text });
+              }
 
-				onToolUpdate: (toolId, status) => {
-					messages = messages.map((m) => {
-						if (m.id === assistantId) {
-							return {
-								...m,
-								content: m.content.map((block) =>
-									block.type === 'tool_use' && block.toolId === toolId
-										? { ...block, toolStatus: status as ContentBlock['toolStatus'] }
-										: block
-								)
-							};
-						}
-						return m;
-					});
-				},
+              return { ...m, content };
+            }
+            return m;
+          });
+        },
 
-				onComplete: () => {
-					messages = messages.map((m) =>
-						m.id === assistantId ? { ...m, isStreaming: false } : m
-					);
-					isLoading = false;
-				},
+        onToolCall: (tool) => {
+          messages = messages.map((m) => {
+            if (m.id === assistantId) {
+              return {
+                ...m,
+                content: [
+                  ...m.content,
+                  {
+                    type: 'tool_use' as const,
+                    toolId: tool.id,
+                    toolName: tool.name,
+                    toolStatus: 'running' as const,
+                    toolInput: tool.input,
+                  },
+                ],
+              };
+            }
+            return m;
+          });
+        },
 
-				onError: (err) => {
-					error = err.message;
-					messages = messages.map((m) =>
-						m.id === assistantId
-							? {
-									...m,
-									content: createTextContent('Sorry, something went wrong. Please try again.'),
-									isStreaming: false
-								}
-							: m
-					);
-					isLoading = false;
-				}
-			}
-		);
-	}
+        onToolUpdate: (toolId, status) => {
+          messages = messages.map((m) => {
+            if (m.id === assistantId) {
+              return {
+                ...m,
+                content: m.content.map((block) =>
+                  block.type === 'tool_use' && block.toolId === toolId
+                    ? {
+                        ...block,
+                        toolStatus: status as ContentBlock['toolStatus'],
+                      }
+                    : block,
+                ),
+              };
+            }
+            return m;
+          });
+        },
 
-	function handleKeydown(e: KeyboardEvent) {
-		// Command menu navigation takes priority
-		if (showCommandMenu) {
-			if (e.key === 'ArrowDown') {
-				e.preventDefault();
-				selectedCommandIndex = (selectedCommandIndex + 1) % commandMatches.length;
-				return;
-			}
-			if (e.key === 'ArrowUp') {
-				e.preventDefault();
-				selectedCommandIndex = (selectedCommandIndex - 1 + commandMatches.length) % commandMatches.length;
-				return;
-			}
-			if (e.key === 'Enter' || e.key === 'Tab') {
-				e.preventDefault();
-				selectCommand(commandMatches[selectedCommandIndex]);
-				return;
-			}
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				dismissCommandMenu();
-				return;
-			}
-		}
+        onComplete: () => {
+          messages = messages.map((m) =>
+            m.id === assistantId ? { ...m, isStreaming: false } : m,
+          );
+          isLoading = false;
+        },
 
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault();
-			handleSubmit(e);
-		}
-	}
+        onError: (err) => {
+          error = err.message;
+          messages = messages.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: createTextContent(
+                    'Sorry, something went wrong. Please try again.',
+                  ),
+                  isStreaming: false,
+                }
+              : m,
+          );
+          isLoading = false;
+        },
+      },
+    );
+  }
 
-	function clearChat() {
-		messages = [];
-		error = null;
-		sessionId = null;
-	}
+  function handleKeydown(e: KeyboardEvent) {
+    // Command menu navigation takes priority
+    if (showCommandMenu) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedCommandIndex =
+          (selectedCommandIndex + 1) % commandMatches.length;
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedCommandIndex =
+          (selectedCommandIndex - 1 + commandMatches.length) %
+          commandMatches.length;
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        selectCommand(commandMatches[selectedCommandIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        dismissCommandMenu();
+        return;
+      }
+    }
 
-	/** Check if tool is a Manifest MCP tool */
-	function isManifestTool(toolName: string): boolean {
-		return toolName.startsWith('mcp__manifest__');
-	}
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  }
 
-	/** Transform Manifest MCP tool names to friendly display names */
-	function getToolDisplayName(toolName: string): string {
-		if (!isManifestTool(toolName)) return toolName;
+  function clearChat() {
+    messages = [];
+    error = null;
+    sessionId = null;
+  }
 
-		// Extract the action part: mcp__manifest__find_features -> find_features
-		const action = toolName.replace('mcp__manifest__', '');
+  /** Check if tool is a Manifest MCP tool */
+  function isManifestTool(toolName: string): boolean {
+    return toolName.startsWith('mcp__manifest__');
+  }
 
-		// Convert snake_case to Title Case
-		return action
-			.split('_')
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
-	}
+  /** Transform Manifest MCP tool names to friendly display names */
+  function getToolDisplayName(toolName: string): string {
+    if (!isManifestTool(toolName)) return toolName;
 
-	/** Extract a human-readable summary from tool input */
-	function getToolSummary(toolName: string, input?: Record<string, unknown>): string {
-		if (!input) return '';
+    // Extract the action part: mcp__manifest__find_features -> find_features
+    const action = toolName.replace('mcp__manifest__', '');
 
-		// Handle Manifest MCP tools
-		if (isManifestTool(toolName)) {
-			const action = toolName.replace('mcp__manifest__', '');
-			switch (action) {
-				case 'get_feature':
-				case 'start_feature':
-				case 'complete_feature':
-					if (input.feature_id) {
-						const id = String(input.feature_id);
-						return id.slice(0, 8) + '...';
-					}
-					break;
-				case 'find_features':
-					if (input.query) return `"${input.query}"`;
-					if (input.state) return String(input.state);
-					break;
-				case 'update_feature':
-					if (input.title) return `"${input.title}"`;
-					if (input.feature_id) {
-						const id = String(input.feature_id);
-						return id.slice(0, 8) + '...';
-					}
-					break;
-				case 'render_feature_tree':
-				case 'list_versions':
-				case 'get_next_feature':
-					// No summary needed for these
-					return '';
-				case 'plan':
-					if (input.features && Array.isArray(input.features)) {
-						return `${input.features.length} features`;
-					}
-					break;
-			}
-			return '';
-		}
+    // Convert snake_case to Title Case
+    return action
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
 
-		switch (toolName) {
-			case 'Read':
-				if (input.file_path) {
-					const path = String(input.file_path);
-					// Show just the filename or last part of path
-					const parts = path.split('/');
-					return parts[parts.length - 1] || path;
-				}
-				break;
-			case 'Bash':
-				if (input.command) {
-					const cmd = String(input.command);
-					// Truncate long commands
-					return cmd.length > 50 ? cmd.slice(0, 47) + '...' : cmd;
-				}
-				break;
-			case 'Grep':
-				if (input.pattern) {
-					return `"${input.pattern}"`;
-				}
-				break;
-			case 'Glob':
-				if (input.pattern) {
-					return String(input.pattern);
-				}
-				break;
-			case 'Edit':
-			case 'Write':
-				if (input.file_path) {
-					const path = String(input.file_path);
-					const parts = path.split('/');
-					return parts[parts.length - 1] || path;
-				}
-				break;
-			case 'WebFetch':
-				if (input.url) {
-					try {
-						const url = new URL(String(input.url));
-						return url.hostname + url.pathname.slice(0, 20);
-					} catch {
-						return String(input.url).slice(0, 30);
-					}
-				}
-				break;
-			case 'WebSearch':
-				if (input.query) {
-					return `"${input.query}"`;
-				}
-				break;
-		}
+  /** Extract a human-readable summary from tool input */
+  function getToolSummary(
+    toolName: string,
+    input?: Record<string, unknown>,
+  ): string {
+    if (!input) return '';
 
-		return '';
-	}
+    // Handle Manifest MCP tools
+    if (isManifestTool(toolName)) {
+      const action = toolName.replace('mcp__manifest__', '');
+      switch (action) {
+        case 'get_feature':
+        case 'start_feature':
+        case 'complete_feature':
+          if (input.feature_id) {
+            const id = String(input.feature_id);
+            return id.slice(0, 8) + '...';
+          }
+          break;
+        case 'find_features':
+          if (input.query) return `"${input.query}"`;
+          if (input.state) return String(input.state);
+          break;
+        case 'update_feature':
+          if (input.title) return `"${input.title}"`;
+          if (input.feature_id) {
+            const id = String(input.feature_id);
+            return id.slice(0, 8) + '...';
+          }
+          break;
+        case 'render_feature_tree':
+        case 'list_versions':
+        case 'get_next_feature':
+          // No summary needed for these
+          return '';
+        case 'plan':
+          if (input.features && Array.isArray(input.features)) {
+            return `${input.features.length} features`;
+          }
+          break;
+      }
+      return '';
+    }
+
+    switch (toolName) {
+      case 'Read':
+        if (input.file_path) {
+          const path = String(input.file_path);
+          // Show just the filename or last part of path
+          const parts = path.split('/');
+          return parts[parts.length - 1] || path;
+        }
+        break;
+      case 'Bash':
+        if (input.command) {
+          const cmd = String(input.command);
+          // Truncate long commands
+          return cmd.length > 50 ? cmd.slice(0, 47) + '...' : cmd;
+        }
+        break;
+      case 'Grep':
+        if (input.pattern) {
+          return `"${input.pattern}"`;
+        }
+        break;
+      case 'Glob':
+        if (input.pattern) {
+          return String(input.pattern);
+        }
+        break;
+      case 'Edit':
+      case 'Write':
+        if (input.file_path) {
+          const path = String(input.file_path);
+          const parts = path.split('/');
+          return parts[parts.length - 1] || path;
+        }
+        break;
+      case 'WebFetch':
+        if (input.url) {
+          try {
+            const url = new URL(String(input.url));
+            return url.hostname + url.pathname.slice(0, 20);
+          } catch {
+            return String(input.url).slice(0, 30);
+          }
+        }
+        break;
+      case 'WebSearch':
+        if (input.query) {
+          return `"${input.query}"`;
+        }
+        break;
+    }
+
+    return '';
+  }
 </script>
 
 <div class="ai-chat">
-	<div class="chat-messages" bind:this={messagesContainer}>
-		{#if messages.length === 0}
-			<div class="empty-chat" class:menu-open={showCommandMenu}>
-				<div class="empty-icon">
-					<RobotIcon size={48} />
-				</div>
-				<p class="empty-title">Manifest It</p>
-				<p class="empty-hint">
-					{#if featureTitle}
-						Describe what you want to manifest for "{featureTitle}"
-					{:else}
-						Describe what you want to manifest
-					{/if}
-				</p>
-			</div>
-		{:else}
-			{#each messages as message (message.id)}
-				<div
-					class="message"
-					class:user={message.role === 'user'}
-					class:assistant={message.role === 'assistant'}
-				>
-					<div class="message-header">
-						<span class="message-role">{message.role === 'user' ? 'You' : 'AI'}</span>
-					</div>
-					<div class="message-content">
-						{#if message.role === 'user'}
-							{getTextFromContent(message.content)}
-						{:else}
-							{#each message.content as block, i (i)}
-								{#if block.type === 'text' && block.text}
-									<MarkdownView content={block.text} class="chat-markdown" />
-								{:else if block.type === 'tool_use'}
-									{@const toolName = block.toolName || ''}
-								{@const isManifest = isManifestTool(toolName)}
-								{@const displayName = getToolDisplayName(toolName)}
-								{@const summary = getToolSummary(toolName, block.toolInput)}
-									<div class="tool-indicator" class:completed={block.toolStatus === 'completed'} class:manifest-tool={isManifest}>
-										<span class="tool-icon">
-											{#if isManifest}
-												<!-- Manifest icon -->
-												<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-													<path d="M4 4h4l4 8 4-8h4v16h-4v-9l-4 7-4-7v9H4V4z"/>
-												</svg>
-											{:else if block.toolStatus === 'completed'}
-												<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-													<circle cx="12" cy="12" r="10"></circle>
-													<polyline points="16 10 11 15 8 12"></polyline>
-												</svg>
-											{:else}
-												<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-													<circle cx="12" cy="12" r="10"></circle>
-													<circle cx="12" cy="12" r="3" fill="currentColor"></circle>
-												</svg>
-											{/if}
-										</span>
-										<span class="tool-name">{displayName}</span>
-										{#if summary}
-											<span class="tool-summary">{summary}</span>
-										{/if}
-									</div>
-								{/if}
-							{/each}
-						{/if}
-						{#if message.isStreaming}
-							<span class="streaming-cursor"></span>
-						{/if}
-					</div>
-				</div>
-			{/each}
-		{/if}
-	</div>
+  <div class="chat-messages" bind:this={messagesContainer}>
+    {#if messages.length === 0}
+      <div class="empty-chat" class:menu-open={showCommandMenu}>
+        <div class="empty-icon">
+          <RobotIcon size={48} />
+        </div>
+        <p class="empty-title">Manifest It</p>
+        <div class="empty-hint">
+          {#if isProjectRoot && isLeaf && featureDetails}
+            <p class="hint-overview">
+              This project has a spec but no features yet. Decompose it into a
+              feature tree.
+            </p>
+            <ul class="hint-commands">
+              <li>
+                <kbd>/plan</kbd> decompose spec into a feature tree
+              </li>
+            </ul>
+            <p class="hint-tab">
+              Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else if isProjectRoot}
+            <p class="hint-overview">
+              Ask questions or give instructions about the project.
+            </p>
+            <ul class="hint-commands">
+              <li>
+                <kbd>/organize</kbd> restructure top-level features and priorities
+              </li>
+              <li><kbd>/context</kbd> add shared context for children</li>
+            </ul>
+            <p class="hint-tab">
+              Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else if !isLeaf}
+            <p class="hint-overview">
+              Ask questions or give instructions about this feature group.
+            </p>
+            <ul class="hint-commands">
+              <li>
+                <kbd>/organize</kbd> restructure child features and priorities
+              </li>
+              <li><kbd>/context</kbd> add shared context for children</li>
+            </ul>
+            <p class="hint-tab">
+              Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else if featureTitle}
+            <p class="hint-overview">
+              Ask questions or give instructions about this feature.
+            </p>
+            <ul class="hint-commands">
+              <li><kbd>/enhance</kbd> flesh out the spec</li>
+              <li><kbd>/ac</kbd> write acceptance criteria</li>
+              <li><kbd>/specs</kbd> generate BDD scenarios</li>
+              <li><kbd>/breakdown</kbd> split into sub-features</li>
+            </ul>
+            <p class="hint-tab">
+              Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else}
+            <p class="hint-overview">Select a feature to get started.</p>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      {#each messages as message (message.id)}
+        <div
+          class="message"
+          class:user={message.role === 'user'}
+          class:assistant={message.role === 'assistant'}
+        >
+          <div class="message-header">
+            <span class="message-role"
+              >{message.role === 'user' ? 'You' : 'AI'}</span
+            >
+          </div>
+          <div class="message-content">
+            {#if message.role === 'user'}
+              {getTextFromContent(message.content)}
+            {:else}
+              {#each message.content as block, i (i)}
+                {#if block.type === 'text' && block.text}
+                  <MarkdownView content={block.text} class="chat-markdown" />
+                {:else if block.type === 'tool_use'}
+                  {@const toolName = block.toolName || ''}
+                  {@const isManifest = isManifestTool(toolName)}
+                  {@const displayName = getToolDisplayName(toolName)}
+                  {@const summary = getToolSummary(toolName, block.toolInput)}
+                  <div
+                    class="tool-indicator"
+                    class:completed={block.toolStatus === 'completed'}
+                    class:manifest-tool={isManifest}
+                  >
+                    <span class="tool-icon">
+                      {#if isManifest}
+                        <!-- Manifest icon -->
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M4 4h4l4 8 4-8h4v16h-4v-9l-4 7-4-7v9H4V4z" />
+                        </svg>
+                      {:else if block.toolStatus === 'completed'}
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="16 10 11 15 8 12"></polyline>
+                        </svg>
+                      {:else}
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <circle cx="12" cy="12" r="3" fill="currentColor"
+                          ></circle>
+                        </svg>
+                      {/if}
+                    </span>
+                    <span class="tool-name">{displayName}</span>
+                    {#if summary}
+                      <span class="tool-summary">{summary}</span>
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
+            {/if}
+            {#if message.isStreaming}
+              <span class="streaming-cursor"></span>
+            {/if}
+          </div>
+        </div>
+      {/each}
+    {/if}
+  </div>
 
-	{#if error}
-		<div class="error-banner">
-			{error}
-		</div>
-	{/if}
+  {#if error}
+    <div class="error-banner">
+      {error}
+    </div>
+  {/if}
 
-	<form class="chat-input-form" onsubmit={handleSubmit}>
-		{#if showCommandMenu}
-			<CommandAutocomplete
-				query={inputValue.slice(1)}
-				matches={commandMatches}
-				selectedIndex={selectedCommandIndex}
-				onSelect={selectCommand}
-			/>
-		{/if}
-		<textarea
-			class="chat-input"
-			placeholder="Manifest something..."
-			bind:value={inputValue}
-			oninput={handleInput}
-			onkeydown={handleKeydown}
-			disabled={isLoading}
-			rows={3}
-		></textarea>
-		<div class="input-toolbar">
-			{#if messages.length > 0}
-				<button type="button" class="clear-button" onclick={clearChat} disabled={isLoading}>
-					Clear
-				</button>
-			{:else}
-				<span></span>
-			{/if}
-			<button
-				type="submit"
-				class="send-button"
-				disabled={isLoading || !inputValue.trim()}
-				aria-label="Send message"
-			>
-				{#if isLoading}
-					<span class="loading-spinner"></span>
-				{:else}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="m22 2-7 20-4-9-9-4 20-7Z"></path>
-						<path d="M22 2 11 13"></path>
-					</svg>
-				{/if}
-			</button>
-		</div>
-	</form>
+  <form class="chat-input-form" onsubmit={handleSubmit}>
+    {#if showCommandMenu}
+      <CommandAutocomplete
+        query={inputValue.slice(1)}
+        matches={commandMatches}
+        selectedIndex={selectedCommandIndex}
+        onSelect={selectCommand}
+      />
+    {/if}
+    <textarea
+      class="chat-input"
+      placeholder="Manifest something..."
+      bind:value={inputValue}
+      oninput={handleInput}
+      onkeydown={handleKeydown}
+      disabled={isLoading}
+      rows={3}
+    ></textarea>
+    <div class="input-toolbar">
+      <div class="toolbar-left">
+        {#if featureTitle}
+          <span class="feature-label" title={featureTitle}>
+            {#if isProjectRoot}
+              <span style="position: relative; top: 1px;"
+                ><BookIcon size={12} /></span
+              >
+            {:else if !isLeaf}
+              <GroupIcon size={14} />
+            {:else if featureState}
+              <StateIcon state={featureState} size={12} />
+            {/if}
+            {featureTitle}
+          </span>
+        {/if}
+        <span class="agent-label"
+          >{activeAgent.charAt(0).toUpperCase() + activeAgent.slice(1)}</span
+        >
+        {#if messages.length > 0}
+          <button
+            type="button"
+            class="clear-button"
+            onclick={clearChat}
+            disabled={isLoading}
+          >
+            Clear
+          </button>
+        {/if}
+      </div>
+      <button
+        type="submit"
+        class="send-button"
+        disabled={isLoading || !inputValue.trim()}
+        aria-label="Send message"
+      >
+        {#if isLoading}
+          <span class="loading-spinner"></span>
+        {:else}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m22 2-7 20-4-9-9-4 20-7Z"></path>
+            <path d="M22 2 11 13"></path>
+          </svg>
+        {/if}
+      </button>
+    </div>
+  </form>
 </div>
 
 <style>
-	.ai-chat {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		min-height: 0;
-		overflow: hidden;
-	}
+  .ai-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
 
-	.chat-messages {
-		flex: 1;
-		min-height: 0;
-		overflow-y: auto;
-		padding: 12px 0;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
+  .chat-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-	.empty-chat {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		text-align: center;
-		padding: 20px;
-		gap: 8px;
-		transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
+  .empty-chat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 20px;
+    gap: 8px;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 
-	.empty-chat.menu-open {
-		transform: translateY(-40px);
-	}
+  .empty-chat.menu-open {
+    transform: translateY(-40px);
+  }
 
-	.empty-icon {
-		color: var(--foreground-subtle);
-		opacity: 0.5;
-	}
+  .empty-icon {
+    color: var(--foreground-subtle);
+    opacity: 0.5;
+  }
 
-	.empty-title {
-		margin: 0;
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--foreground);
-	}
+  .empty-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
 
-	.empty-hint {
-		margin: 0;
-		font-size: 12px;
-		color: var(--foreground-subtle);
-		max-width: 220px;
-		line-height: 1.4;
-	}
+  .empty-hint {
+    font-size: 12px;
+    color: var(--foreground-subtle);
+    max-width: 340px;
+    text-align: left;
+  }
 
-	.message {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		padding: 8px 0;
-		border-bottom: 1px solid var(--border-default);
-	}
+  .hint-overview {
+    margin: 0;
+    line-height: 1.4;
+  }
 
-	.message:last-child {
-		border-bottom: none;
-	}
+  .hint-commands {
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
-	.message.user {
-		/* Full width, no special styling */
-	}
+  .hint-commands li {
+    line-height: 1.4;
+  }
 
-	.message.assistant {
-		/* Full width, no special styling */
-	}
+  .hint-tab {
+    margin: 18px 0 0;
+    font-size: 11px;
+    color: var(--foreground-subtle);
+    opacity: 0.7;
+  }
 
-	.message-header {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		margin-bottom: 4px;
-	}
+  .hint-commands kbd {
+    margin-right: 4px;
+  }
 
-	.message-role {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--foreground);
-	}
+  .empty-hint kbd {
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    background: var(--background-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: 3px;
+    color: var(--foreground-muted);
+  }
 
-	.message-content {
-		font-size: 13px;
-		line-height: 1.5;
-		color: var(--foreground);
-		word-break: break-word;
-	}
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-default);
+  }
 
-	.message.user .message-content {
-		white-space: pre-wrap;
-	}
+  .message:last-child {
+    border-bottom: none;
+  }
 
-	.message-content :global(.chat-markdown) {
-		font-size: 13px;
-		line-height: 1.5;
-	}
+  .message.user {
+    /* Full width, no special styling */
+  }
 
-	.message-content :global(.chat-markdown h1),
-	.message-content :global(.chat-markdown h2),
-	.message-content :global(.chat-markdown h3) {
-		margin-top: 0.75em;
-		margin-bottom: 0.5em;
-		font-size: 1em;
-		font-weight: 600;
-	}
+  .message.assistant {
+    /* Full width, no special styling */
+  }
 
-	.message-content :global(.chat-markdown h1) {
-		font-size: 1.1em;
-	}
+  .message-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
 
-	.message-content :global(.chat-markdown p) {
-		margin: 0.5em 0;
-	}
+  .message-role {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
 
-	.message-content :global(.chat-markdown ul),
-	.message-content :global(.chat-markdown ol) {
-		margin: 0.5em 0;
-		padding-left: 1.5em;
-	}
+  .message-content {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--foreground);
+    word-break: break-word;
+  }
 
-	.message-content :global(.chat-markdown li) {
-		margin: 0.25em 0;
-	}
+  .message.user .message-content {
+    white-space: pre-wrap;
+  }
 
-	.message-content :global(.chat-markdown code) {
-		font-size: 0.9em;
-		padding: 0.1em 0.3em;
-		background: var(--background-muted);
-		border-radius: 3px;
-	}
+  .message-content :global(.chat-markdown) {
+    font-size: 13px;
+    line-height: 1.5;
+  }
 
-	.message-content :global(.chat-markdown pre) {
-		margin: 0.5em 0;
-		padding: 0.5em;
-		background: var(--background-muted);
-		border-radius: 4px;
-		overflow-x: auto;
-	}
+  .message-content :global(.chat-markdown h1),
+  .message-content :global(.chat-markdown h2),
+  .message-content :global(.chat-markdown h3) {
+    margin-top: 0.75em;
+    margin-bottom: 0.5em;
+    font-size: 1em;
+    font-weight: 600;
+  }
 
-	.message-content :global(.chat-markdown pre code) {
-		padding: 0;
-		background: none;
-	}
+  .message-content :global(.chat-markdown h1) {
+    font-size: 1.1em;
+  }
 
-	.streaming-cursor {
-		display: inline-block;
-		width: 6px;
-		height: 14px;
-		background: var(--accent-blue);
-		margin-left: 2px;
-		animation: blink 1s infinite;
-		vertical-align: text-bottom;
-		border-radius: 1px;
-	}
+  .message-content :global(.chat-markdown p) {
+    margin: 0.5em 0;
+  }
 
-	@keyframes blink {
-		0%, 50% { opacity: 1; }
-		51%, 100% { opacity: 0; }
-	}
+  .message-content :global(.chat-markdown ul),
+  .message-content :global(.chat-markdown ol) {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+  }
 
-	.tool-indicator {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 3px 0;
-		font-size: 12px;
-		color: var(--foreground-muted);
-	}
+  .message-content :global(.chat-markdown li) {
+    margin: 0.25em 0;
+  }
 
-	.tool-indicator.completed {
-		color: var(--foreground-subtle);
-	}
+  .message-content :global(.chat-markdown code) {
+    font-size: 0.9em;
+    padding: 0.1em 0.3em;
+    background: var(--background-muted);
+    border-radius: 3px;
+  }
 
-	.tool-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 16px;
-		height: 16px;
-		color: var(--foreground-subtle);
-	}
+  .message-content :global(.chat-markdown pre) {
+    margin: 0.5em 0;
+    padding: 0.5em;
+    background: var(--background-muted);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
 
-	.tool-indicator.completed .tool-icon {
-		color: var(--accent-green);
-	}
+  .message-content :global(.chat-markdown pre code) {
+    padding: 0;
+    background: none;
+  }
 
-	/* Manifest-specific tool styling */
-	.tool-indicator.manifest-tool {
-		color: #a78bfa;
-	}
+  .streaming-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 14px;
+    background: var(--accent-blue);
+    margin-left: 2px;
+    animation: blink 1s infinite;
+    vertical-align: text-bottom;
+    border-radius: 1px;
+  }
 
-	.tool-indicator.manifest-tool .tool-icon {
-		color: #a78bfa;
-	}
+  @keyframes blink {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    51%,
+    100% {
+      opacity: 0;
+    }
+  }
 
-	.tool-indicator.manifest-tool.completed {
-		color: #7c3aed;
-	}
+  .tool-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 12px;
+    color: var(--foreground-muted);
+  }
 
-	.tool-indicator.manifest-tool.completed .tool-icon {
-		color: #7c3aed;
-	}
+  .tool-indicator.completed {
+    color: var(--foreground-subtle);
+  }
 
-	.tool-name {
-		font-weight: 500;
-		font-size: 12px;
-	}
+  .tool-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: var(--foreground-subtle);
+  }
 
-	.tool-summary {
-		font-family: var(--font-mono, monospace);
-		font-size: 11px;
-		color: var(--foreground-subtle);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: 200px;
-	}
+  .tool-indicator.completed .tool-icon {
+    color: var(--accent-green);
+  }
 
-	.error-banner {
-		padding: 8px 12px;
-		margin-bottom: 8px;
-		font-size: 12px;
-		color: #f85149;
-		background: rgba(248, 81, 73, 0.1);
-		border: 1px solid rgba(248, 81, 73, 0.3);
-		border-radius: 6px;
-	}
+  /* Manifest-specific tool styling */
+  .tool-indicator.manifest-tool {
+    color: #a78bfa;
+  }
 
-	.chat-input-form {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		padding: 8px 16px 16px;
-		margin: 0 -16px -16px;
-		background: var(--background-subtle);
-		min-height: 120px;
-	}
+  .tool-indicator.manifest-tool .tool-icon {
+    color: #a78bfa;
+  }
 
-	.chat-input {
-		width: 100%;
-		flex: 1;
-		padding: 0 0 32px 8px;
-		font-size: 13px;
-		font-family: inherit;
-		line-height: 1.5;
-		background: transparent;
-		border: none;
-		color: var(--foreground);
-		resize: none;
-	}
+  .tool-indicator.manifest-tool.completed {
+    color: #7c3aed;
+  }
 
-	.chat-input:focus {
-		outline: none;
-	}
+  .tool-indicator.manifest-tool.completed .tool-icon {
+    color: #7c3aed;
+  }
 
-	.chat-input:disabled {
-		opacity: 0.6;
-	}
+  .tool-name {
+    font-weight: 500;
+    font-size: 12px;
+  }
 
-	.chat-input::placeholder {
-		color: var(--foreground-muted);
-	}
+  .tool-summary {
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    color: var(--foreground-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
 
-	.input-toolbar {
-		position: absolute;
-		bottom: 12px;
-		left: 16px;
-		right: 16px;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
+  .error-banner {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #f85149;
+    background: rgba(248, 81, 73, 0.1);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+    border-radius: 6px;
+  }
 
-	.send-button {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		margin-right: 4px;
-		margin-bottom: 4px;
-		padding: 0;
-		background: transparent;
-		border: none;
-		border-radius: 4px;
-		color: var(--foreground-subtle);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
+  .chat-input-form {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px 16px;
+    margin: 0 -16px -16px;
+    background: var(--background-subtle);
+    min-height: 120px;
+  }
 
-	.send-button:not(:disabled) {
-		color: var(--state-implemented);
-		cursor: pointer;
-	}
+  .chat-input {
+    width: 100%;
+    flex: 1;
+    padding: 0 0 32px 8px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    background: transparent;
+    border: none;
+    color: var(--foreground);
+    resize: none;
+  }
 
-	.send-button:not(:disabled):hover {
-		background: rgba(156, 220, 254, 0.15);
-	}
+  .chat-input:focus {
+    outline: none;
+  }
 
-	.send-button:not(:disabled):active {
-		background: rgba(156, 220, 254, 0.25);
-		transform: scale(0.95);
-	}
+  .chat-input:disabled {
+    opacity: 0.6;
+  }
 
-	.send-button:disabled {
-		cursor: default;
-		opacity: 0.4;
-	}
+  .chat-input::placeholder {
+    color: var(--foreground-muted);
+  }
 
-	.loading-spinner {
-		width: 14px;
-		height: 14px;
-		border: 2px solid var(--border-default);
-		border-top-color: var(--state-implemented);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
+  .input-toolbar {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+  .send-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 10px;
+    margin-bottom: 12px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--foreground-subtle);
+    border-radius: 4px;
+    color: var(--foreground-subtle);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
 
-	.clear-button {
-		padding: 4px 8px;
-		font-size: 11px;
-		color: var(--foreground-subtle);
-		background: transparent;
-		border: none;
-		cursor: pointer;
-	}
+  .send-button:not(:disabled) {
+    color: var(--foreground-subtle);
+    border-color: var(--foreground-subtle);
+    cursor: pointer;
+  }
 
-	.clear-button:hover:not(:disabled) {
-		color: var(--foreground);
-		text-decoration: underline;
-	}
+  .send-button:not(:disabled):hover {
+    color: var(--state-implemented);
+    border-color: var(--state-implemented);
+    background: rgba(156, 220, 254, 0.15);
+  }
 
-	.clear-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
+  .send-button:not(:disabled):active {
+    background: rgba(156, 220, 254, 0.25);
+    transform: scale(0.95);
+  }
+
+  .send-button:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .loading-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-default);
+    border-top-color: var(--state-implemented);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .feature-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--foreground-muted);
+    background: var(--background);
+    padding: 2px 8px;
+    margin-left: 8px;
+    margin-bottom: 11px;
+    border-radius: 4px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .agent-label {
+    font-size: 11px;
+    color: var(--foreground-subtle);
+    margin-left: 4px;
+    margin-bottom: 11px;
+  }
+
+  .clear-button {
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--foreground-subtle);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .clear-button:hover:not(:disabled) {
+    color: var(--foreground);
+    text-decoration: underline;
+  }
+
+  .clear-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 </style>
