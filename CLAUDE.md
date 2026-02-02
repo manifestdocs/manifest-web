@@ -60,7 +60,9 @@ Components use Bits UI for accessible primitives with Tailwind Variants for styl
 ```svelte
 <script lang="ts" module>
   import { tv } from 'tailwind-variants';
-  export const variants = tv({ /* variants */ });
+  export const variants = tv({
+    /* variants */
+  });
 </script>
 
 <script lang="ts">

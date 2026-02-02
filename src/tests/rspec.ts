@@ -1,4 +1,12 @@
-import { describe as vitestDescribe, it as vitestIt, beforeEach, afterEach, beforeAll, afterAll, expect } from 'vitest';
+import {
+  describe as vitestDescribe,
+  it as vitestIt,
+  beforeEach,
+  afterEach,
+  beforeAll,
+  afterAll,
+  expect,
+} from 'vitest';
 
 // RSpec-style aliases
 export const context = vitestDescribe;
@@ -11,23 +19,23 @@ export { beforeEach, afterEach, beforeAll, afterAll, expect };
 
 // Subject helper for RSpec-style subject definitions
 export function subject<T>(factory: () => T): () => T {
-	let value: T;
-	let initialized = false;
+  let value: T;
+  let initialized = false;
 
-	beforeEach(() => {
-		initialized = false;
-	});
+  beforeEach(() => {
+    initialized = false;
+  });
 
-	return () => {
-		if (!initialized) {
-			value = factory();
-			initialized = true;
-		}
-		return value;
-	};
+  return () => {
+    if (!initialized) {
+      value = factory();
+      initialized = true;
+    }
+    return value;
+  };
 }
 
 // Let helper for lazy-evaluated variables
 export function let_<T>(factory: () => T): () => T {
-	return subject(factory);
+  return subject(factory);
 }

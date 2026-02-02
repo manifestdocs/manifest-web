@@ -21,6 +21,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/filesystem/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse directories
+         * @description Lists subdirectories at a given path for building a directory browser UI.
+         *     Skips hidden directories and common noise directories (node_modules, target, etc.).
+         *     Defaults to the user's home directory if no path is provided.
+         *     Only available on the local self-hosted server.
+         */
+        get: operations["browseFilesystem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/filesystem/mkdir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a directory
+         * @description Creates a directory at the specified path, including intermediate
+         *     directories. Idempotent — succeeds if the directory already exists.
+         *     Safety guarantees:
+         *     - Path must be absolute
+         *     - Path must not contain '..' components
+         *     - Subject to the same path restrictions as browsing
+         */
+        post: operations["createDirectory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects": {
         parameters: {
             query?: never;
@@ -490,6 +538,24 @@ export interface components {
              * @enum {string}
              */
             default_feature_destination: "backlog" | "now";
+            /**
+             * @description How detailed guidance should be for feature sets and project context.
+             * @default standard
+             * @enum {string}
+             */
+            detail_level: "concise" | "standard" | "thorough";
+            /**
+             * @description How detailed guidance should be for leaf feature specifications.
+             * @default standard
+             * @enum {string}
+             */
+            ac_level: "concise" | "standard" | "thorough";
+            /**
+             * @description Output format for acceptance criteria.
+             * @default checkbox
+             * @enum {string}
+             */
+            ac_format: "checkbox" | "gherkin";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -527,6 +593,21 @@ export interface components {
              * @enum {string}
              */
             default_feature_destination?: "backlog" | "now";
+            /**
+             * @description How detailed guidance should be for feature sets and project context.
+             * @enum {string}
+             */
+            detail_level?: "concise" | "standard" | "thorough";
+            /**
+             * @description How detailed guidance should be for leaf feature specifications.
+             * @enum {string}
+             */
+            ac_level?: "concise" | "standard" | "thorough";
+            /**
+             * @description Output format for acceptance criteria.
+             * @enum {string}
+             */
+            ac_format?: "checkbox" | "gherkin";
         };
         ProjectDirectory: {
             /** Format: uuid */
@@ -570,6 +651,30 @@ export interface components {
              * @description ID of the current/active version for this project
              */
             current_version_id?: string | null;
+            /**
+             * @description Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
+             * @default backlog
+             * @enum {string}
+             */
+            default_feature_destination: "backlog" | "now";
+            /**
+             * @description How detailed guidance should be for feature sets and project context.
+             * @default standard
+             * @enum {string}
+             */
+            detail_level: "concise" | "standard" | "thorough";
+            /**
+             * @description How detailed guidance should be for leaf feature specifications.
+             * @default standard
+             * @enum {string}
+             */
+            ac_level: "concise" | "standard" | "thorough";
+            /**
+             * @description Output format for acceptance criteria.
+             * @default checkbox
+             * @enum {string}
+             */
+            ac_format: "checkbox" | "gherkin";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -861,6 +966,59 @@ export interface components {
              */
             released_at?: string | null;
         };
+        /** @description Directory listing for the filesystem browser */
+        BrowseResponse: {
+            /**
+             * @description The absolute path being browsed
+             * @example /Users/dev/projects
+             */
+            path: string;
+            /**
+             * @description Parent directory path, or null if at filesystem root
+             * @example /Users/dev
+             */
+            parent?: string | null;
+            /** @description Subdirectories at this path */
+            entries: components["schemas"]["DirectoryEntry"][];
+        };
+        /** @description A subdirectory entry in the filesystem browser */
+        DirectoryEntry: {
+            /**
+             * @description Directory name
+             * @example my-project
+             */
+            name: string;
+            /**
+             * @description Full absolute path
+             * @example /Users/dev/projects/my-project
+             */
+            path: string;
+            /** @description Whether this directory contains visible subdirectories */
+            has_children: boolean;
+        };
+        /** @description Request to create a directory */
+        MkdirRequest: {
+            /**
+             * @description Absolute path of the directory to create
+             * @example /Users/dev/projects/my-new-app
+             */
+            path: string;
+        };
+        /** @description Result of creating a directory */
+        MkdirResponse: {
+            /**
+             * @description The absolute path that was created
+             * @example /Users/dev/projects/my-new-app
+             */
+            path: string;
+        };
+        ErrorResponse: {
+            /**
+             * @description Error message
+             * @example Path must be absolute
+             */
+            error: string;
+        };
     };
     responses: {
         /** @description Resource not found */
@@ -921,6 +1079,101 @@ export interface operations {
                         /** @example ok */
                         status?: string;
                     };
+                };
+            };
+        };
+    };
+    browseFilesystem: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Absolute path to browse. Defaults to user's home directory.
+                 * @example /Users/dev/projects
+                 */
+                path?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Directory listing */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowseResponse"];
+                };
+            };
+            /** @description Invalid path (not absolute or not a directory) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Access denied (path restricted) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Directory not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MkdirRequest"];
+            };
+        };
+        responses: {
+            /** @description Directory created (or already existed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MkdirResponse"];
+                };
+            };
+            /** @description Invalid path (not absolute or contains '..') */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Access denied (path restricted) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

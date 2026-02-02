@@ -1,96 +1,98 @@
 <script lang="ts">
-    import type { components } from "$lib/api/schema.js";
-    import { MarkdownView } from "$lib/components/markdown/index.js";
-    import { InfoBanner } from "$lib/components/ui/index.js";
+  import type { components } from '$lib/api/schema.js';
+  import { MarkdownView } from '$lib/components/markdown/index.js';
+  import { InfoBanner } from '$lib/components/ui/index.js';
 
-    type Feature = components["schemas"]["Feature"];
+  type Feature = components['schemas']['Feature'];
 
-    interface Props {
-        feature: Feature & { is_root?: boolean };
-        isRoot: boolean;
-        isGroup: boolean;
-        hasPendingChanges: boolean;
-        showHighlight: boolean;
-        onViewDiff: () => void;
-    }
+  interface Props {
+    feature: Feature & { is_root?: boolean };
+    isRoot: boolean;
+    isGroup: boolean;
+    hasPendingChanges: boolean;
+    showHighlight: boolean;
+    onViewDiff: () => void;
+  }
 
-    let {
-        feature,
-        isRoot,
-        isGroup,
-        hasPendingChanges,
-        showHighlight,
-        onViewDiff,
-    }: Props = $props();
+  let {
+    feature,
+    isRoot,
+    isGroup,
+    hasPendingChanges,
+    showHighlight,
+    onViewDiff,
+  }: Props = $props();
 </script>
 
 {#if isRoot}
-    <InfoBanner class="content-banner">
-        Project instructions — all agents read this. Include tech stack, conventions, and decisions.
-    </InfoBanner>
+  <InfoBanner class="content-banner">
+    Project instructions — all agents read this. Include tech stack,
+    conventions, and decisions.
+  </InfoBanner>
 {:else if isGroup}
-    <InfoBanner class="content-banner">
-        Shared context — flows to all child features. Include architecture and constraints for this area.
-    </InfoBanner>
+  <InfoBanner class="content-banner">
+    Shared context — flows to all child features. Include architecture and
+    constraints for this area.
+  </InfoBanner>
 {/if}
 
 {#if hasPendingChanges}
-    <InfoBanner variant="warning" class="content-banner">
-        This feature has proposed changes. <button
-            class="banner-link"
-            onclick={onViewDiff}
-            type="button">Review changes</button
-        > to apply or discard them.
-    </InfoBanner>
+  <InfoBanner variant="warning" class="content-banner">
+    This feature has proposed changes. <button
+      class="banner-link"
+      onclick={onViewDiff}
+      type="button">Review changes</button
+    > to apply or discard them.
+  </InfoBanner>
 {/if}
 
 <div class="details-view" class:highlight={showHighlight}>
-    {#if feature.details}
-        <MarkdownView content={feature.details} />
-    {:else}
-        <p class="no-details">
-            {isRoot
-                ? "No project instructions yet. Click Edit to add tech stack, conventions, and decisions."
-                : isGroup
-                    ? "No shared context yet. Click Edit to add architectural decisions and constraints for child features."
-                    : "No specification yet. Click Edit to describe what this feature does — goal, constraints, and key interfaces."}
-        </p>
-    {/if}
+  {#if feature.details}
+    <MarkdownView content={feature.details} />
+  {:else}
+    <p class="no-details">
+      {isRoot
+        ? 'No project instructions yet. Click Edit to add tech stack, conventions, and decisions.'
+        : isGroup
+          ? 'No shared context yet. Click Edit to add architectural decisions and constraints for child features.'
+          : 'No specification yet. Click Edit to describe what this feature does — goal, constraints, and key interfaces.'}
+    </p>
+  {/if}
 </div>
 
 <style>
-    :global(.content-banner) {
-        margin-bottom: 24px;
-    }
+  :global(.content-banner) {
+    margin-bottom: 24px;
+  }
 
-    .banner-link {
-        background: none;
-        border: none;
-        padding: 0;
-        font: inherit;
-        text-decoration: underline;
-        cursor: pointer;
-        color: inherit;
-    }
+  .banner-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    color: inherit;
+  }
 
-    .details-view {
-        font-size: 15px;
-        line-height: 1.6;
-        color: var(--foreground);
-        transition: background-color 0.3s ease;
-        border-radius: 8px;
-        padding: 4px;
-        margin: -4px;
-    }
+  .details-view {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--foreground);
+    transition: background-color 0.3s ease;
+    border-radius: 8px;
+    padding: 4px;
+    margin: -4px;
+  }
 
-    .details-view.highlight {
-        background-color: rgba(210, 153, 34, 0.1);
-    }
+  .details-view.highlight {
+    background-color: rgba(210, 153, 34, 0.1);
+  }
 
-    .no-details {
-        color: var(--foreground-subtle);
-        font-style: italic;
-        text-align: center;
-        padding: 40px 0;
-    }
+  .no-details {
+    color: var(--foreground-subtle);
+    font-style: italic;
+    text-align: center;
+    padding: 40px 0;
+  }
 </style>

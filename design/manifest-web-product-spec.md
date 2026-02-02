@@ -55,6 +55,7 @@ The Manifest server exposes a Rust HTTP API for its core operations. The web app
 The web app is the primary interface for project-level operations.
 
 **Project Dashboard:**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ MANIFEST                              [+ New Project]   │
@@ -72,6 +73,7 @@ The web app is the primary interface for project-level operations.
 ```
 
 **Project Properties:**
+
 - Name and description
 - Git repository URL (for linking)
 - Team members and permissions
@@ -83,6 +85,7 @@ The web app is the primary interface for project-level operations.
 Full navigation and visualization of the feature hierarchy.
 
 **Tree View:**
+
 ```
 ┌──────────────────────┬──────────────────────────────────┐
 │ manifest             │ MCP Server                       │
@@ -103,12 +106,14 @@ Full navigation and visualization of the feature hierarchy.
 ```
 
 **State Indicators:**
+
 - `○` proposed (gray)
 - `◐` specified (blue)
 - `●` implemented (green)
 - `◌` deprecated (faded)
 
 **Tree Operations:**
+
 - Create feature (with parent selection)
 - Move feature (drag-and-drop or modal)
 - Delete feature (with confirmation, moves to deprecated)
@@ -119,6 +124,7 @@ Full navigation and visualization of the feature hierarchy.
 Rich editing experience for feature specifications.
 
 **Editor Layout:**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Enriched Task Context                    [Edit] [Save]  │
@@ -148,6 +154,7 @@ Rich editing experience for feature specifications.
 ```
 
 **Editor Features:**
+
 - Markdown editing with preview
 - Auto-save with conflict detection
 - Version history (per-save snapshots)
@@ -159,6 +166,7 @@ Rich editing experience for feature specifications.
 View of execution history from AI agent sessions.
 
 **Session List:**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Sessions for: MCP Server / Enriched Task Context        │
@@ -183,6 +191,7 @@ View of execution history from AI agent sessions.
 ```
 
 **Session Detail:**
+
 - Task breakdown with individual status
 - Agent conversation log (collapsible)
 - Commits/artifacts produced
@@ -204,6 +213,7 @@ Insights into project health and documentation coverage.
 ```
 
 **Metrics:**
+
 - Feature coverage (% with complete specs)
 - Activity heatmap (sessions over time)
 - Staleness detection (features unchanged despite code activity)
@@ -215,15 +225,15 @@ Insights into project health and documentation coverage.
 
 ### Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | SvelteKit 2.x |
-| Components | shadcn-svelte |
-| Styling | Tailwind CSS 4.x |
-| State | Svelte stores + TanStack Query |
-| API Client | Generated from OpenAPI spec |
-| Auth | Clerk (headless) with Google + GitHub OAuth |
-| Hosting | Vercel or Cloudflare Pages |
+| Layer      | Technology                                  |
+| ---------- | ------------------------------------------- |
+| Frontend   | SvelteKit 2.x                               |
+| Components | shadcn-svelte                               |
+| Styling    | Tailwind CSS 4.x                            |
+| State      | Svelte stores + TanStack Query              |
+| API Client | Generated from OpenAPI spec                 |
+| Auth       | Clerk (headless) with Google + GitHub OAuth |
+| Hosting    | Vercel or Cloudflare Pages                  |
 
 ### Why shadcn-svelte
 
@@ -286,6 +296,7 @@ History
 ### Data Flow
 
 **Online Mode:**
+
 - Direct API calls to Manifest server
 - Real-time updates via WebSocket (for session status)
 - Optimistic UI with server reconciliation
@@ -346,6 +357,7 @@ History
 ### 1. Modern Developer Tools Aesthetic
 
 The web app should feel familiar to developers:
+
 - Clean, dark-theme color palette
 - Tree navigation patterns (like VS Code, Linear)
 - Consistent iconography for states
@@ -395,37 +407,37 @@ The web app should feel familiar to developers:
 
 These components from shadcn-svelte form our foundation:
 
-| Component | Usage |
-|-----------|-------|
-| `Button` | Actions, form submissions |
-| `Card` | Project cards, feature cards, session cards |
-| `Dialog` | Modals for create/edit/confirm |
-| `DropdownMenu` | Context menus, state selectors |
-| `Input` / `Textarea` | Form fields |
-| `Tabs` | Feature detail sections |
-| `Badge` | State indicators |
-| `Tooltip` | Contextual help |
-| `Command` | Command palette (Cmd+K) |
-| `Separator` | Visual dividers |
-| `Skeleton` | Loading states |
-| `ScrollArea` | Scrollable containers |
+| Component            | Usage                                       |
+| -------------------- | ------------------------------------------- |
+| `Button`             | Actions, form submissions                   |
+| `Card`               | Project cards, feature cards, session cards |
+| `Dialog`             | Modals for create/edit/confirm              |
+| `DropdownMenu`       | Context menus, state selectors              |
+| `Input` / `Textarea` | Form fields                                 |
+| `Tabs`               | Feature detail sections                     |
+| `Badge`              | State indicators                            |
+| `Tooltip`            | Contextual help                             |
+| `Command`            | Command palette (Cmd+K)                     |
+| `Separator`          | Visual dividers                             |
+| `Skeleton`           | Loading states                              |
+| `ScrollArea`         | Scrollable containers                       |
 
 ### Custom Components (Built on shadcn-svelte)
 
-| Component | Purpose |
-|-----------|---------|
-| `FeatureTree` | Hierarchical tree with state indicators, built on Tree primitive |
-| `FeatureCard` | Compact feature summary, extends Card |
-| `FeatureEditor` | Markdown editor with preview toggle |
-| `SessionList` | Chronological session history |
-| `SessionDetail` | Expanded session with tasks and logs |
-| `StateSelector` | Feature state dropdown with color coding |
-| `ProjectCard` | Project summary for dashboard |
-| `StateBadge` | Colored badge for feature states (proposed/specified/implemented/deprecated) |
-| `TimeAgo` | Relative time display |
-| `Avatar` | User avatar with presence indicator |
-| `MarkdownView` | Rendered markdown display |
-| `MarkdownEdit` | Markdown textarea with formatting toolbar |
+| Component       | Purpose                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `FeatureTree`   | Hierarchical tree with state indicators, built on Tree primitive             |
+| `FeatureCard`   | Compact feature summary, extends Card                                        |
+| `FeatureEditor` | Markdown editor with preview toggle                                          |
+| `SessionList`   | Chronological session history                                                |
+| `SessionDetail` | Expanded session with tasks and logs                                         |
+| `StateSelector` | Feature state dropdown with color coding                                     |
+| `ProjectCard`   | Project summary for dashboard                                                |
+| `StateBadge`    | Colored badge for feature states (proposed/specified/implemented/deprecated) |
+| `TimeAgo`       | Relative time display                                                        |
+| `Avatar`        | User avatar with presence indicator                                          |
+| `MarkdownView`  | Rendered markdown display                                                    |
+| `MarkdownEdit`  | Markdown textarea with formatting toolbar                                    |
 
 ### Theming
 
@@ -433,13 +445,13 @@ CSS variables customized for a modern dark theme:
 
 ```css
 :root {
-  --background: 222 47% 11%;      /* Dark blue-gray */
-  --foreground: 210 40% 98%;      /* Off-white */
-  --primary: 142 76% 36%;         /* Green for implemented */
-  --secondary: 217 91% 60%;       /* Blue for specified */
-  --muted: 215 20% 65%;           /* Gray for proposed */
-  --destructive: 0 84% 60%;       /* Red for errors */
-  --accent: 45 93% 47%;           /* Amber for active sessions */
+  --background: 222 47% 11%; /* Dark blue-gray */
+  --foreground: 210 40% 98%; /* Off-white */
+  --primary: 142 76% 36%; /* Green for implemented */
+  --secondary: 217 91% 60%; /* Blue for specified */
+  --muted: 215 20% 65%; /* Gray for proposed */
+  --destructive: 0 84% 60%; /* Red for errors */
+  --accent: 45 93% 47%; /* Amber for active sessions */
 }
 ```
 
@@ -452,6 +464,7 @@ CSS variables customized for a modern dark theme:
 Clerk provides OAuth, session management, and future API key support without building auth infrastructure. Using headless mode for full control over UI styling to match the desktop app aesthetic.
 
 **Why Clerk:**
+
 - Google + GitHub OAuth out of the box
 - SvelteKit SDK with route protection hooks
 - JWT templates for Rust API validation
@@ -459,18 +472,19 @@ Clerk provides OAuth, session management, and future API key support without bui
 - API key management when needed (CI/CD, integrations)
 
 **Implementation:**
+
 - Custom sign-in/sign-up pages using Clerk's headless components
 - Styled with shadcn-svelte + Tailwind to match desktop app
 - JWTs validated by Rust API via Clerk's JWKS endpoint
 
 ### Auth Model
 
-| Role | Capabilities |
-|------|--------------|
-| Owner | Full access, can delete project, manage team |
-| Editor | Create/edit features, view sessions |
-| Viewer | Read-only access to features and sessions |
-| Public | No access (unless project is public) |
+| Role   | Capabilities                                 |
+| ------ | -------------------------------------------- |
+| Owner  | Full access, can delete project, manage team |
+| Editor | Create/edit features, view sessions          |
+| Viewer | Read-only access to features and sessions    |
+| Public | No access (unless project is public)         |
 
 ### Auth Flow (MVP)
 

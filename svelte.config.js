@@ -5,16 +5,16 @@ const isPages = process.env.VITE_BUILD_TARGET === 'pages';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	preprocess: vitePreprocess(),
+  preprocess: vitePreprocess(),
 
-	kit: {
-		adapter: adapter({
-			fallback: 'index.html' // SPA mode for client-side routing
-		}),
-		paths: {
-			base: isPages ? '/manifest' : ''
-		}
-	}
+  kit: {
+    adapter: adapter({
+      fallback: 'index.html', // SPA mode for client-side routing
+    }),
+    paths: {
+      base: isPages ? '/manifest' : '',
+    },
+  },
 };
 
 export default config;

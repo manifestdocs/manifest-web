@@ -24,6 +24,7 @@
     type CommandContext,
     type CommandMatch,
   } from '@manifest/svelte/commands';
+  import type { VersionSummary } from '@manifest/svelte/commands';
   import CommandAutocomplete from './CommandAutocomplete.svelte';
 
   interface Props {
@@ -36,6 +37,16 @@
     isLeaf?: boolean;
     /** Whether this is the project root feature */
     isProjectRoot?: boolean;
+    /** Version summaries for plan view context */
+    versions?: VersionSummary[];
+    /** Name of the next version to ship */
+    nextVersionName?: string;
+    /** Number of unassigned backlog features */
+    unassignedFeatureCount?: number;
+    /** Whether we're in the version/plan view */
+    isVersionView?: boolean;
+    /** Format for acceptance criteria: 'checkbox' (default) or 'gherkin' */
+    acFormat?: 'checkbox' | 'gherkin';
   }
 
   let {
@@ -46,6 +57,11 @@
     projectId,
     isLeaf = true,
     isProjectRoot = false,
+    versions,
+    nextVersionName,
+    unassignedFeatureCount,
+    isVersionView = false,
+    acFormat,
   }: Props = $props();
 
   // Chat state
@@ -70,6 +86,11 @@
     projectId,
     isLeaf,
     isProjectRoot,
+    versions,
+    nextVersionName,
+    unassignedFeatureCount,
+    isVersionView,
+    acFormat,
   });
 
   let commandMatches = $derived.by(() => {
@@ -81,6 +102,12 @@
   });
 
   let showCommandMenu = $derived(commandMatches.length > 0);
+
+  let waitingForInput = $derived.by(() => {
+    if (isLoading || messages.length === 0) return false;
+    const last = messages[messages.length - 1];
+    return last.role === 'assistant' && !last.isStreaming;
+  });
 
   function selectCommand(match: CommandMatch) {
     inputValue = `/${match.command.name} `;
@@ -199,6 +226,22 @@
       }
     }
 
+    // Build version summary string for the server
+    let versionSummary: string | undefined;
+    if (isVersionView && versions && versions.length > 0) {
+      const lines = versions.map((v) => {
+        const pct =
+          v.featureCount > 0
+            ? Math.round((v.implementedCount / v.featureCount) * 100)
+            : 0;
+        return `${v.name}: ${v.implementedCount}/${v.featureCount} implemented (${pct}%)`;
+      });
+      if (unassignedFeatureCount && unassignedFeatureCount > 0) {
+        lines.push(`Backlog: ${unassignedFeatureCount} unassigned`);
+      }
+      versionSummary = lines.join('\n');
+    }
+
     await chatClient.sendMessage(
       {
         messages: messageHistory,
@@ -208,6 +251,8 @@
           featureDetails: featureDetails || undefined,
           projectId: projectId,
           isLeaf: isLeaf,
+          versionSummary,
+          isVersionView: isVersionView || undefined,
         },
         sessionId: sessionId ?? undefined,
         stream: true,
@@ -472,7 +517,21 @@
         </div>
         <p class="empty-title">Manifest It</p>
         <div class="empty-hint">
-          {#if isProjectRoot && isLeaf && featureDetails}
+          {#if isVersionView}
+            <p class="hint-overview">
+              Plan and manage releases across versions.
+            </p>
+            <ul class="hint-commands">
+              <li><kbd>/balance</kbd> redistribute features across versions</li>
+              <li><kbd>/prioritize</kbd> prioritize backlog features</li>
+              <li><kbd>/readiness</kbd> assess version readiness to ship</li>
+              <li><kbd>/release-notes</kbd> draft release notes</li>
+              <li><kbd>/scope</kbd> recommend features for the next version</li>
+            </ul>
+            <p class="hint-tab">
+              Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else if isProjectRoot && isLeaf && featureDetails}
             <p class="hint-overview">
               This project has a spec but no features yet. Decompose it into a
               feature tree.
@@ -490,10 +549,10 @@
               Ask questions or give instructions about the project.
             </p>
             <ul class="hint-commands">
+              <li><kbd>/context</kbd> add shared context for children</li>
               <li>
                 <kbd>/organize</kbd> restructure top-level features and priorities
               </li>
-              <li><kbd>/context</kbd> add shared context for children</li>
             </ul>
             <p class="hint-tab">
               Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
@@ -503,10 +562,10 @@
               Ask questions or give instructions about this feature group.
             </p>
             <ul class="hint-commands">
+              <li><kbd>/context</kbd> add shared context for children</li>
               <li>
                 <kbd>/organize</kbd> restructure child features and priorities
               </li>
-              <li><kbd>/context</kbd> add shared context for children</li>
             </ul>
             <p class="hint-tab">
               Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
@@ -516,10 +575,9 @@
               Ask questions or give instructions about this feature.
             </p>
             <ul class="hint-commands">
-              <li><kbd>/enhance</kbd> flesh out the spec</li>
               <li><kbd>/ac</kbd> write acceptance criteria</li>
-              <li><kbd>/specs</kbd> generate BDD scenarios</li>
               <li><kbd>/breakdown</kbd> split into sub-features</li>
+              <li><kbd>/enhance</kbd> expand user story into detailed spec</li>
             </ul>
             <p class="hint-tab">
               Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
@@ -604,8 +662,21 @@
                 {/if}
               {/each}
             {/if}
-            {#if message.isStreaming}
-              <span class="streaming-cursor"></span>
+            {#if message.isStreaming && message.content.length === 0}
+              <div class="thinking-indicator">
+                <span class="thinking-dot"></span>
+                <span class="thinking-dot"></span>
+                <span class="thinking-dot"></span>
+                <span class="thinking-text">Thinking</span>
+              </div>
+            {:else if message.isStreaming}
+              <span class="cursor-glow-wrapper">
+                <span class="streaming-cursor"></span>
+                <span class="cursor-sparkle"></span>
+                <span class="cursor-sparkle"></span>
+                <span class="cursor-sparkle"></span>
+                <span class="cursor-sparkle"></span>
+              </span>
             {/if}
           </div>
         </div>
@@ -619,7 +690,15 @@
     </div>
   {/if}
 
-  <form class="chat-input-form" onsubmit={handleSubmit}>
+  {#if waitingForInput}
+    <div class="turn-indicator">
+      <span class="turn-line"></span>
+      <span class="turn-label">Your turn</span>
+      <span class="turn-line"></span>
+    </div>
+  {/if}
+
+  <form class="chat-input-form" class:awaiting-input={waitingForInput} onsubmit={handleSubmit}>
     {#if showCommandMenu}
       <CommandAutocomplete
         query={inputValue.slice(1)}
@@ -639,7 +718,11 @@
     ></textarea>
     <div class="input-toolbar">
       <div class="toolbar-left">
-        {#if featureTitle}
+        {#if isVersionView && nextVersionName}
+          <span class="feature-label" title="Plan: {nextVersionName}">
+            {nextVersionName}
+          </span>
+        {:else if !isVersionView && featureTitle}
           <span class="feature-label" title={featureTitle}>
             {#if isProjectRoot}
               <span style="position: relative; top: 1px;"
@@ -656,16 +739,6 @@
         <span class="agent-label"
           >{activeAgent.charAt(0).toUpperCase() + activeAgent.slice(1)}</span
         >
-        {#if messages.length > 0}
-          <button
-            type="button"
-            class="clear-button"
-            onclick={clearChat}
-            disabled={isLoading}
-          >
-            Clear
-          </button>
-        {/if}
       </div>
       <button
         type="submit"
@@ -1104,22 +1177,192 @@
     margin-bottom: 11px;
   }
 
-  .clear-button {
-    padding: 4px 8px;
-    font-size: 11px;
+
+
+  /* Thinking indicator (before first content) */
+  .thinking-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .thinking-dot {
+    width: 5px;
+    height: 5px;
+    background: var(--accent-blue);
+    transform: rotate(45deg);
+    animation: thinkingPulse 1.4s ease-in-out infinite;
+  }
+
+  .thinking-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .thinking-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  .thinking-text {
+    font-size: 12px;
     color: var(--foreground-subtle);
-    background: transparent;
-    border: none;
-    cursor: pointer;
+    margin-left: 4px;
+    animation: thinkingFade 1.4s ease-in-out infinite;
   }
 
-  .clear-button:hover:not(:disabled) {
-    color: var(--foreground);
-    text-decoration: underline;
+  @keyframes thinkingPulse {
+    0%,
+    80%,
+    100% {
+      opacity: 0.3;
+      transform: rotate(45deg) scale(0.8);
+    }
+    40% {
+      opacity: 1;
+      transform: rotate(45deg) scale(1.2);
+    }
   }
 
-  .clear-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  @keyframes thinkingFade {
+    0%,
+    80%,
+    100% {
+      opacity: 0.5;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+
+  /* "Your turn" divider */
+  .turn-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    animation: turnFadeIn 0.4s ease-out;
+  }
+
+  .turn-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-default);
+  }
+
+  .turn-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--foreground-subtle);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  @keyframes turnFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .chat-input-form.awaiting-input {
+    box-shadow: inset 0 1px 0 0 rgba(88, 166, 255, 0.25);
+  }
+
+  /* Cursor glow wrapper (light show) */
+  .cursor-glow-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: text-bottom;
+  }
+
+  /* Pulsing halo behind cursor */
+  .cursor-glow-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle,
+      rgba(88, 166, 255, 0.4) 0%,
+      rgba(88, 166, 255, 0.1) 50%,
+      transparent 70%
+    );
+    border-radius: 50%;
+    animation: cursorGlow 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Diamond sparkle particles emitting rightward from cursor */
+  .cursor-sparkle {
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 4px;
+    height: 4px;
+    background: var(--accent-blue);
+    transform: rotate(45deg);
+    opacity: 0;
+    animation: sparkleFloat 2s ease-out infinite;
+    pointer-events: none;
+  }
+
+  .cursor-sparkle:nth-child(3) {
+    animation-delay: 0.5s;
+    animation-duration: 1.8s;
+    top: 35%;
+  }
+
+  .cursor-sparkle:nth-child(4) {
+    animation-delay: 1.0s;
+    animation-duration: 2.2s;
+    top: 60%;
+    background: rgba(163, 113, 247, 0.9);
+  }
+
+  .cursor-sparkle:nth-child(5) {
+    animation-delay: 1.5s;
+    animation-duration: 1.6s;
+    top: 45%;
+    width: 3px;
+    height: 3px;
+  }
+
+  @keyframes cursorGlow {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+  }
+
+  @keyframes sparkleFloat {
+    0% {
+      opacity: 0;
+      transform: rotate(45deg) translate(0, -50%) scale(1);
+    }
+    12% {
+      opacity: 0.9;
+      transform: rotate(45deg) translate(6px, -50%) scale(1);
+    }
+    60% {
+      opacity: 0.4;
+      transform: rotate(45deg) translate(30px, -50%) scale(0.6);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(45deg) translate(50px, -50%) scale(0.2);
+    }
   }
 </style>

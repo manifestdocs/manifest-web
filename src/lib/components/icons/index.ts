@@ -8,3 +8,4 @@ export { default as SearchIcon } from './SearchIcon.svelte';
 export { default as SettingsIcon } from './SettingsIcon.svelte';
 export { default as StateIcon } from './StateIcon.svelte';
 export { default as TrashIcon } from './TrashIcon.svelte';
+export { default as WandSparklesIcon } from './WandSparklesIcon.svelte';

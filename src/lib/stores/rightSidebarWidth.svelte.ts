@@ -4,32 +4,32 @@ const MIN_WIDTH = 250;
 const MAX_WIDTH = 600;
 
 function createRightSidebarWidthStore() {
-	let width = $state(DEFAULT_WIDTH);
+  let width = $state(DEFAULT_WIDTH);
 
-	// Load from localStorage on init (browser only)
-	if (typeof window !== 'undefined') {
-		const stored = localStorage.getItem(STORAGE_KEY);
-		if (stored) {
-			const parsed = parseInt(stored, 10);
-			if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
-				width = parsed;
-			}
-		}
-	}
+  // Load from localStorage on init (browser only)
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+        width = parsed;
+      }
+    }
+  }
 
-	return {
-		get value() {
-			return width;
-		},
-		set(newWidth: number) {
-			width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
-			if (typeof window !== 'undefined') {
-				localStorage.setItem(STORAGE_KEY, String(width));
-			}
-		},
-		MIN_WIDTH,
-		MAX_WIDTH
-	};
+  return {
+    get value() {
+      return width;
+    },
+    set(newWidth: number) {
+      width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, String(width));
+      }
+    },
+    MIN_WIDTH,
+    MAX_WIDTH,
+  };
 }
 
 export const rightSidebarWidth = createRightSidebarWidthStore();

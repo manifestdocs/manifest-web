@@ -1,376 +1,421 @@
 <script lang="ts">
-	import { Dialog } from "$lib/components/ui/dialog/index.js";
-	import { getAuthApiContext } from "$lib/api/auth-context.js";
-	import { goto } from "$app/navigation";
-	import StepIndicator from "./StepIndicator.svelte";
+  import { untrack } from 'svelte';
+  import { Dialog } from '$lib/components/ui/dialog/index.js';
+  import { getAuthApiContext } from '$lib/api/auth-context.js';
+  import { goto } from '$app/navigation';
+  import StepIndicator from './StepIndicator.svelte';
 
-	// Get authenticated API client from context
-	const authApi = getAuthApiContext();
+  // Get authenticated API client from context
+  const authApi = getAuthApiContext();
 
-	interface Props {
-		open: boolean;
-		onOpenChange: (open: boolean) => void;
-		onCreated?: () => Promise<void>;
-	}
+  interface Props {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onCreated?: () => Promise<void>;
+  }
 
-	let { open, onOpenChange, onCreated }: Props = $props();
+  let { open, onOpenChange, onCreated }: Props = $props();
 
-	// Wizard state
-	let currentStep = $state(0);
-	let isSubmitting = $state(false);
-	let error = $state<string | null>(null);
+  // Wizard state
+  let currentStep = $state(0);
+  let isSubmitting = $state(false);
+  let error = $state<string | null>(null);
 
-	// Form data
-	let projectName = $state("");
-	let projectDescription = $state("");
-	let initialVersion = $state("0.1.0");
-	let directoryPath = $state("");
-	let gitRemote = $state("");
-	let instructions = $state("");
+  // Form data
+  let projectName = $state('');
+  let initialVersion = $state('0.1.0');
+  let directoryPath = $state('');
+  let gitRemote = $state('');
+  let instructions = $state('');
 
-	const steps = [
-		{ label: "Details" },
-		{ label: "Directory" },
-		{ label: "Instructions" },
-	];
+  // Directory existence state
+  let dirExists = $state<boolean | null>(null);
+  let checkingDir = $state(false);
+  let checkTimeout: ReturnType<typeof setTimeout> | undefined;
 
-	// Reset form when dialog opens
-	$effect(() => {
-		if (open) {
-			currentStep = 0;
-			projectName = "";
-			projectDescription = "";
-			initialVersion = "0.1.0";
-			directoryPath = "";
-			gitRemote = "";
-			instructions = "";
-			error = null;
-		}
-	});
+  const steps = [
+    { label: 'Details' },
+    { label: 'Directory' },
+    { label: 'Instructions' },
+  ];
 
-	function canProceed(): boolean {
-		if (currentStep === 0) {
-			return (
-				projectName.trim().length > 0 &&
-				initialVersion.trim().length > 0
-			);
-		}
-		if (currentStep === 1) {
-			return directoryPath.trim().length > 0;
-		}
-		return true;
-	}
+  // Reset form when dialog opens, pre-fill home directory
+  $effect(() => {
+    if (open) {
+      // Use untrack so the $state writes don't become tracked dependencies.
+      // Without this, fetchHomeDir setting directoryPath would re-trigger
+      // this effect, creating an infinite reset loop.
+      untrack(() => {
+        currentStep = 0;
+        projectName = '';
+        initialVersion = '0.1.0';
+        directoryPath = '';
+        gitRemote = '';
+        instructions = '';
+        dirExists = null;
+        checkingDir = false;
+        error = null;
+      });
+      fetchHomeDir();
+    }
+  });
 
-	function handleNext() {
-		if (currentStep < steps.length - 1) {
-			currentStep++;
-		}
-	}
+  async function fetchHomeDir() {
+    try {
+      const api = await authApi.getClient();
+      const { data } = await api.GET('/filesystem/browse', {});
+      if (open && data?.path) {
+        directoryPath = data.path + '/';
+      }
+    } catch {
+      // Leave directoryPath empty if we can't fetch home dir
+    }
+  }
 
-	function handleBack() {
-		if (currentStep > 0) {
-			currentStep--;
-		}
-	}
+  // Debounced directory existence check
+  $effect(() => {
+    const path = directoryPath.trim();
+    clearTimeout(checkTimeout);
 
-	async function handleSubmit() {
-		if (
-			!projectName.trim() ||
-			!directoryPath.trim() ||
-			!initialVersion.trim()
-		) {
-			error = "Project name, version, and directory are required";
-			return;
-		}
+    if (!path || !path.startsWith('/')) {
+      dirExists = null;
+      return;
+    }
 
-		isSubmitting = true;
-		error = null;
+    checkingDir = true;
+    checkTimeout = setTimeout(() => checkDirectoryExists(path), 400);
 
-		try {
-			const api = await authApi.getClient();
+    return () => clearTimeout(checkTimeout);
+  });
 
-			// Create the project
-			const { data: project, error: projectError } = await api.POST(
-				"/projects",
-				{
-					body: {
-						name: projectName.trim(),
-						description: projectDescription.trim() || null,
-						instructions: instructions.trim() || null,
-					},
-				},
-			);
+  async function checkDirectoryExists(path: string) {
+    try {
+      const api = await authApi.getClient();
+      const { error: apiError } = await api.GET('/filesystem/browse', {
+        params: { query: { path } },
+      });
+      dirExists = !apiError;
+    } catch {
+      dirExists = false;
+    } finally {
+      checkingDir = false;
+    }
+  }
 
-			if (projectError || !project) {
-				throw new Error("Failed to create project");
-			}
+  function canProceed(): boolean {
+    if (currentStep === 0) {
+      return projectName.trim().length > 0 && initialVersion.trim().length > 0;
+    }
+    if (currentStep === 1) {
+      return directoryPath.trim().length > 0;
+    }
+    return true;
+  }
 
-			// Create the initial version
-			const { error: versionError } = await api.POST(
-				"/projects/{id}/versions",
-				{
-					params: { path: { id: project.id } },
-					body: {
-						name: initialVersion.trim(),
-					},
-				},
-			);
+  function handleNext() {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+    }
+  }
 
-			if (versionError) {
-				console.error(
-					"Failed to create initial version:",
-					versionError,
-				);
-				// Don't throw - project was created, version just failed
-			}
+  function handleBack() {
+    if (currentStep > 0) {
+      currentStep--;
+    }
+  }
 
-			// Add the directory
-			const { error: dirError } = await api.POST(
-				"/projects/{id}/directories",
-				{
-					params: { path: { id: project.id } },
-					body: {
-						path: directoryPath.trim(),
-						git_remote: gitRemote.trim() || null,
-						is_primary: true,
-					},
-				},
-			);
+  async function handleSubmit() {
+    if (
+      !projectName.trim() ||
+      !directoryPath.trim() ||
+      !initialVersion.trim()
+    ) {
+      error = 'Project name, version, and directory are required';
+      return;
+    }
 
-			if (dirError) {
-				console.error("Failed to add directory:", dirError);
-				// Don't throw - project was created, directory just failed
-			}
+    isSubmitting = true;
+    error = null;
 
-			// Refresh projects list
-			if (onCreated) {
-				await onCreated();
-			}
+    try {
+      const api = await authApi.getClient();
 
-			// Close dialog and navigate to new project
-			onOpenChange(false);
-			goto(`/app/${project.slug}`);
-		} catch (err) {
-			error =
-				err instanceof Error ? err.message : "Failed to create project";
-		} finally {
-			isSubmitting = false;
-		}
-	}
+      // Ensure directory exists (idempotent — works whether it exists or not)
+      const { error: mkdirError } = await api.POST('/filesystem/mkdir', {
+        body: { path: directoryPath.trim() },
+      });
+      if (mkdirError) {
+        throw new Error('Failed to create directory');
+      }
+
+      // Create the project
+      const { data: project, error: projectError } = await api.POST(
+        '/projects',
+        {
+          body: {
+            name: projectName.trim(),
+            instructions: instructions.trim() || null,
+          },
+        },
+      );
+
+      if (projectError || !project) {
+        throw new Error('Failed to create project');
+      }
+
+      // Create the initial version
+      const { error: versionError } = await api.POST(
+        '/projects/{id}/versions',
+        {
+          params: { path: { id: project.id } },
+          body: {
+            name: initialVersion.trim(),
+          },
+        },
+      );
+
+      if (versionError) {
+        console.error('Failed to create initial version:', versionError);
+        // Don't throw - project was created, version just failed
+      }
+
+      // Add the directory
+      const { error: dirError } = await api.POST('/projects/{id}/directories', {
+        params: { path: { id: project.id } },
+        body: {
+          path: directoryPath.trim(),
+          git_remote: gitRemote.trim() || null,
+          is_primary: true,
+        },
+      });
+
+      if (dirError) {
+        console.error('Failed to add directory:', dirError);
+        // Don't throw - project was created, directory just failed
+      }
+
+      // Refresh projects list
+      if (onCreated) {
+        await onCreated();
+      }
+
+      // Close dialog and navigate to new project
+      onOpenChange(false);
+      goto(`/app/${project.slug}`);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to create project';
+    } finally {
+      isSubmitting = false;
+    }
+  }
 </script>
 
 <Dialog.Root {open} {onOpenChange}>
-	<Dialog.Portal>
-		<Dialog.Overlay class="dialog-overlay" />
-		<Dialog.Content class="dialog-content wizard-content">
-			<Dialog.Title class="dialog-title">Create New Project</Dialog.Title>
-			<Dialog.Description class="dialog-description">
-				Set up a new project to track features and capabilities.
-			</Dialog.Description>
+  <Dialog.Portal>
+    <Dialog.Overlay class="dialog-overlay" />
+    <Dialog.Content class="dialog-content wizard-content">
+      <Dialog.Title class="dialog-title">Create New Project</Dialog.Title>
+      <Dialog.Description class="dialog-description">
+        Set up a new project to track features and capabilities.
+      </Dialog.Description>
 
-			<div class="wizard-steps">
-				<StepIndicator {steps} {currentStep} />
-			</div>
+      <div class="wizard-steps">
+        <StepIndicator {steps} {currentStep} />
+      </div>
 
-			<div class="wizard-body">
-				{#if currentStep === 0}
-					<div class="step-content">
-						<div class="form-field">
-							<label for="project-name" class="form-label"
-								>Project Name</label
-							>
-							<input
-								id="project-name"
-								type="text"
-								class="form-input"
-								placeholder="e.g., My App"
-								bind:value={projectName}
-								disabled={isSubmitting}
-							/>
-						</div>
-						<div class="form-field">
-							<label for="project-description" class="form-label"
-								>Description (optional)</label
-							>
-							<input
-								id="project-description"
-								type="text"
-								class="form-input"
-								placeholder="Brief description of the project"
-								bind:value={projectDescription}
-								disabled={isSubmitting}
-							/>
-						</div>
-						<div class="form-field">
-							<label for="initial-version" class="form-label"
-								>Initial Version</label
-							>
-							<input
-								id="initial-version"
-								type="text"
-								class="form-input"
-								placeholder="e.g., 0.1.0"
-								bind:value={initialVersion}
-								disabled={isSubmitting}
-							/>
-							<span class="form-hint"
-								>Semantic version for release planning (e.g.,
-								0.1.0, 1.0.0)</span
-							>
-						</div>
-					</div>
-				{:else if currentStep === 1}
-					<div class="step-content">
-						<div class="form-field">
-							<label for="directory-path" class="form-label"
-								>Working Directory</label
-							>
-							<input
-								id="directory-path"
-								type="text"
-								class="form-input"
-								placeholder="/Users/you/projects/my-app"
-								bind:value={directoryPath}
-								disabled={isSubmitting}
-							/>
-							<span class="form-hint"
-								>Absolute path to your project root</span
-							>
-						</div>
-						<div class="form-field">
-							<label for="git-remote" class="form-label"
-								>Git Remote (optional)</label
-							>
-							<input
-								id="git-remote"
-								type="text"
-								class="form-input"
-								placeholder="git@github.com:org/repo.git"
-								bind:value={gitRemote}
-								disabled={isSubmitting}
-							/>
-							<span class="form-hint"
-								>For linking commits to features</span
-							>
-						</div>
-					</div>
-				{:else}
-					<div class="step-content">
-						<div class="form-field">
-							<label for="instructions" class="form-label"
-								>AI Instructions (optional)</label
-							>
-							<textarea
-								id="instructions"
-								class="form-textarea instructions-textarea"
-								placeholder="Guidelines for AI agents working on this project...
+      <div class="wizard-body">
+        {#if currentStep === 0}
+          <div class="step-content">
+            <div class="form-field">
+              <label for="project-name" class="form-label">Project Name</label>
+              <input
+                id="project-name"
+                type="text"
+                class="form-input"
+                placeholder="e.g., My App"
+                bind:value={projectName}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div class="form-field">
+              <label for="initial-version" class="form-label"
+                >Initial Version</label
+              >
+              <input
+                id="initial-version"
+                type="text"
+                class="form-input"
+                placeholder="e.g., 0.1.0"
+                bind:value={initialVersion}
+                disabled={isSubmitting}
+              />
+              <span class="form-hint"
+                >Semantic version for release planning (e.g., 0.1.0, 1.0.0)</span
+              >
+            </div>
+          </div>
+        {:else if currentStep === 1}
+          <div class="step-content">
+            <div class="form-field">
+              <label for="directory-path" class="form-label"
+                >Working Directory</label
+              >
+              <input
+                id="directory-path"
+                type="text"
+                class="form-input"
+                placeholder="/Users/you/projects/my-app"
+                bind:value={directoryPath}
+                disabled={isSubmitting}
+              />
+              {#if checkingDir}
+                <span class="form-hint">Checking path...</span>
+              {:else if dirExists === false && directoryPath
+                  .trim()
+                  .startsWith('/')}
+                <span class="form-hint form-hint-create"
+                  >This directory will be created</span
+                >
+              {:else}
+                <span class="form-hint">Absolute path to your project root</span
+                >
+              {/if}
+            </div>
+            <div class="form-field">
+              <label for="git-remote" class="form-label"
+                >Git Remote (optional)</label
+              >
+              <input
+                id="git-remote"
+                type="text"
+                class="form-input"
+                placeholder="git@github.com:org/repo.git"
+                bind:value={gitRemote}
+                disabled={isSubmitting}
+              />
+              <span class="form-hint">For linking commits to features</span>
+            </div>
+          </div>
+        {:else}
+          <div class="step-content">
+            <div class="form-field">
+              <label for="instructions" class="form-label"
+                >AI Instructions (optional)</label
+              >
+              <textarea
+                id="instructions"
+                class="form-textarea instructions-textarea"
+                placeholder="Guidelines for AI agents working on this project...
 
 Example:
 - Use TypeScript for all new code
 - Follow existing patterns in the codebase
 - Run tests before committing"
-								rows="8"
-								bind:value={instructions}
-								disabled={isSubmitting}
-							></textarea>
-							<span class="form-hint"
-								>You can always add or edit these later in
-								project settings</span
-							>
-						</div>
-					</div>
-				{/if}
+                rows="8"
+                bind:value={instructions}
+                disabled={isSubmitting}
+              ></textarea>
+              <span class="form-hint"
+                >You can always add or edit these later in project settings</span
+              >
+            </div>
+          </div>
+        {/if}
 
-				{#if error}
-					<div class="form-error">{error}</div>
-				{/if}
-			</div>
+        {#if error}
+          <div class="form-error">{error}</div>
+        {/if}
+      </div>
 
-			<div class="wizard-actions">
-				<div class="actions-left">
-					{#if currentStep > 0}
-						<button
-							type="button"
-							class="btn btn-secondary"
-							onclick={handleBack}
-							disabled={isSubmitting}
-						>
-							Back
-						</button>
-					{/if}
-				</div>
-				<div class="actions-right">
-					<button
-						type="button"
-						class="btn btn-secondary"
-						onclick={() => onOpenChange(false)}
-						disabled={isSubmitting}
-					>
-						Cancel
-					</button>
-					{#if currentStep < steps.length - 1}
-						<button
-							type="button"
-							class="btn btn-primary"
-							onclick={handleNext}
-							disabled={!canProceed() || isSubmitting}
-						>
-							Next
-						</button>
-					{:else}
-						<button
-							type="button"
-							class="btn btn-primary"
-							onclick={handleSubmit}
-							disabled={isSubmitting}
-						>
-							{isSubmitting ? "Creating..." : "Create Project"}
-						</button>
-					{/if}
-				</div>
-			</div>
-		</Dialog.Content>
-	</Dialog.Portal>
+      <div class="wizard-actions">
+        <div class="actions-left">
+          {#if currentStep > 0}
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick={handleBack}
+              disabled={isSubmitting}
+            >
+              Back
+            </button>
+          {/if}
+        </div>
+        <div class="actions-right">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          {#if currentStep < steps.length - 1}
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick={handleNext}
+              disabled={!canProceed() || isSubmitting}
+            >
+              Next
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Project'}
+            </button>
+          {/if}
+        </div>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
 </Dialog.Root>
 
 <style>
-	/* Styles handled by globally imported dialog.css */
+  /* Styles handled by globally imported dialog.css */
 
-	:global(.wizard-content) {
-		max-width: 480px;
-	}
+  :global(.wizard-content) {
+    max-width: 480px;
+  }
 
-	.wizard-steps {
-		margin-bottom: 24px;
-	}
+  .wizard-steps {
+    margin-bottom: 24px;
+  }
 
-	.wizard-body {
-		min-height: 180px;
-	}
+  .wizard-body {
+    min-height: 180px;
+  }
 
-	.step-content {
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-	}
+  .step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 
-	.instructions-textarea {
-		min-height: 160px;
-		font-family: var(--font-mono, monospace);
-		font-size: 13px;
-	}
+  .form-hint-create {
+    color: var(--accent-green, #3fb950);
+  }
 
-	.wizard-actions {
-		display: flex;
-		justify-content: space-between;
-		margin-top: 24px;
-		padding-top: 16px;
-		border-top: 1px solid var(--border-default);
-	}
+  .instructions-textarea {
+    min-height: 160px;
+    font-family: var(--font-mono, monospace);
+    font-size: 13px;
+  }
 
-	.actions-left,
-	.actions-right {
-		display: flex;
-		gap: 8px;
-	}
+  .wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-default);
+  }
+
+  .actions-left,
+  .actions-right {
+    display: flex;
+    gap: 8px;
+  }
 </style>
