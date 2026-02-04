@@ -19,7 +19,8 @@
   import { CommandPalette } from '$lib/components/command-palette/index.js';
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
-  import { debugEmptyState, type DebugEmptyState } from '$lib/stores/index.js';
+  import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
+  import { debugEmptyState, serverConnection, type DebugEmptyState } from '$lib/stores/index.js';
 
   type Project = components['schemas']['Project'];
 
@@ -40,14 +41,42 @@
 
   let commandPaletteOpen = $state(false);
 
+  // Right panel tab state — owned here, consumed by project layout via context
+  let rightPanelTab = $state<'chat' | 'terminal'>('chat');
+  let terminalMounted = $state(false);
+
+  setContext('rightPanel', {
+    get activeTab() { return rightPanelTab; },
+    get terminalMounted() { return terminalMounted; },
+    setActiveTab(tab: 'chat' | 'terminal') {
+      rightPanelTab = tab;
+      if (tab === 'terminal' && !terminalMounted) terminalMounted = true;
+    },
+    setTerminalMounted(v: boolean) { terminalMounted = v; },
+    toggleTab() { this.setActiveTab(rightPanelTab === 'chat' ? 'terminal' : 'chat'); },
+    resetToChat() {
+      rightPanelTab = 'chat';
+      terminalMounted = false;
+    },
+  });
+
   // Debug state change handler
   function handleDebugStateChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     debugEmptyState.set(select.value as DebugEmptyState);
   }
 
-  // Global keyboard shortcut for command palette
+  // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
+    // Cmd+` toggle right panel tab (chat/terminal)
+    if ((e.metaKey || e.ctrlKey) && e.key === '`') {
+      e.preventDefault();
+      rightPanelTab = rightPanelTab === 'chat' ? 'terminal' : 'chat';
+      if (rightPanelTab === 'terminal' && !terminalMounted) terminalMounted = true;
+      return;
+    }
+
+    // T for command palette (not in inputs)
     const target = e.target as HTMLElement;
     if (
       target.tagName === 'INPUT' ||
@@ -243,6 +272,7 @@
 
     <ConnectionBanner />
     <UpdateBanner />
+    <McpConfigBanner />
 
     <main class="app-main">
       {@render children()}

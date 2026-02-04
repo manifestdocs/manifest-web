@@ -1,23 +1,17 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema.js';
-  import {
-    FeatureTree,
-    type RowContext,
-  } from '$lib/components/features/index.js';
   import { findFeature } from '$lib/components/features/featureTreeUtils.js';
-  import { StateIcon } from '$lib/components/icons/index.js';
-  import { InfoBanner, ResizeDivider } from '$lib/components/ui/index.js';
+  import { InfoBanner } from '$lib/components/ui/index.js';
   import CreateVersionDialog from './CreateVersionDialog.svelte';
   import VersionMatrixHeader from './VersionMatrixHeader.svelte';
   import VersionMatrixSubheader from './VersionMatrixSubheader.svelte';
-  import VersionMatrixRowCells from './VersionMatrixRowCells.svelte';
+  import VersionColumns from './VersionColumns.svelte';
   import {
     getNextVersionName,
     groupVersions,
-    getFlatIndex,
     getTotalVersionColumns,
-    type VersionGroup,
   } from './versionUtils.js';
+  import type { FilterableState } from '$lib/stores/featureFilter.svelte.js';
 
   type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
   type Version = components['schemas']['Version'];
@@ -25,50 +19,39 @@
   interface Props {
     features: FeatureTreeNode[];
     versions: Version[];
-    selectedId: string | null;
     projectId: string;
-    featureColumnWidth?: number;
-    onSelect: (id: string) => void;
+    selectedId: string | null;
+    hoveredFeatureId: string | null;
+    expandedIds: Set<string>;
+    activeFilters: Set<FilterableState>;
+    treeScrollTop: number;
+    showHeader?: boolean;
     onCreateVersion: (name: string) => Promise<void>;
     onUpdateFeatureVersion?: (
       featureId: string,
       versionId: string | null,
     ) => Promise<void>;
     onCompleteVersion?: (versionId: string) => Promise<void>;
-    onResize?: (deltaX: number) => void;
-    onReparent?: (featureId: string, newParentId: string | null) => void;
-    onAddFeature?: (parentId: string | null) => void;
-    onArchiveFeature?: (
-      id: string,
-      title: string,
-      isGroup: boolean,
-      childCount: number,
-      parentId: string | null,
-    ) => void;
-    onRestoreFeature?: (id: string) => Promise<void>;
-    onDeleteFeature?: (id: string) => Promise<void>;
+    onScrollSync: (scrollTop: number) => void;
+    onHoverFeature: (id: string | null) => void;
   }
 
   let {
     features,
     versions,
-    selectedId,
     projectId,
-    featureColumnWidth = 350,
-    onSelect,
+    selectedId,
+    hoveredFeatureId,
+    expandedIds,
+    activeFilters,
+    treeScrollTop,
+    showHeader = true,
     onCreateVersion,
     onUpdateFeatureVersion,
     onCompleteVersion,
-    onResize,
-    onReparent,
-    onAddFeature,
-    onArchiveFeature,
-    onRestoreFeature,
-    onDeleteFeature,
+    onScrollSync,
+    onHoverFeature,
   }: Props = $props();
-
-  // Reference to FeatureTree for controlling state
-  let featureTreeRef = $state<ReturnType<typeof FeatureTree> | null>(null);
 
   let showCreateDialog = $state(false);
   let isCompleting = $state(false);
@@ -79,11 +62,6 @@
     featureId: string;
     versionId: string | null;
   } | null>(null);
-
-  // Track active filters from FeatureTree
-  let activeFilters = $state<
-    Set<import('$lib/stores/featureFilter.svelte.js').FilterableState>
-  >(new Set());
 
   const suggestedVersionName = $derived(getNextVersionName(versions));
   let groupedVersions = $derived(groupVersions(versions));
@@ -176,63 +154,28 @@
       }
     }
   }
-
-  function handleAddFeatureFromActions() {
-    onAddFeature?.(null);
-  }
-
-  function handleToggleFilter(
-    state: import('$lib/stores/featureFilter.svelte.js').FilterableState,
-  ) {
-    featureTreeRef?.toggleFilter(state);
-    activeFilters = featureTreeRef?.getActiveFilters() ?? new Set();
-  }
-
-  function handleExpandAll() {
-    featureTreeRef?.expandAll();
-  }
-
-  function handleCollapseAll() {
-    featureTreeRef?.collapseAll();
-  }
 </script>
 
-<div
-  class="matrix-container"
-  style="--feature-col-width: {featureColumnWidth}px"
->
-  {#if onResize}
-    <div class="resize-divider-container">
-      <ResizeDivider {onResize} />
-    </div>
+<div class="matrix-container">
+  {#if showHeader}
+    <VersionMatrixHeader
+      {groupedVersions}
+      {closingVersionId}
+      onAddVersion={() => (showCreateDialog = true)}
+    />
   {/if}
-
-  <VersionMatrixHeader
-    {groupedVersions}
-    {closingVersionId}
-    onAddVersion={() => (showCreateDialog = true)}
-  />
 
   <VersionMatrixSubheader
     {groupedVersions}
     {closingVersionId}
     {isNowFeatureComplete}
     {onCompleteVersion}
-    {activeFilters}
-    hasAddFeatureAction={!!onAddFeature}
-    onAddFeature={handleAddFeatureFromActions}
-    onToggleFilter={handleToggleFilter}
-    onExpandAll={handleExpandAll}
-    onCollapseAll={handleCollapseAll}
     {totalVersionColumns}
   />
 
   <!-- Feature complete banner -->
   {#if isNowFeatureComplete && onCompleteVersion && nextVersion}
-    <InfoBanner
-      spacerWidth="{featureColumnWidth}px"
-      class="feature-complete-banner"
-    >
+    <InfoBanner class="feature-complete-banner">
       {#snippet icon()}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path
@@ -257,78 +200,24 @@
     </InfoBanner>
   {/if}
 
-  <!-- Body - contains FeatureTree with version cells via rowExtras -->
-  <div class="matrix-body">
-    <!-- Full-height column backgrounds (sticky to fill viewport) -->
-    <div class="column-backgrounds">
-      <div class="col-bg feature-col"></div>
-      {#each groupedVersions as group, groupIndex}
-        {#each group.versions as version, versionIndex}
-          {@const colIndex = getFlatIndex(
-            groupIndex,
-            versionIndex,
-            groupedVersions,
-          )}
-          <div
-            class="col-bg version-col"
-            class:group-start={versionIndex === 0}
-            class:zebra={colIndex % 2 === 0}
-            class:closing={version.id === closingVersionId}
-          ></div>
-        {/each}
-      {/each}
-      <div
-        class="col-bg version-col group-start"
-        class:zebra={totalVersionColumns % 2 === 0}
-      ></div>
-    </div>
-
-    <div class="matrix-body-inner">
-      <FeatureTree
-        bind:this={featureTreeRef}
-        {features}
-        {selectedId}
-        {projectId}
-        {featureColumnWidth}
-        showHeader={false}
-        scrollable={false}
-        class="matrix-tree"
-        {onSelect}
-        {onReparent}
-        {onAddFeature}
-        {onArchiveFeature}
-        {onRestoreFeature}
-        {onDeleteFeature}
-      >
-        {#snippet rowExtras(ctx: RowContext)}
-          <VersionMatrixRowCells
-            feature={ctx.feature}
-            {groupedVersions}
-            hasChildren={ctx.hasChildren}
-            {dragHover}
-            {closingVersionId}
-            onDotDrop={handleDotDrop}
-            onDotHover={handleDotHover}
-          />
-        {/snippet}
-      </FeatureTree>
-    </div>
-  </div>
-
-  <div class="matrix-legend">
-    <div class="legend-item">
-      <StateIcon state="proposed" size={12} />
-      <span>Proposed</span>
-    </div>
-    <div class="legend-item">
-      <StateIcon state="in_progress" size={12} />
-      <span>In Progress</span>
-    </div>
-    <div class="legend-item">
-      <StateIcon state="implemented" size={12} />
-      <span>Implemented</span>
-    </div>
-  </div>
+  <!-- Body - VersionColumns synced with left panel tree -->
+  <VersionColumns
+    {features}
+    {versions}
+    {groupedVersions}
+    {expandedIds}
+    {activeFilters}
+    {treeScrollTop}
+    {selectedId}
+    {hoveredFeatureId}
+    {dragHover}
+    {closingVersionId}
+    onScroll={onScrollSync}
+    onDotDrop={handleDotDrop}
+    onDotHover={handleDotHover}
+    {onHoverFeature}
+    {totalVersionColumns}
+  />
 </div>
 
 <CreateVersionDialog
@@ -347,16 +236,6 @@
     overflow: hidden;
     max-width: 100%;
     position: relative;
-  }
-
-  .resize-divider-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: var(--feature-col-width);
-    z-index: 20;
-    display: flex;
-    align-items: stretch;
   }
 
   :global(.feature-complete-banner .banner-content) {
@@ -392,117 +271,5 @@
   .banner-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .matrix-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 48px;
-    position: relative;
-  }
-
-  .column-backgrounds {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    margin-bottom: -100vh;
-    display: flex;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 0;
-  }
-
-  .matrix-body-inner {
-    position: relative;
-    z-index: 1;
-  }
-
-  .col-bg {
-    flex-shrink: 0;
-    height: 100%;
-  }
-
-  .col-bg.feature-col {
-    width: var(--feature-col-width);
-    min-width: 200px;
-  }
-
-  .col-bg.version-col {
-    width: 80px;
-    border-left: 1px solid
-      color-mix(in srgb, var(--border-subtle) 40%, transparent);
-    transition:
-      width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      opacity 0.3s ease;
-  }
-
-  .col-bg.version-col.closing {
-    width: 0;
-    opacity: 0;
-  }
-
-  .col-bg.version-col.group-start {
-    border-left: 1px solid var(--border-default);
-  }
-
-  .col-bg.version-col.zebra {
-    background: rgba(128, 128, 128, 0.04);
-  }
-
-  .col-bg.version-col:last-child {
-    border-right: 1px solid var(--border-default);
-  }
-
-  /* Style FeatureTree within matrix */
-  .matrix-body-inner :global(.matrix-tree) {
-    grid-row: 1;
-    grid-column: 1;
-    z-index: 1;
-  }
-
-  .matrix-body :global(.tree-scroll-container) {
-    position: static;
-    overflow: visible;
-  }
-
-  .matrix-body :global(.tree-content) {
-    position: static;
-    overflow: visible;
-  }
-
-  .matrix-body :global(.tree-row) {
-    position: relative;
-    overflow: hidden;
-    height: 28px;
-    min-height: 28px;
-    flex-shrink: 0;
-  }
-
-  .matrix-body :global(.tree-row:hover) {
-    background: var(--background-muted);
-  }
-
-  .matrix-body :global(.tree-row.selected) {
-    background: color-mix(in srgb, var(--background-emphasis) 33%, transparent);
-  }
-
-  .matrix-legend {
-    display: flex;
-    flex-shrink: 0;
-    gap: 16px;
-    padding: 8px 12px;
-    border-top: 1px solid var(--border-default);
-    background: var(--background-subtle);
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--foreground-muted);
   }
 </style>

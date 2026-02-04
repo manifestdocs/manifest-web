@@ -1,10 +1,15 @@
 const STORAGE_KEY = 'manifest-right-sidebar-width';
-const DEFAULT_WIDTH = 350;
+const SSR_FALLBACK = 350;
 const MIN_WIDTH = 250;
-const MAX_WIDTH = 600;
+const MAX_WIDTH = 800;
+
+function getDefaultWidth(): number {
+  if (typeof window === 'undefined') return SSR_FALLBACK;
+  return Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth / 3)));
+}
 
 function createRightSidebarWidthStore() {
-  let width = $state(DEFAULT_WIDTH);
+  let width = $state(SSR_FALLBACK);
 
   // Load from localStorage on init (browser only)
   if (typeof window !== 'undefined') {
@@ -13,7 +18,11 @@ function createRightSidebarWidthStore() {
       const parsed = parseInt(stored, 10);
       if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
         width = parsed;
+      } else {
+        width = getDefaultWidth();
       }
+    } else {
+      width = getDefaultWidth();
     }
   }
 
