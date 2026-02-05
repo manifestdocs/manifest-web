@@ -137,7 +137,7 @@
   .history-list {
     height: 100%;
     overflow-y: auto;
-    padding: 60px 24px 20px 24px;
+    padding: 60px 32px 20px 12px;
   }
 
   .loading-state {
@@ -199,8 +199,8 @@
 
   .time-group {
     display: grid;
-    grid-template-columns: 100px 1fr;
-    gap: 32px;
+    grid-template-columns: 80px 1fr;
+    gap: 16px;
     position: relative;
   }
 
@@ -208,7 +208,7 @@
   .time-group::before {
     content: '';
     position: absolute;
-    left: 50px;
+    left: 40px;
     top: 0;
     bottom: 0;
     width: 1px;
@@ -233,7 +233,7 @@
   }
 
   .pill {
-    padding: 4px 12px;
+    padding: 4px 8px;
     font-size: 11px;
     font-weight: 500;
     text-transform: lowercase;
