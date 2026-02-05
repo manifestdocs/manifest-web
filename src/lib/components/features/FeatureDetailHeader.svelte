@@ -32,6 +32,7 @@
     onCancel: () => void;
     onSave: () => void;
     onDiscardChanges: () => void;
+    onStartWorking?: () => void;
   }
 
   let {
@@ -56,6 +57,7 @@
     onCancel,
     onSave,
     onDiscardChanges,
+    onStartWorking,
   }: Props = $props();
 
   function formatDate(dateStr: string): string {
@@ -174,6 +176,11 @@
             <button class="btn btn-primary" onclick={onEdit} type="button"
               >Edit</button
             >
+            {#if onStartWorking}
+              <button class="btn btn-agent" onclick={onStartWorking} type="button"
+                >Implement</button
+              >
+            {/if}
           </div>
         {/if}
       </div>
@@ -264,7 +271,9 @@
 
 <style>
   .detail-header {
-    padding: 20px 26px 16px;
+    box-sizing: border-box;
+    height: 91px;
+    padding: 20px 21px 0 26px;
     border-bottom: 1px solid var(--border-default);
   }
 
@@ -290,7 +299,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 8px 4px 6px;
+    padding: 2px 8px 2px 6px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 500;
@@ -508,5 +517,15 @@
 
   .btn-warning-subtle:hover:not(:disabled) {
     background: rgba(210, 153, 34, 0.1);
+  }
+
+  .btn-agent {
+    background: var(--accent-blue, #58a6ff);
+    color: #0d1117;
+    border-color: var(--accent-blue, #58a6ff);
+  }
+
+  .btn-agent:hover:not(:disabled) {
+    filter: brightness(1.1);
   }
 </style>

@@ -11,9 +11,10 @@
     cwd?: string;
     initialInput?: string;
     onBell?: () => void;
+    onReady?: (send: (text: string) => void) => void;
   }
 
-  let { class: className = '', cwd, initialInput, onBell }: Props = $props();
+  let { class: className = '', cwd, initialInput, onBell, onReady }: Props = $props();
 
   function terminalInit(node: HTMLElement) {
     const term = new Terminal({
@@ -110,6 +111,12 @@
       if (term.cols > 0 && term.rows > 0) {
         ws?.send(JSON.stringify({ type: 'resize', rows: term.rows, cols: term.cols }));
       }
+      // Expose send function to parent for external input (context chips, etc.)
+      onReady?.((text: string) => {
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(text);
+        }
+      });
     };
 
     ws.onmessage = (event) => {
@@ -190,7 +197,7 @@
   .terminal-container {
     height: 100%;
     width: 100%;
-    padding: 12px 0 0 6px;
+    padding: 16px 0 0 12px;
   }
 
   /* Ensure xterm fills its container and canvas layers don't overflow */
