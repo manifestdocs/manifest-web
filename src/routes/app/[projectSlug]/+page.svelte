@@ -39,6 +39,7 @@
     handleRestoreFromDetail: () => void;
     handleDeleteFromDetail: () => Promise<void>;
     handleOpenCreateDialog: (parentId: string | null) => void;
+    handleStartWorking: () => void;
   }
 
   const ctx = getContext<ProjectDataContext>('projectData');
@@ -58,6 +59,7 @@
     onArchive={ctx.handleArchiveFromDetail}
     onRestore={ctx.handleRestoreFromDetail}
     onDelete={ctx.handleDeleteFromDetail}
+    onStartWorking={!ctx.selectedFeatureIsGroup && ctx.selectedFeature?.state === 'proposed' ? ctx.handleStartWorking : undefined}
   />
 {/if}
 

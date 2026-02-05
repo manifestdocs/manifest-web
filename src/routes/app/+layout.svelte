@@ -21,7 +21,7 @@
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
-  import { debugEmptyState, serverConnection, rightSidebarWidth, type DebugEmptyState } from '$lib/stores/index.js';
+  import { sidebarWidth, rightSidebarWidth } from '$lib/stores/index.js';
 
   type Project = components['schemas']['Project'];
 
@@ -47,6 +47,7 @@
     id: string;
     label: string;
     initialInput?: string;
+    featureId?: string;
   }
 
   const MAX_TERMINAL_TABS = 8;
@@ -60,24 +61,22 @@
 
   let terminalTabs = $state<TerminalTab[]>([defaultTerminalTab]);
   let activeTerminalTabId = $state<string | null>(defaultTerminalTab.id);
-  let rightPanelTab = $state<'chat' | 'terminal'>('chat');
-  let terminalMounted = $state(false);
   let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
   let attentionTabIds = $state<Set<string>>(new Set());
 
-  function createTerminalTab() {
+  function createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }) {
     if (terminalTabs.length >= MAX_TERMINAL_TABS) return;
 
     const tab: TerminalTab = {
       id: crypto.randomUUID(),
-      label: `Terminal ${nextTerminalNumber}`,
+      label: opts?.label ?? `Terminal ${nextTerminalNumber}`,
+      initialInput: opts?.initialInput,
+      featureId: opts?.featureId,
     };
     nextTerminalNumber++;
 
     terminalTabs = [...terminalTabs, tab];
     activeTerminalTabId = tab.id;
-    rightPanelTab = 'terminal';
-    if (!terminalMounted) terminalMounted = true;
 
     // Scroll to show the new tab after DOM updates
     requestAnimationFrame(() => {
@@ -113,8 +112,6 @@
 
   function selectTerminalTab(tabId: string) {
     activeTerminalTabId = tabId;
-    rightPanelTab = 'terminal';
-    if (!terminalMounted) terminalMounted = true;
     // Clear attention when tab is selected
     if (attentionTabIds.has(tabId)) {
       attentionTabIds = new Set([...attentionTabIds].filter(id => id !== tabId));
@@ -122,28 +119,17 @@
   }
 
   function markTerminalAttention(tabId: string) {
-    // Only mark attention if tab is not currently active and visible
-    const isActiveAndVisible = rightPanelTab === 'terminal' && activeTerminalTabId === tabId;
+    // Only mark attention if tab is not currently active
+    const isActiveAndVisible = activeTerminalTabId === tabId;
     if (!isActiveAndVisible && !attentionTabIds.has(tabId)) {
       attentionTabIds = new Set([...attentionTabIds, tabId]);
     }
   }
 
   setContext('rightPanel', {
-    get activeTab() { return rightPanelTab; },
-    get terminalMounted() { return terminalMounted; },
     get terminalTabs() { return terminalTabs; },
     get activeTerminalTabId() { return activeTerminalTabId; },
-    setActiveTab(tab: 'chat' | 'terminal') {
-      rightPanelTab = tab;
-      if (tab === 'terminal' && !terminalMounted) terminalMounted = true;
-    },
-    setTerminalMounted(v: boolean) { terminalMounted = v; },
-    toggleTab() { this.setActiveTab(rightPanelTab === 'chat' ? 'terminal' : 'chat'); },
-    resetToChat() {
-      rightPanelTab = 'chat';
-      terminalMounted = false;
-      // Reset to one default terminal
+    resetTerminals() {
       const newTab: TerminalTab = {
         id: crypto.randomUUID(),
         label: 'Terminal 1',
@@ -158,12 +144,6 @@
     selectTerminalTab,
     markTerminalAttention,
   });
-
-  // Debug state change handler
-  function handleDebugStateChange(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    debugEmptyState.set(select.value as DebugEmptyState);
-  }
 
   // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
@@ -274,94 +254,82 @@
 {#if page.params.projectSlug}
   <div class="app-layout">
     <header class="app-header">
-      <div class="header-left">
-        <a href="/" class="logo">
-          <img src={headerLogotype} alt="Manifest" class="logo-image" />
-        </a>
-        <nav class="view-nav">
-          <div class="nav-group">
-            <a
-              href="{base}/app/{selectedProjectSlug}{featureQueryParam}"
-              class="nav-link"
-              class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
-            >
-              Edit
-            </a>
-            <a
-              href="{base}/app/{selectedProjectSlug}/versions{featureQueryParam}"
-              class="nav-link"
-              class:active={page.url.pathname ===
-                `/app/${selectedProjectSlug}/versions`}
-            >
-              Plan
-            </a>
-            <a
-              href="{base}/app/{selectedProjectSlug}/activity"
-              class="nav-link"
-              class:active={page.url.pathname ===
-                `/app/${selectedProjectSlug}/activity`}
-            >
-              Activity
-            </a>
-          </div>
-        </nav>
+      <a href="/" class="logo">
+        <img src={headerLogotype} alt="Manifest" class="logo-image" />
+      </a>
+      <!-- Row 1: Toolbar -->
+      <div class="header-toolbar">
+        <div class="header-left"></div>
+        <div class="toolbar-fill"></div>
         <div class="project-controls">
-          <select
-            class="project-select"
-            value={selectedProjectSlug}
-            onchange={handleProjectChange}
-            disabled={isLoadingProjects}
-          >
-            {#if isLoadingProjects}
-              <option value="">Loading...</option>
-            {:else if projects.length === 0}
-              <option value="">No projects</option>
-            {:else}
-              {#each projects as project (project.id)}
-                <option value={project.slug}>{project.name}</option>
-              {/each}
-            {/if}
-          </select>
-          <button
-            class="icon-btn"
-            onclick={() => (settingsDialogOpen = true)}
-            title="Settings"
-          >
-            <SettingsIcon size={16} />
-          </button>
-          <button
-            class="icon-btn"
-            onclick={() => (newProjectWizardOpen = true)}
-            title="New project"
-          >
-            <PlusIcon size={16} />
-          </button>
-          <button
-            class="search-btn"
-            onclick={() => (commandPaletteOpen = true)}
-            title="Search features (T)"
-          >
-            <SearchIcon size={14} />
-            <span class="search-label">Search</span>
-            <kbd class="search-kbd">T</kbd>
-          </button>
+            <select
+              class="project-select"
+              value={selectedProjectSlug}
+              onchange={handleProjectChange}
+              disabled={isLoadingProjects}
+            >
+              {#if isLoadingProjects}
+                <option value="">Loading...</option>
+              {:else if projects.length === 0}
+                <option value="">No projects</option>
+              {:else}
+                {#each projects as project (project.id)}
+                  <option value={project.slug}>{project.name}</option>
+                {/each}
+              {/if}
+            </select>
+            <button
+              class="icon-btn"
+              onclick={() => (settingsDialogOpen = true)}
+              title="Settings"
+            >
+              <SettingsIcon size={16} />
+            </button>
+            <button
+              class="icon-btn"
+              onclick={() => (newProjectWizardOpen = true)}
+              title="New project"
+            >
+              <PlusIcon size={16} />
+            </button>
         </div>
       </div>
-      <div class="header-center"></div>
-      <div class="header-right" style="width: {rightSidebarWidth.value}px">
-        <div class="panel-tab-bar">
-          <button
-            class="panel-tab"
-            class:active={rightPanelTab === 'chat'}
-            onclick={() => { rightPanelTab = 'chat'; }}
+
+      <!-- Row 2: Tab strips aligned to columns below -->
+      <div class="header-tabs">
+        <div class="tab-spacer" style="width: {sidebarWidth.value}px"></div>
+        <nav class="tab-strip">
+          <a
+            href="{base}/app/{selectedProjectSlug}{featureQueryParam}"
+            class="header-tab"
+            class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
           >
-            Chat
-          </button>
+            Edit
+          </a>
+          <a
+            href="{base}/app/{selectedProjectSlug}/versions{featureQueryParam}"
+            class="header-tab"
+            class:active={page.url.pathname ===
+              `/app/${selectedProjectSlug}/versions`}
+          >
+            Plan
+          </a>
+          <a
+            href="{base}/app/{selectedProjectSlug}/activity"
+            class="header-tab"
+            class:active={page.url.pathname ===
+              `/app/${selectedProjectSlug}/activity`}
+          >
+            Activity
+          </a>
+        </nav>
+        <div class="tab-strip-fill"></div>
+        <div class="tab-strip-right" style="width: {rightSidebarWidth.value}px">
           <div class="terminal-tabs-scroll" bind:this={terminalTabsScrollRef}>
             {#each terminalTabs as tab (tab.id)}
               <div
-                class="panel-tab terminal-tab"
-                class:active={rightPanelTab === 'terminal' && activeTerminalTabId === tab.id}
+                class="terminal-tab"
+                class:active={activeTerminalTabId === tab.id}
                 class:needs-attention={attentionTabIds.has(tab.id)}
               >
                 <button
@@ -380,15 +348,15 @@
                 </button>
               </div>
             {/each}
+            <button
+              class="add-terminal-btn"
+              onclick={() => createTerminalTab()}
+              disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
+              title="New terminal (Cmd+`)"
+            >
+              <PlusIcon size={12} />
+            </button>
           </div>
-          <button
-            class="panel-tab add-terminal-btn"
-            onclick={() => createTerminalTab()}
-            disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
-            title="New terminal (Cmd+`)"
-          >
-            <PlusIcon size={12} />
-          </button>
         </div>
       </div>
     </header>
@@ -442,12 +410,22 @@
     overflow: hidden;
   }
 
+  /* --- Header: two-row column layout --- */
+
   .app-header {
     display: flex;
-    align-items: center;
-    padding: 12px 0 12px 16px;
+    flex-direction: column;
+    position: relative;
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
+  }
+
+  /* Row 1: Toolbar */
+
+  .header-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 0 0 4px 16px;
   }
 
   .header-left {
@@ -456,255 +434,141 @@
     gap: 16px;
   }
 
+  .toolbar-fill {
+    flex: 1;
+  }
+
   .project-controls {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 0;
   }
 
-  .header-center {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end;
-    padding: 0 16px;
-  }
+  /* Row 2: Tab strips */
 
-  .header-right {
+  .header-tabs {
     display: flex;
     align-items: flex-end;
+    position: relative;
+    z-index: 1;
+    margin-bottom: -1px;
+  }
+
+  .tab-spacer {
     flex-shrink: 0;
   }
 
-  .project-label {
+  .tab-strip {
+    display: flex;
+  }
+
+  .tab-strip .header-tab:first-child {
+    border-left: 1px solid var(--border-default);
+  }
+
+  .tab-strip-fill {
+    flex: 1;
+  }
+
+  .tab-strip-right {
+    display: flex;
+    align-items: flex-end;
+    flex-shrink: 0;
+    border-left: none;
+    padding-left: 0;
+  }
+
+  /* --- Tabs --- */
+
+  .header-tab {
+    padding: 6px 20px;
     font-size: 13px;
     font-weight: 500;
     color: var(--foreground-muted);
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    transition: opacity 0.15s ease;
-  }
-
-  .logo:hover {
-    opacity: 0.8;
-  }
-
-  .logo-image {
-    height: 30px;
-    width: auto;
-    position: relative;
-    top: -1px;
-    left: 1px;
-  }
-
-  .project-select {
-    padding: 5px 26px 5px 10px;
-    font-size: 13px;
-    font-weight: 500;
-    background: var(--background);
+    background: transparent;
     border: 1px solid var(--border-default);
-    border-radius: 6px;
-    color: var(--foreground);
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-  }
-
-  .project-select:hover {
-    border-color: var(--foreground-subtle);
-  }
-
-  .project-select:focus {
-    outline: none;
-    border-color: var(--accent-blue);
-  }
-
-  .icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: var(--background);
-    border: 1px solid var(--border-default);
-    border-radius: 2px;
-    color: var(--foreground-muted);
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .icon-btn:hover {
-    background: var(--background-emphasis);
-    color: var(--foreground);
-    border-color: var(--foreground-subtle);
-  }
-
-  .view-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .nav-group {
-    display: flex;
-    gap: 2px;
-    padding: 3px;
-    background: var(--background);
-    border-radius: 6px;
-  }
-
-  .nav-link {
-    padding: 5px 10px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground-muted);
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0;
     text-decoration: none;
-    border-radius: 4px;
+    cursor: pointer;
     transition:
       background 0.15s ease,
       color 0.15s ease;
   }
 
-  .nav-link:hover {
+  .header-tab:hover {
     color: var(--foreground);
-  }
-
-  .nav-link.active {
-    background: rgba(156, 220, 254, 0.2);
-    color: var(--state-implemented);
-  }
-
-  .view-nav > .nav-link {
-    padding: 8px 10px;
-    background: var(--background);
-    border-radius: 6px;
-  }
-
-  .view-nav > .nav-link:hover {
     background: var(--background-emphasis);
   }
 
-  .view-nav > .nav-link.active {
-    background: rgba(156, 220, 254, 0.2);
-    color: var(--state-implemented);
-  }
-
-  .app-main {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .header-divider {
-    width: 1px;
-    height: 20px;
-    background: var(--border-default);
-    margin: 0 4px;
-  }
-
-  .docs-link {
-    flex-shrink: 0;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground-muted);
-    text-decoration: none;
-    border-radius: 6px;
-    transition: all 0.15s ease;
-  }
-
-  .docs-link:hover {
-    color: var(--foreground);
+  .header-tab.active {
     background: var(--background);
+    color: var(--state-implemented);
+    border-top: 1px solid var(--state-implemented);
+    border-right: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--background);
+    border-left: 1px solid var(--border-default);
   }
 
-  .search-btn {
+  /* --- Terminal tabs --- */
+
+  .terminal-tab {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 12px;
-    height: 32px;
-    min-width: 160px;
-    margin-left: 12px;
-    font-size: 13px;
-    color: var(--foreground-muted);
-    background: var(--background);
-    border: 1px solid var(--border-default);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .search-btn:hover {
-    color: var(--foreground);
-    border-color: var(--foreground-subtle);
-  }
-
-  .search-label {
-    flex: 1;
-    font-weight: 500;
-  }
-
-  .search-kbd {
-    padding: 2px 5px;
-    font-size: 11px;
-    font-family: var(--font-mono, monospace);
-    background: var(--background-subtle);
-    border: 1px solid var(--border-default);
-    border-radius: 3px;
-    color: var(--foreground-subtle);
-  }
-
-  .debug-select {
-    padding: 4px 24px 4px 8px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--background);
-    border: 1px solid var(--border-default);
-    border-radius: 4px;
-    color: var(--foreground-muted);
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 4px center;
-  }
-
-  .debug-select:hover {
-    border-color: var(--foreground-subtle);
-    color: var(--foreground);
-  }
-
-  .debug-select:focus {
-    outline: none;
-    border-color: var(--accent-blue);
-  }
-
-  .debug-select.active {
-    background-color: #f59e0b;
-    border-color: #f59e0b;
-    color: black;
-  }
-
-  .panel-tab-bar {
-    display: flex;
-    width: 100%;
+    flex-shrink: 0;
     gap: 2px;
-    padding: 3px;
+    padding: 6px 4px 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--foreground-muted);
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .terminal-tab:first-child {
+    border-left: 1px solid var(--border-default);
+  }
+
+  .terminal-tab:hover {
+    color: var(--foreground);
+    background: var(--background-emphasis);
+  }
+
+  .terminal-tab.active {
     background: var(--background);
-    border-radius: 6px;
+    color: var(--state-implemented);
+    border-top: 1px solid var(--state-implemented);
+    border-right: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--background);
+    border-left: 1px solid var(--border-default);
+  }
+
+  .terminal-tab.needs-attention {
+    background: rgba(210, 153, 34, 0.25);
+    color: #e3b341;
+  }
+
+  .terminal-tab.needs-attention:not(.active) {
+    animation: attention-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes attention-pulse {
+    0%, 100% { background: rgba(210, 153, 34, 0.25); }
+    50% { background: rgba(210, 153, 34, 0.4); }
   }
 
   .terminal-tabs-scroll {
     display: flex;
     flex: 1;
-    gap: 2px;
+    gap: 0;
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
@@ -714,55 +578,8 @@
     display: none;
   }
 
-  .panel-tab {
-    flex-shrink: 0;
-    padding: 5px 10px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground-muted);
-    background: none;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .panel-tab:hover {
-    color: var(--foreground);
-  }
-
-  .panel-tab.active {
-    background: rgba(156, 220, 254, 0.2);
-    color: var(--state-implemented);
-  }
-
-  .panel-tab.terminal-tab.needs-attention {
-    background: rgba(210, 153, 34, 0.25);
-    color: #e3b341;
-  }
-
-  .panel-tab.terminal-tab.needs-attention:not(.active) {
-    animation: attention-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes attention-pulse {
-    0%, 100% { background: rgba(210, 153, 34, 0.25); }
-    50% { background: rgba(210, 153, 34, 0.4); }
-  }
-
-  .panel-tab.terminal-tab {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 0;
-    padding-left: 10px;
-    padding-right: 4px;
-  }
-
   .terminal-tab-label {
-    padding: 5px 0;
+    padding: 0;
     font-size: 13px;
     font-weight: 500;
     color: inherit;
@@ -802,12 +619,144 @@
   }
 
   .add-terminal-btn {
-    padding: 5px 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--foreground-muted);
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .add-terminal-btn:hover {
+    color: var(--foreground);
+    background: var(--background-emphasis);
   }
 
   .add-terminal-btn:disabled {
     opacity: 0.3;
     cursor: default;
+  }
+
+  /* --- Shared elements --- */
+
+  .logo {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+    z-index: 2;
+  }
+
+  .logo:hover {
+    opacity: 0.8;
+  }
+
+  .logo-image {
+    height: 36px;
+    width: auto;
+  }
+
+  .project-select {
+    padding: 5px 26px 5px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-radius: 0;
+    color: var(--foreground);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  .project-select:hover {
+    border-color: var(--foreground-subtle);
+  }
+
+  .project-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+  }
+
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-left: none;
+    border-radius: 0;
+    color: var(--foreground-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .icon-btn:hover {
+    background: var(--background-emphasis);
+    color: var(--foreground);
+    border-color: var(--foreground-subtle);
+  }
+
+  .search-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 32px;
+    min-width: 160px;
+    margin-left: 0;
+    font-size: 13px;
+    color: var(--foreground-muted);
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .search-btn:hover {
+    color: var(--foreground);
+    border-color: var(--foreground-subtle);
+  }
+
+  .search-label {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .search-kbd {
+    padding: 2px 5px;
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    background: var(--background-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: 3px;
+    color: var(--foreground-subtle);
+  }
+
+  .app-main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
 </style>

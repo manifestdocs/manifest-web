@@ -16,7 +16,6 @@
   } from '$lib/components/projects/index.js';
   import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
   import { StateIcon } from '$lib/components/icons/index.js';
-  import AiChat from '$lib/components/features/AiChat.svelte';
   import TerminalTabs from '$lib/components/terminal/TerminalTabs.svelte';
   import type { VersionSummary } from '@manifest/svelte/commands';
   import {
@@ -48,15 +47,10 @@
 
   const projectsContext = getContext<ProjectsContext>('projects');
 
-  // Right panel tab context — state lives in app layout
+  // Right panel context — state lives in app layout
   interface RightPanelContext {
-    readonly activeTab: 'chat' | 'terminal';
-    readonly terminalMounted: boolean;
-    setActiveTab(tab: 'chat' | 'terminal'): void;
-    setTerminalMounted(v: boolean): void;
-    toggleTab(): void;
-    resetToChat(): void;
-    createTerminalTab(): void;
+    resetTerminals(): void;
+    createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }): void;
     closeTerminalTab(tabId: string): void;
     selectTerminalTab(tabId: string): void;
   }
@@ -177,7 +171,7 @@
     debugEmptyState.value === 'no-directory' || hasDirectories === false,
   );
 
-  // --- Version summaries for AiChat (derived from tree + versions) ---
+  // --- Version summaries (derived from tree + versions) ---
   function collectLeaves(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
     const leaves: FeatureTreeNode[] = [];
     for (const node of nodes) {
@@ -215,12 +209,12 @@
 
   // --- Data loading ---
 
-  // Reset right panel to chat when project changes (terminal remounts with new CWD)
+  // Reset terminals when project changes (terminal remounts with new CWD)
   let prevProjectId: string | undefined = undefined;
   $effect(() => {
     const pid = projectId;
     if (prevProjectId !== undefined && pid !== prevProjectId) {
-      rightPanel.resetToChat();
+      rightPanel.resetTerminals();
     }
     prevProjectId = pid;
   });
@@ -742,6 +736,28 @@
     document.addEventListener('pointerup', handleUp);
   }
 
+  // --- Agent terminal launch ---
+  function handleStartWorking() {
+    if (!selectedFeature || !selectedFeatureId) return;
+    const feature = selectedFeature;
+
+    // Transition to in_progress via state change
+    handleSaveFeature(feature.id, { state: 'in_progress' as FeatureState });
+
+    // Build agent command — for now, hardcode "claude"
+    // TODO: read agent_command from project settings
+    const agentCmd = 'claude';
+    const safeTitle = feature.title.replace(/'/g, "'\\''");
+    const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${feature.id})'\r`;
+
+    // Open a feature-linked terminal tab
+    rightPanel.createTerminalTab({
+      label: `${agentCmd}: ${feature.title}`.slice(0, 40),
+      initialInput,
+      featureId: feature.id,
+    });
+  }
+
   // --- Provide context to child routes ---
   setContext('projectData', {
     get featureTree() { return featureTree; },
@@ -773,6 +789,7 @@
     handleRestoreFromDetail,
     handleDeleteFeature,
     handleDeleteFromDetail,
+    handleStartWorking,
     handleScrollSync,
     handleHoverFeature,
     handleExpandAll: () => featureTreeRef?.expandAll(),
@@ -823,7 +840,7 @@
       {@render children()}
     </div>
 
-    <!-- Right panel: AI Chat + Terminal (tabbed) -->
+    <!-- Right panel: Terminal -->
     <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
@@ -835,24 +852,8 @@
         aria-label="Resize right panel"
         tabindex="0"
       ></div>
-      <div class="tab-content" class:hidden={rightPanel.activeTab !== 'chat'}>
-        <AiChat
-          featureId={selectedFeature?.id ?? null}
-          featureTitle={selectedFeature?.title ?? ''}
-          featureDetails={selectedFeature?.details ?? ''}
-          featureState={selectedFeature?.state}
-          projectId={projectId}
-          isLeaf={isSelectedLeaf}
-          isProjectRoot={isSelectedRoot}
-          {acFormat}
-          versions={versionSummaries}
-          {nextVersionName}
-          {unassignedFeatureCount}
-          {isVersionView}
-        />
-      </div>
-      <div class="tab-content" class:hidden={rightPanel.activeTab !== 'terminal'}>
-        {#if rightPanel.terminalMounted}
+      <div class="tab-content">
+        {#if hasDirectories !== null}
           <TerminalTabs cwd={primaryDirectoryPath} />
         {/if}
       </div>
@@ -992,14 +993,14 @@
     overflow: hidden;
   }
 
-  /* Right panel: AI Chat + Terminal (tabbed) */
+  /* Right panel: Terminal */
   .right-panel {
     position: relative;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     min-width: 250px;
-    max-width: 900px;
+    max-width: 1200px;
     border-left: 1px solid var(--border-default);
     background: var(--background);
     min-height: 0;
@@ -1028,10 +1029,6 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .tab-content.hidden {
-    display: none;
   }
 
   /* Footer */
