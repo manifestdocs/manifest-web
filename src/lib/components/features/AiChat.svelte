@@ -72,6 +72,25 @@
   let messagesContainer: HTMLDivElement | undefined = $state();
   let sessionId = $state<string | null>(null);
 
+  // Elapsed time tracking for thinking indicator
+  let loadingStartTime = $state<number | null>(null);
+  let elapsedSeconds = $state(0);
+
+  // Update elapsed time while loading
+  $effect(() => {
+    if (!isLoading || loadingStartTime === null) {
+      elapsedSeconds = 0;
+      return;
+    }
+
+    const startTime = loadingStartTime;
+    const interval = setInterval(() => {
+      elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  });
+
   // Agent indicator
   let activeAgent = $state('claude');
 
@@ -194,6 +213,7 @@
     messages = [...messages, assistantMessage];
 
     isLoading = true;
+    loadingStartTime = Date.now();
 
     // Build message history for context
     const messageHistory: Array<{ role: MessageRole; content: string }> = [];
@@ -329,6 +349,7 @@
             m.id === assistantId ? { ...m, isStreaming: false } : m,
           );
           isLoading = false;
+          loadingStartTime = null;
         },
 
         onError: (err) => {
@@ -345,6 +366,7 @@
               : m,
           );
           isLoading = false;
+          loadingStartTime = null;
         },
       },
     );
@@ -515,26 +537,23 @@
         <div class="empty-icon">
           <RobotIcon size={48} />
         </div>
-        <p class="empty-title">Manifest It</p>
+        <p class="empty-title">Refine Features</p>
         <div class="empty-hint">
           {#if isVersionView}
             <p class="hint-overview">
-              Plan and manage releases across versions.
+              Plan and organize features across versions.
             </p>
             <ul class="hint-commands">
               <li><kbd>/balance</kbd> redistribute features across versions</li>
               <li><kbd>/prioritize</kbd> prioritize backlog features</li>
-              <li><kbd>/readiness</kbd> assess version readiness to ship</li>
-              <li><kbd>/release-notes</kbd> draft release notes</li>
               <li><kbd>/scope</kbd> recommend features for the next version</li>
             </ul>
             <p class="hint-tab">
               Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
             </p>
-          {:else if isProjectRoot && isLeaf && featureDetails}
+          {:else if isProjectRoot && isLeaf && featureDetails && featureDetails.length > 50}
             <p class="hint-overview">
-              This project has a spec but no features yet. Decompose it into a
-              feature tree.
+              This project has a spec but no features yet.
             </p>
             <ul class="hint-commands">
               <li>
@@ -543,6 +562,11 @@
             </ul>
             <p class="hint-tab">
               Type <kbd>/</kbd> then <kbd>Tab</kbd> to complete
+            </p>
+          {:else if isProjectRoot && isLeaf}
+            <p class="hint-overview">
+              Add project instructions, then use <kbd>/plan</kbd> to decompose into
+              features.
             </p>
           {:else if isProjectRoot}
             <p class="hint-overview">
@@ -572,7 +596,7 @@
             </p>
           {:else if featureTitle}
             <p class="hint-overview">
-              Ask questions or give instructions about this feature.
+              Enhance, extend, or add AC to this feature.
             </p>
             <ul class="hint-commands">
               <li><kbd>/ac</kbd> write acceptance criteria</li>
@@ -594,14 +618,9 @@
           class:user={message.role === 'user'}
           class:assistant={message.role === 'assistant'}
         >
-          <div class="message-header">
-            <span class="message-role"
-              >{message.role === 'user' ? 'You' : 'AI'}</span
-            >
-          </div>
           <div class="message-content">
             {#if message.role === 'user'}
-              {getTextFromContent(message.content)}
+              <div class="user-bubble">{getTextFromContent(message.content)}</div>
             {:else}
               {#each message.content as block, i (i)}
                 {#if block.type === 'text' && block.text}
@@ -668,6 +687,9 @@
                 <span class="thinking-dot"></span>
                 <span class="thinking-dot"></span>
                 <span class="thinking-text">Thinking</span>
+                {#if elapsedSeconds >= 3}
+                  <span class="thinking-elapsed">{elapsedSeconds}s</span>
+                {/if}
               </div>
             {:else if message.isStreaming}
               <span class="cursor-glow-wrapper">
@@ -690,15 +712,11 @@
     </div>
   {/if}
 
-  {#if waitingForInput}
-    <div class="turn-indicator">
-      <span class="turn-line"></span>
-      <span class="turn-label">Your turn</span>
-      <span class="turn-line"></span>
-    </div>
-  {/if}
-
-  <form class="chat-input-form" class:awaiting-input={waitingForInput} onsubmit={handleSubmit}>
+  <form
+    class="chat-input-form"
+    class:awaiting-input={waitingForInput}
+    onsubmit={handleSubmit}
+  >
     {#if showCommandMenu}
       <CommandAutocomplete
         query={inputValue.slice(1)}
@@ -781,10 +799,9 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 12px 0;
+    padding: 12px 8px 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
   }
 
   .empty-chat {
@@ -864,34 +881,10 @@
   .message {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-default);
-  }
-
-  .message:last-child {
-    border-bottom: none;
-  }
-
-  .message.user {
-    /* Full width, no special styling */
   }
 
   .message.assistant {
-    /* Full width, no special styling */
-  }
-
-  .message-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-
-  .message-role {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--foreground);
+    padding-left: 16px;
   }
 
   .message-content {
@@ -901,8 +894,13 @@
     word-break: break-word;
   }
 
-  .message.user .message-content {
+  .user-bubble {
+    background: var(--background-subtle);
+    border-radius: 6px;
+    padding: 12px 16px;
     white-space: pre-wrap;
+    font-size: 13px;
+    line-height: 1.5;
   }
 
   .message-content :global(.chat-markdown) {
@@ -1177,8 +1175,6 @@
     margin-bottom: 11px;
   }
 
-
-
   /* Thinking indicator (before first content) */
   .thinking-indicator {
     display: flex;
@@ -1210,6 +1206,13 @@
     animation: thinkingFade 1.4s ease-in-out infinite;
   }
 
+  .thinking-elapsed {
+    font-size: 11px;
+    color: var(--foreground-muted);
+    margin-left: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
   @keyframes thinkingPulse {
     0%,
     80%,
@@ -1234,41 +1237,6 @@
     }
   }
 
-  /* "Your turn" divider */
-  .turn-indicator {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 16px;
-    animation: turnFadeIn 0.4s ease-out;
-  }
-
-  .turn-line {
-    flex: 1;
-    height: 1px;
-    background: var(--border-default);
-  }
-
-  .turn-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--foreground-subtle);
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  @keyframes turnFadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   .chat-input-form.awaiting-input {
     box-shadow: inset 0 1px 0 0 rgba(88, 166, 255, 0.25);
   }
@@ -1280,26 +1248,6 @@
     vertical-align: text-bottom;
   }
 
-  /* Pulsing halo behind cursor */
-  .cursor-glow-wrapper::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 24px;
-    height: 24px;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(
-      circle,
-      rgba(88, 166, 255, 0.4) 0%,
-      rgba(88, 166, 255, 0.1) 50%,
-      transparent 70%
-    );
-    border-radius: 50%;
-    animation: cursorGlow 2s ease-in-out infinite;
-    pointer-events: none;
-  }
-
   /* Diamond sparkle particles emitting rightward from cursor */
   .cursor-sparkle {
     position: absolute;
@@ -1308,61 +1256,88 @@
     width: 4px;
     height: 4px;
     background: var(--accent-blue);
-    transform: rotate(45deg);
     opacity: 0;
-    animation: sparkleFloat 2s ease-out infinite;
+    animation: sparkleFloat1 1.8s ease-out infinite;
     pointer-events: none;
   }
 
   .cursor-sparkle:nth-child(3) {
-    animation-delay: 0.5s;
-    animation-duration: 1.8s;
-    top: 35%;
+    width: 3px;
+    height: 3px;
+    background: rgba(163, 113, 247, 0.9);
+    animation: sparkleFloat2 1.5s ease-out infinite;
+    animation-delay: 0.4s;
   }
 
   .cursor-sparkle:nth-child(4) {
-    animation-delay: 1.0s;
-    animation-duration: 2.2s;
-    top: 60%;
-    background: rgba(163, 113, 247, 0.9);
+    width: 5px;
+    height: 5px;
+    background: rgba(88, 200, 220, 0.85);
+    animation: sparkleFloat3 2.2s ease-out infinite;
+    animation-delay: 0.9s;
   }
 
   .cursor-sparkle:nth-child(5) {
-    animation-delay: 1.5s;
-    animation-duration: 1.6s;
-    top: 45%;
-    width: 3px;
-    height: 3px;
+    width: 2px;
+    height: 2px;
+    background: rgba(200, 160, 255, 0.8);
+    animation: sparkleFloat4 1.4s ease-out infinite;
+    animation-delay: 1.3s;
   }
 
-  @keyframes cursorGlow {
-    0%,
-    100% {
-      opacity: 0.5;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1.3);
-    }
-  }
-
-  @keyframes sparkleFloat {
+  @keyframes sparkleFloat1 {
     0% {
       opacity: 0;
-      transform: rotate(45deg) translate(0, -50%) scale(1);
+      transform: translateX(0) rotate(0deg) scale(1);
+    }
+    10% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(45px) rotate(270deg) scale(0.3);
+    }
+  }
+
+  @keyframes sparkleFloat2 {
+    0% {
+      opacity: 0;
+      transform: translateX(0) rotate(0deg) scale(1);
     }
     12% {
       opacity: 0.9;
-      transform: rotate(45deg) translate(6px, -50%) scale(1);
-    }
-    60% {
-      opacity: 0.4;
-      transform: rotate(45deg) translate(30px, -50%) scale(0.6);
     }
     100% {
       opacity: 0;
-      transform: rotate(45deg) translate(50px, -50%) scale(0.2);
+      transform: translateX(55px) rotate(-360deg) scale(0.2);
+    }
+  }
+
+  @keyframes sparkleFloat3 {
+    0% {
+      opacity: 0;
+      transform: translateX(0) rotate(0deg) scale(1);
+    }
+    8% {
+      opacity: 0.7;
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(35px) rotate(450deg) scale(0.15);
+    }
+  }
+
+  @keyframes sparkleFloat4 {
+    0% {
+      opacity: 0;
+      transform: translateX(0) rotate(0deg) scale(1);
+    }
+    14% {
+      opacity: 0.95;
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(60px) rotate(-300deg) scale(0.25);
     }
   }
 </style>

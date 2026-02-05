@@ -22,15 +22,14 @@
   let { open, onOpenChange, project, onUpdated, onDeleted }: Props = $props();
 
   // Tab state
-  let activeTab = $state<
-    'general' | 'directories' | 'defaults' | 'server' | 'delete'
-  >('general');
+  let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
+    'project',
+  );
 
   // Form state
   let name = $state('');
-  let defaultFeatureDestination = $state<'backlog' | 'now'>('backlog');
+  let defaultFeatureDestination = $state<'backlog' | 'next'>('backlog');
   let detailLevel = $state<'concise' | 'standard' | 'thorough'>('standard');
-  let acLevel = $state<'concise' | 'standard' | 'thorough'>('standard');
   let acFormat = $state<'checkbox' | 'gherkin'>('checkbox');
   let isSaving = $state(false);
   let error = $state<string | null>(null);
@@ -50,34 +49,30 @@
   let configFile = $state('');
   let defaultAgent = $state('claude');
   let isSavingServer = $state(false);
-  let isSavingAgent = $state(false);
   let isLoadingServer = $state(false);
   let serverError = $state<string | null>(null);
-  let agentError = $state<string | null>(null);
 
   // Reset form when dialog opens or project changes
   $effect(() => {
     if (open) {
       name = project.name;
       defaultFeatureDestination =
-        (project.default_feature_destination as 'backlog' | 'now') ?? 'backlog';
+        (project.default_feature_destination as 'backlog' | 'next') ?? 'backlog';
       detailLevel =
         (project.detail_level as 'concise' | 'standard' | 'thorough') ?? 'standard';
-      acLevel =
-        (project.ac_level as 'concise' | 'standard' | 'thorough') ?? 'standard';
       acFormat =
         (project.ac_format as 'checkbox' | 'gherkin') ?? 'checkbox';
       error = null;
       deleteConfirmText = '';
       deleteError = null;
-      activeTab = 'general';
+      activeTab = 'project';
       loadDirectories();
     }
   });
 
   // Load server settings when tab is selected
   $effect(() => {
-    if (open && activeTab === 'server') {
+    if (open && activeTab === 'system') {
       loadServerSettings();
     }
   });
@@ -149,7 +144,7 @@
         body: {
           default_feature_destination: defaultFeatureDestination,
           detail_level: detailLevel,
-          ac_level: acLevel,
+          ac_level: detailLevel,
           ac_format: acFormat,
         },
       });
@@ -253,32 +248,7 @@
     }
   }
 
-  async function handleSaveAgent() {
-    isSavingAgent = true;
-    agentError = null;
-    try {
-      const res = await fetch(`${API_BASE_URL}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          default_agent: defaultAgent,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? 'Failed to save agent setting');
-      }
-      const data = await res.json();
-      defaultAgent = data.default_agent ?? 'claude';
-    } catch (e) {
-      agentError =
-        e instanceof Error ? e.message : 'Failed to save agent setting';
-    } finally {
-      isSavingAgent = false;
-    }
-  }
-
-  async function handleSaveServer() {
+  async function handleSaveSystem() {
     isSavingServer = true;
     serverError = null;
     try {
@@ -286,6 +256,7 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          default_agent: defaultAgent,
           database_path: databasePath.trim() || null,
         }),
       });
@@ -293,15 +264,30 @@
         throw new Error('Failed to save settings');
       }
       const data = await res.json();
+      defaultAgent = data.default_agent ?? 'claude';
       resolvedPath = data.database_path_resolved;
-
-      if (data.restart_required) {
-        onOpenChange(false);
-      }
+      onOpenChange(false);
     } catch (e) {
       serverError = e instanceof Error ? e.message : 'Failed to save settings';
     } finally {
       isSavingServer = false;
+    }
+  }
+
+  const anySaving = $derived(isSaving || isSavingServer);
+
+  const saveDisabled = $derived(
+    activeTab === 'project' ? (isSaving || !name.trim()) :
+    activeTab === 'features' ? isSaving :
+    activeTab === 'system' ? isSavingServer :
+    true
+  );
+
+  function handleSave() {
+    switch (activeTab) {
+      case 'project': return handleSaveGeneral();
+      case 'features': return handleSaveDefaults();
+      case 'system': return handleSaveSystem();
     }
   }
 </script>
@@ -310,43 +296,59 @@
   <Dialog.Portal>
     <Dialog.Overlay class="dialog-overlay" />
     <Dialog.Content class="dialog-content settings-content">
-      <Dialog.Title class="dialog-title">Settings</Dialog.Title>
-      <Dialog.Description class="dialog-description">
-        Configure {project.name} and server
-      </Dialog.Description>
+      <div class="dialog-header">
+        <div>
+          <Dialog.Title class="dialog-title">Settings</Dialog.Title>
+          <Dialog.Description class="dialog-description">
+            Configure {project.name}
+          </Dialog.Description>
+        </div>
+        {#if activeTab !== 'delete'}
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick={() => onOpenChange(false)}
+              disabled={anySaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick={handleSave}
+              disabled={saveDisabled}
+            >
+              {anySaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        {/if}
+      </div>
 
       <div class="tabs">
         <button
           type="button"
           class="tab"
-          class:active={activeTab === 'general'}
-          onclick={() => (activeTab = 'general')}
+          class:active={activeTab === 'project'}
+          onclick={() => (activeTab = 'project')}
         >
-          Project Name
+          Project
         </button>
         <button
           type="button"
           class="tab"
-          class:active={activeTab === 'directories'}
-          onclick={() => (activeTab = 'directories')}
+          class:active={activeTab === 'features'}
+          onclick={() => (activeTab = 'features')}
         >
-          Working Directories
+          Features
         </button>
         <button
           type="button"
           class="tab"
-          class:active={activeTab === 'defaults'}
-          onclick={() => (activeTab = 'defaults')}
+          class:active={activeTab === 'system'}
+          onclick={() => (activeTab = 'system')}
         >
-          Defaults
-        </button>
-        <button
-          type="button"
-          class="tab"
-          class:active={activeTab === 'server'}
-          onclick={() => (activeTab = 'server')}
-        >
-          Server
+          System
         </button>
         <button
           type="button"
@@ -359,7 +361,7 @@
       </div>
 
       <div class="tab-content">
-        {#if activeTab === 'general'}
+        <div class="tab-panel" class:active={activeTab === 'project'}>
           <div class="general-form">
             <div class="form-field">
               <label for="project-name" class="form-label">Name</label>
@@ -370,213 +372,92 @@
                 bind:value={name}
                 disabled={isSaving}
               />
-              <span class="form-hint"
-                >The project name is shown in the feature tree and synced to the
-                root feature title.</span
-              >
-            </div>
-
-            <div class="form-field instructions-notice">
-              <p class="notice-text">
-                Project instructions are now managed through the root feature in
-                the feature tree. Select the project root (with the folder icon)
-                to edit instructions.
-              </p>
             </div>
 
             {#if error}
               <div class="form-error">{error}</div>
             {/if}
 
-            <div class="form-actions">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                onclick={() => onOpenChange(false)}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary"
-                onclick={handleSaveGeneral}
-                disabled={isSaving || !name.trim()}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
+            <hr class="section-divider" />
+
+            <span class="form-label">Working Directories</span>
+            <div class="directories-section">
+              {#if isLoadingDirectories}
+                <div class="loading-state">Loading directories...</div>
+              {:else}
+                <DirectoryList
+                  {directories}
+                  onAdd={handleAddDirectory}
+                  onRemove={handleRemoveDirectory}
+                />
+              {/if}
             </div>
           </div>
-        {:else if activeTab === 'directories'}
-          <div class="directories-section">
-            {#if isLoadingDirectories}
-              <div class="loading-state">Loading directories...</div>
-            {:else}
-              <DirectoryList
-                {directories}
-                onAdd={handleAddDirectory}
-                onRemove={handleRemoveDirectory}
-              />
-            {/if}
-          </div>
-        {:else if activeTab === 'defaults'}
+        </div>
+
+        <div class="tab-panel" class:active={activeTab === 'features'}>
           <div class="general-form">
-            <div class="form-field">
-              <span class="form-label">Where should new features go?</span>
-              <div class="radio-group">
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="feature-destination"
-                    value="backlog"
-                    bind:group={defaultFeatureDestination}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Backlog</span>
-                    <span class="form-hint"
-                      >New features start unscheduled until manually assigned to
-                      a version.</span
-                    >
-                  </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="form-label">New feature destination</span>
+                <span class="form-hint">
+                  {#if defaultFeatureDestination === 'backlog'}
+                    New features start unscheduled until manually assigned to a version.
+                  {:else}
+                    New features go directly into the next version.
+                  {/if}
+                </span>
+              </div>
+              <div class="segmented-control" role="radiogroup" aria-label="Feature destination">
+                <label class="segment" class:active={defaultFeatureDestination === 'backlog'}>
+                  <input type="radio" name="feature-destination" value="backlog" bind:group={defaultFeatureDestination} disabled={isSaving} />
+                  Backlog
                 </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="feature-destination"
-                    value="now"
-                    bind:group={defaultFeatureDestination}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Now</span>
-                    <span class="form-hint"
-                      >New features go directly into the current version.</span
-                    >
-                  </div>
+                <label class="segment" class:active={defaultFeatureDestination === 'next'}>
+                  <input type="radio" name="feature-destination" value="next" bind:group={defaultFeatureDestination} disabled={isSaving} />
+                  Next
                 </label>
               </div>
             </div>
 
             <hr class="section-divider" />
 
-            <div class="form-field">
-              <span class="form-label">Feature set detail level</span>
-              <span class="form-hint">How detailed guidance should be for feature sets and project context.</span>
-              <div class="radio-group">
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="detail-level"
-                    value="concise"
-                    bind:group={detailLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Concise</span>
-                  </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="form-label">Detail depth</span>
+                <span class="form-hint">How much detail agents write for features and specifications.</span>
+              </div>
+              <div class="segmented-control" role="radiogroup" aria-label="Detail level">
+                <label class="segment" class:active={detailLevel === 'concise'}>
+                  <input type="radio" name="detail-level" value="concise" bind:group={detailLevel} disabled={isSaving} />
+                  Concise
                 </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="detail-level"
-                    value="standard"
-                    bind:group={detailLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Standard</span>
-                  </div>
+                <label class="segment" class:active={detailLevel === 'standard'}>
+                  <input type="radio" name="detail-level" value="standard" bind:group={detailLevel} disabled={isSaving} />
+                  Standard
                 </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="detail-level"
-                    value="thorough"
-                    bind:group={detailLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Thorough</span>
-                  </div>
+                <label class="segment" class:active={detailLevel === 'thorough'}>
+                  <input type="radio" name="detail-level" value="thorough" bind:group={detailLevel} disabled={isSaving} />
+                  Thorough
                 </label>
               </div>
             </div>
 
             <hr class="section-divider" />
 
-            <div class="form-field">
-              <span class="form-label">Spec detail level</span>
-              <span class="form-hint">How detailed guidance should be for leaf feature specifications.</span>
-              <div class="radio-group">
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="ac-level"
-                    value="concise"
-                    bind:group={acLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Concise</span>
-                  </div>
-                </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="ac-level"
-                    value="standard"
-                    bind:group={acLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Standard</span>
-                  </div>
-                </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="ac-level"
-                    value="thorough"
-                    bind:group={acLevel}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Thorough</span>
-                  </div>
-                </label>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="form-label">Acceptance criteria</span>
+                <span class="form-hint">Format used for acceptance criteria in specs.</span>
               </div>
-            </div>
-
-            <hr class="section-divider" />
-
-            <div class="form-field">
-              <span class="form-label">Acceptance criteria format</span>
-              <span class="form-hint">Output format for acceptance criteria.</span>
-              <div class="radio-group">
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="ac-format"
-                    value="checkbox"
-                    bind:group={acFormat}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Checkbox</span>
-                  </div>
+              <div class="segmented-control" role="radiogroup" aria-label="AC format">
+                <label class="segment" class:active={acFormat === 'checkbox'}>
+                  <input type="radio" name="ac-format" value="checkbox" bind:group={acFormat} disabled={isSaving} />
+                  Checkbox
                 </label>
-                <label class="radio-option">
-                  <input
-                    type="radio"
-                    name="ac-format"
-                    value="gherkin"
-                    bind:group={acFormat}
-                    disabled={isSaving}
-                  />
-                  <div class="radio-content">
-                    <span class="radio-label">Gherkin</span>
-                  </div>
+                <label class="segment" class:active={acFormat === 'gherkin'}>
+                  <input type="radio" name="ac-format" value="gherkin" bind:group={acFormat} disabled={isSaving} />
+                  Gherkin
                 </label>
               </div>
             </div>
@@ -584,94 +465,40 @@
             {#if error}
               <div class="form-error">{error}</div>
             {/if}
-
-            <div class="form-actions">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                onclick={() => onOpenChange(false)}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary"
-                onclick={handleSaveDefaults}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
           </div>
-        {:else if activeTab === 'server'}
+        </div>
+
+        <div class="tab-panel" class:active={activeTab === 'system'}>
           {#if isLoadingServer}
             <div class="loading-state">Loading settings...</div>
           {:else}
             <div class="server-sections">
               <!-- Agent selection -->
               <div class="server-section">
-                <div class="form-field">
-                  <span class="form-label">CLI Agent</span>
-                  <div class="radio-group">
-                    <label class="radio-option">
-                      <input
-                        type="radio"
-                        name="default-agent"
-                        value="claude"
-                        bind:group={defaultAgent}
-                        disabled={isSavingAgent}
-                      />
-                      <div class="radio-content">
-                        <span class="radio-label">Claude</span>
-                        <span class="form-hint">Anthropic Claude Code CLI</span>
-                      </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="form-label">CLI Agent</span>
+                    <span class="form-hint">AI agent used for chat sessions.</span>
+                  </div>
+                  <div class="segmented-control" role="radiogroup" aria-label="CLI Agent">
+                    <label class="segment" class:active={defaultAgent === 'claude'}>
+                      <input type="radio" name="default-agent" value="claude" bind:group={defaultAgent} disabled={isSavingServer} />
+                      Claude
                     </label>
-                    <label class="radio-option disabled">
-                      <input
-                        type="radio"
-                        name="default-agent"
-                        value="gemini"
-                        disabled
-                      />
-                      <div class="radio-content">
-                        <span class="radio-label">Gemini</span>
-                        <span class="form-hint"
-                          >Google Gemini CLI (coming soon)</span
-                        >
-                      </div>
+                    <label class="segment segment-disabled">
+                      <input type="radio" name="default-agent" value="gemini" disabled />
+                      Gemini
                     </label>
-                    <label class="radio-option disabled">
-                      <input
-                        type="radio"
-                        name="default-agent"
-                        value="copilot"
-                        disabled
-                      />
-                      <div class="radio-content">
-                        <span class="radio-label">Copilot</span>
-                        <span class="form-hint"
-                          >GitHub Copilot CLI (coming soon)</span
-                        >
-                      </div>
+                    <label class="segment segment-disabled">
+                      <input type="radio" name="default-agent" value="copilot" disabled />
+                      Copilot
                     </label>
                   </div>
                 </div>
 
-                {#if agentError}
-                  <div class="form-error">{agentError}</div>
+                {#if serverError}
+                  <div class="form-error">{serverError}</div>
                 {/if}
-
-                <div class="form-actions">
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    onclick={handleSaveAgent}
-                    disabled={isSavingAgent}
-                  >
-                    {isSavingAgent ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
               </div>
 
               <hr class="section-divider" />
@@ -707,29 +534,12 @@
                 {#if serverError}
                   <div class="form-error">{serverError}</div>
                 {/if}
-
-                <div class="form-actions">
-                  <button
-                    type="button"
-                    class="btn btn-secondary"
-                    onclick={() => onOpenChange(false)}
-                    disabled={isSavingServer}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    onclick={handleSaveServer}
-                    disabled={isSavingServer}
-                  >
-                    {isSavingServer ? 'Saving...' : 'Apply & Restart'}
-                  </button>
-                </div>
               </div>
             </div>
           {/if}
-        {:else if activeTab === 'delete'}
+        </div>
+
+        <div class="tab-panel" class:active={activeTab === 'delete'}>
           <div class="delete-section">
             <div class="danger-zone">
               <p class="danger-zone-description">
@@ -765,7 +575,7 @@
               </button>
             </div>
           </div>
-        {/if}
+        </div>
       </div>
     </Dialog.Content>
   </Dialog.Portal>
@@ -775,20 +585,41 @@
   /* Styles handled by globally imported dialog.css */
 
   :global(.settings-content) {
-    width: 1000px;
-    min-width: 640px;
+    width: 640px;
+    min-width: 480px;
     max-width: calc(100vw - 40px);
-    height: calc(100vh - 80px);
-    max-height: none;
+    max-height: calc(100vh - 80px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     border-radius: 0;
   }
 
+  .dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .dialog-header :global(.dialog-title) {
+    margin: 0 0 4px;
+  }
+
+  .dialog-header :global(.dialog-description) {
+    margin: 0 0 0;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .tabs {
     display: flex;
     gap: 4px;
+    margin-top: 16px;
     margin-bottom: 20px;
     border-bottom: 1px solid var(--border-default);
     padding-bottom: 0;
@@ -826,9 +657,20 @@
   }
 
   .tab-content {
-    flex: 1;
-    overflow-y: auto;
+    display: grid;
     min-height: 0;
+  }
+
+  .tab-panel {
+    grid-row: 1;
+    grid-column: 1;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .tab-panel.active {
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .general-form {
@@ -838,68 +680,66 @@
     height: 100%;
   }
 
-  .instructions-notice {
-    padding: 16px;
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .setting-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .segmented-control {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
     background: var(--background-subtle);
     border: 1px solid var(--border-default);
     border-radius: 6px;
+    flex-shrink: 0;
   }
 
-  .notice-text {
-    margin: 0;
+  .segment {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
     font-size: 13px;
-    color: var(--foreground-muted);
-    line-height: 1.5;
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .radio-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .radio-option {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px;
-    border: 1px solid var(--border-default);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.15s ease;
-  }
-
-  .radio-option:hover {
-    border-color: var(--foreground-subtle);
-  }
-
-  .radio-option:has(input:checked) {
-    border-color: var(--accent-blue);
-    background: color-mix(in srgb, var(--accent-blue) 5%, transparent);
-  }
-
-  .radio-option input[type='radio'] {
-    margin-top: 2px;
-    accent-color: var(--accent-blue);
-  }
-
-  .radio-content {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .radio-label {
-    font-size: 14px;
     font-weight: 500;
+    color: var(--foreground-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .segment input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .segment:hover {
     color: var(--foreground);
+  }
+
+  .segment.active {
+    background: rgba(156, 220, 254, 0.2);
+    color: var(--state-implemented);
+  }
+
+  .segment-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .directories-section {
@@ -951,15 +791,6 @@
     border: none;
     border-top: 1px solid var(--border-default);
     margin: 4px 0;
-  }
-
-  .radio-option.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .radio-option.disabled input[type='radio'] {
-    cursor: not-allowed;
   }
 
   .delete-section {

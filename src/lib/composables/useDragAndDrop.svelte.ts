@@ -36,6 +36,18 @@ type FeaturePosition = {
   parentId: string | null;
 };
 
+type LongPressState = {
+  featureId: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  timerId: ReturnType<typeof setTimeout>;
+  targetElement: HTMLElement;
+};
+
+const LONG_PRESS_MS = 300;
+const MOVE_THRESHOLD_PX = 5;
+
 export function useDragAndDrop(options: {
   features: () => FeatureTreeNode[];
   expandedIds: () => Set<string>;
@@ -48,6 +60,10 @@ export function useDragAndDrop(options: {
   let dragState = $state<DragState | null>(null);
   let dragPosition = $state({ x: 0, y: 0 });
   let dropTarget = $state<DropTarget | null>(null);
+
+  // Long-press state machine: IDLE -> PENDING -> DRAGGING
+  let longPress = $state<LongPressState | null>(null);
+  let suppressNextClick = $state(false);
 
   // Build a map of feature positions for drop detection
   const featurePositions = $derived.by(() => {
@@ -84,7 +100,6 @@ export function useDragAndDrop(options: {
       }
     }
 
-    // We assume the passed features are already filtered if needed (displayFeatures)
     traverse(options.features(), null);
     return positions;
   });
@@ -125,11 +140,8 @@ export function useDragAndDrop(options: {
     return null;
   }
 
-  function handleDragStart(featureId: string, e: PointerEvent) {
-    const allFeatures = options.features(); // This might be filtered, but drag start should work.
-    // Ideally we find in the full tree, but options.features likely passes displayFeatures.
-    // However featureTreeUtils.findFeature searches recursively.
-
+  function startDrag(featureId: string, e: PointerEvent, element: HTMLElement) {
+    const allFeatures = options.features();
     const node = findFeature(allFeatures, featureId);
     if (!node) return;
 
@@ -141,25 +153,83 @@ export function useDragAndDrop(options: {
       pointerId: e.pointerId,
     };
     dragPosition = { x: e.clientX, y: e.clientY };
+    suppressNextClick = true;
 
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    element.setPointerCapture(e.pointerId);
+  }
+
+  function cancelLongPress() {
+    if (longPress) {
+      clearTimeout(longPress.timerId);
+      longPress = null;
+    }
+  }
+
+  function handleRowPointerDown(featureId: string, e: PointerEvent) {
+    // Only primary button
+    if (e.button !== 0) return;
+
+    // Don't start long-press on toggle buttons
+    if ((e.target as HTMLElement).closest('.toggle-btn')) return;
+
+    const element = e.currentTarget as HTMLElement;
+
+    const timerId = setTimeout(() => {
+      if (!longPress) return;
+      // Timer fired — transition to DRAGGING
+      const pending = longPress;
+      longPress = null;
+      startDrag(pending.featureId, e, pending.targetElement);
+    }, LONG_PRESS_MS);
+
+    longPress = {
+      featureId,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      timerId,
+      targetElement: element,
+    };
+  }
+
+  function shouldSuppressClick(): boolean {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return true;
+    }
+    return false;
   }
 
   function handlePointerMove(e: PointerEvent) {
-    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    // Cancel long-press if pointer moved too far during PENDING
+    if (longPress && e.pointerId === longPress.pointerId) {
+      const dx = e.clientX - longPress.startX;
+      const dy = e.clientY - longPress.startY;
+      if (dx * dx + dy * dy > MOVE_THRESHOLD_PX * MOVE_THRESHOLD_PX) {
+        cancelLongPress();
+      }
+      return;
+    }
 
+    // Normal drag tracking
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
     dragPosition = { x: e.clientX, y: e.clientY };
     dropTarget = findDropTarget(e.clientY);
   }
 
   function handlePointerUp(e: PointerEvent) {
+    // Cancel long-press if released early (quick click)
+    if (longPress && e.pointerId === longPress.pointerId) {
+      cancelLongPress();
+      return;
+    }
+
     if (!dragState || e.pointerId !== dragState.pointerId) return;
 
     const target = findDropTarget(e.clientY);
 
     if (target && isValidDropTarget(target.id)) {
       if (target.isLeafTarget && options.onCreateGroupRequest) {
-        // Leaf-on-leaf drop: show dialog to create group
         const targetFeature = findFeature(options.features(), target.id);
         const targetPos = featurePositions.find((p) => p.id === target.id);
 
@@ -171,7 +241,6 @@ export function useDragAndDrop(options: {
           });
         }
       } else {
-        // Regular group/root drop
         options.onExpandOnDrop(target.id);
         options.onReparent?.(dragState.featureId, target.id);
       }
@@ -183,6 +252,12 @@ export function useDragAndDrop(options: {
   }
 
   function handlePointerCancel(e: PointerEvent) {
+    // Cancel long-press
+    if (longPress && e.pointerId === longPress.pointerId) {
+      cancelLongPress();
+      return;
+    }
+
     if (!dragState || e.pointerId !== dragState.pointerId) return;
     dragState = null;
     dropTarget = null;
@@ -198,7 +273,11 @@ export function useDragAndDrop(options: {
     get dropTarget() {
       return dropTarget;
     },
-    handleDragStart,
+    get longPressFeatureId(): string | null {
+      return longPress?.featureId ?? null;
+    },
+    handleRowPointerDown,
+    shouldSuppressClick,
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,

@@ -15,12 +15,13 @@
     SettingsIcon,
     PlusIcon,
     SearchIcon,
+    CloseIcon,
   } from '$lib/components/icons/index.js';
   import { CommandPalette } from '$lib/components/command-palette/index.js';
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
-  import { debugEmptyState, serverConnection, type DebugEmptyState } from '$lib/stores/index.js';
+  import { debugEmptyState, serverConnection, rightSidebarWidth, type DebugEmptyState } from '$lib/stores/index.js';
 
   type Project = components['schemas']['Project'];
 
@@ -42,12 +43,84 @@
   let commandPaletteOpen = $state(false);
 
   // Right panel tab state — owned here, consumed by project layout via context
+  interface TerminalTab {
+    id: string;
+    label: string;
+    initialInput?: string;
+  }
+
+  const MAX_TERMINAL_TABS = 8;
+  let nextTerminalNumber = $state(2); // Start at 2 since we have a default Terminal 1
+
+  // Create default terminal tab
+  const defaultTerminalTab: TerminalTab = {
+    id: crypto.randomUUID(),
+    label: 'Terminal 1',
+  };
+
+  let terminalTabs = $state<TerminalTab[]>([defaultTerminalTab]);
+  let activeTerminalTabId = $state<string | null>(defaultTerminalTab.id);
   let rightPanelTab = $state<'chat' | 'terminal'>('chat');
   let terminalMounted = $state(false);
+  let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
+
+  function createTerminalTab() {
+    if (terminalTabs.length >= MAX_TERMINAL_TABS) return;
+
+    const tab: TerminalTab = {
+      id: crypto.randomUUID(),
+      label: `Terminal ${nextTerminalNumber}`,
+    };
+    nextTerminalNumber++;
+
+    terminalTabs = [...terminalTabs, tab];
+    activeTerminalTabId = tab.id;
+    rightPanelTab = 'terminal';
+    if (!terminalMounted) terminalMounted = true;
+
+    // Scroll to show the new tab after DOM updates
+    requestAnimationFrame(() => {
+      if (terminalTabsScrollRef) {
+        terminalTabsScrollRef.scrollLeft = terminalTabsScrollRef.scrollWidth;
+      }
+    });
+  }
+
+  function closeTerminalTab(tabId: string) {
+    const idx = terminalTabs.findIndex((t) => t.id === tabId);
+    if (idx === -1) return;
+
+    terminalTabs = terminalTabs.filter((t) => t.id !== tabId);
+
+    if (activeTerminalTabId === tabId) {
+      if (terminalTabs.length === 0) {
+        // Last tab closed — create a fresh default terminal
+        const newTab: TerminalTab = {
+          id: crypto.randomUUID(),
+          label: `Terminal ${nextTerminalNumber}`,
+        };
+        nextTerminalNumber++;
+        terminalTabs = [newTab];
+        activeTerminalTabId = newTab.id;
+      } else {
+        // Switch to adjacent tab
+        const newIdx = Math.min(idx, terminalTabs.length - 1);
+        activeTerminalTabId = terminalTabs[newIdx].id;
+      }
+    }
+  }
+
+  function selectTerminalTab(tabId: string) {
+    activeTerminalTabId = tabId;
+    rightPanelTab = 'terminal';
+    if (!terminalMounted) terminalMounted = true;
+  }
 
   setContext('rightPanel', {
     get activeTab() { return rightPanelTab; },
     get terminalMounted() { return terminalMounted; },
+    get terminalTabs() { return terminalTabs; },
+    get activeTerminalTabId() { return activeTerminalTabId; },
     setActiveTab(tab: 'chat' | 'terminal') {
       rightPanelTab = tab;
       if (tab === 'terminal' && !terminalMounted) terminalMounted = true;
@@ -57,7 +130,18 @@
     resetToChat() {
       rightPanelTab = 'chat';
       terminalMounted = false;
+      // Reset to one default terminal
+      const newTab: TerminalTab = {
+        id: crypto.randomUUID(),
+        label: 'Terminal 1',
+      };
+      terminalTabs = [newTab];
+      activeTerminalTabId = newTab.id;
+      nextTerminalNumber = 2;
     },
+    createTerminalTab,
+    closeTerminalTab,
+    selectTerminalTab,
   });
 
   // Debug state change handler
@@ -68,11 +152,10 @@
 
   // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
-    // Cmd+` toggle right panel tab (chat/terminal)
+    // Cmd+` create new terminal tab
     if ((e.metaKey || e.ctrlKey) && e.key === '`') {
       e.preventDefault();
-      rightPanelTab = rightPanelTab === 'chat' ? 'terminal' : 'chat';
-      if (rightPanelTab === 'terminal' && !terminalMounted) terminalMounted = true;
+      createTerminalTab();
       return;
     }
 
@@ -197,76 +280,100 @@
             >
               Plan
             </a>
+            <a
+              href="{base}/app/{selectedProjectSlug}/activity"
+              class="nav-link"
+              class:active={page.url.pathname ===
+                `/app/${selectedProjectSlug}/activity`}
+            >
+              Activity
+            </a>
           </div>
-          <a
-            href="{base}/app/{selectedProjectSlug}/activity"
-            class="nav-link"
-            class:active={page.url.pathname ===
-              `/app/${selectedProjectSlug}/activity`}
-          >
-            Activity
-          </a>
         </nav>
-      </div>
-      <div class="header-right">
-        <button
-          class="search-btn"
-          onclick={() => (commandPaletteOpen = true)}
-          title="Search features (T)"
-        >
-          <SearchIcon size={14} />
-          <span class="search-label">Search</span>
-          <kbd class="search-kbd">T</kbd>
-        </button>
-        <div class="header-divider"></div>
-        <span class="project-label">Project</span>
-        <select
-          class="project-select"
-          value={selectedProjectSlug}
-          onchange={handleProjectChange}
-          disabled={isLoadingProjects}
-        >
-          {#if isLoadingProjects}
-            <option value="">Loading...</option>
-          {:else if projects.length === 0}
-            <option value="">No projects</option>
-          {:else}
-            {#each projects as project (project.id)}
-              <option value={project.slug}>{project.name}</option>
-            {/each}
-          {/if}
-        </select>
-        <button
-          class="icon-btn"
-          onclick={() => (settingsDialogOpen = true)}
-          title="Settings"
-        >
-          <SettingsIcon size={16} />
-        </button>
-        <button
-          class="icon-btn"
-          onclick={() => (newProjectWizardOpen = true)}
-          title="New project"
-        >
-          <PlusIcon size={16} />
-        </button>
-        <div class="header-divider"></div>
-        <a href="{base}/docs" class="docs-link"> Docs </a>
-        {#if import.meta.env.DEV}
-          <div class="header-divider"></div>
+        <div class="project-controls">
           <select
-            class="debug-select"
-            class:active={debugEmptyState.isActive}
-            value={debugEmptyState.value}
-            onchange={handleDebugStateChange}
-            title="Debug: Test empty states"
+            class="project-select"
+            value={selectedProjectSlug}
+            onchange={handleProjectChange}
+            disabled={isLoadingProjects}
           >
-            <option value="none">Debug</option>
-            <option value="no-projects">No Projects</option>
-            <option value="no-directory">No Directory</option>
-            <option value="no-features">No Features</option>
+            {#if isLoadingProjects}
+              <option value="">Loading...</option>
+            {:else if projects.length === 0}
+              <option value="">No projects</option>
+            {:else}
+              {#each projects as project (project.id)}
+                <option value={project.slug}>{project.name}</option>
+              {/each}
+            {/if}
           </select>
-        {/if}
+          <button
+            class="icon-btn"
+            onclick={() => (settingsDialogOpen = true)}
+            title="Settings"
+          >
+            <SettingsIcon size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            onclick={() => (newProjectWizardOpen = true)}
+            title="New project"
+          >
+            <PlusIcon size={16} />
+          </button>
+          <button
+            class="search-btn"
+            onclick={() => (commandPaletteOpen = true)}
+            title="Search features (T)"
+          >
+            <SearchIcon size={14} />
+            <span class="search-label">Search</span>
+            <kbd class="search-kbd">T</kbd>
+          </button>
+        </div>
+      </div>
+      <div class="header-center"></div>
+      <div class="header-right" style="width: {rightSidebarWidth.value}px">
+        <div class="panel-tab-bar">
+          <button
+            class="panel-tab"
+            class:active={rightPanelTab === 'chat'}
+            onclick={() => { rightPanelTab = 'chat'; }}
+          >
+            Chat
+          </button>
+          <div class="terminal-tabs-scroll" bind:this={terminalTabsScrollRef}>
+            {#each terminalTabs as tab (tab.id)}
+              <div
+                class="panel-tab terminal-tab"
+                class:active={rightPanelTab === 'terminal' && activeTerminalTabId === tab.id}
+              >
+                <button
+                  class="terminal-tab-label"
+                  onclick={() => selectTerminalTab(tab.id)}
+                  title={tab.label}
+                >
+                  {tab.label}
+                </button>
+                <button
+                  class="terminal-tab-close"
+                  onclick={(e: MouseEvent) => { e.stopPropagation(); closeTerminalTab(tab.id); }}
+                  title="Close terminal"
+                >
+                  <CloseIcon size={10} />
+                </button>
+              </div>
+            {/each}
+          </div>
+          <button
+            class="panel-tab add-terminal-btn"
+            onclick={() => createTerminalTab()}
+            disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
+            title="New terminal (Cmd+`)"
+          >
+            <PlusIcon size={12} />
+          </button>
+        </div>
       </div>
     </header>
 
@@ -322,11 +429,9 @@
   .app-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
+    padding: 12px 0 12px 16px;
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
-    gap: 16px;
   }
 
   .header-left {
@@ -335,10 +440,23 @@
     gap: 16px;
   }
 
-  .header-right {
+  .project-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+  }
+
+  .header-center {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 16px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: flex-end;
+    flex-shrink: 0;
   }
 
   .project-label {
@@ -367,8 +485,8 @@
   }
 
   .project-select {
-    padding: 6px 32px 6px 12px;
-    font-size: 14px;
+    padding: 5px 26px 5px 10px;
+    font-size: 13px;
     font-weight: 500;
     background: var(--background);
     border: 1px solid var(--border-default);
@@ -475,6 +593,7 @@
   }
 
   .docs-link {
+    flex-shrink: 0;
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
@@ -493,8 +612,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px;
-    min-width: 180px;
+    padding: 0 12px;
+    height: 32px;
+    min-width: 160px;
+    margin-left: 12px;
     font-size: 13px;
     color: var(--foreground-muted);
     background: var(--background);
@@ -554,4 +675,109 @@
     border-color: #f59e0b;
     color: black;
   }
+
+  .panel-tab-bar {
+    display: flex;
+    width: 100%;
+    gap: 2px;
+    padding: 3px;
+    background: var(--background);
+    border-radius: 6px;
+  }
+
+  .terminal-tabs-scroll {
+    display: flex;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .terminal-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .panel-tab {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--foreground-muted);
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .panel-tab:hover {
+    color: var(--foreground);
+  }
+
+  .panel-tab.active {
+    background: rgba(156, 220, 254, 0.2);
+    color: var(--state-implemented);
+  }
+
+  .panel-tab.terminal-tab {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    padding-left: 10px;
+    padding-right: 4px;
+  }
+
+  .terminal-tab-label {
+    padding: 5px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminal-tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    color: var(--foreground-subtle);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.1s ease, background 0.1s ease;
+  }
+
+  .terminal-tab:hover .terminal-tab-close,
+  .terminal-tab.active .terminal-tab-close {
+    opacity: 1;
+  }
+
+  .terminal-tab-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--foreground);
+  }
+
+  .add-terminal-btn {
+    padding: 5px 8px;
+  }
+
+  .add-terminal-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
 </style>

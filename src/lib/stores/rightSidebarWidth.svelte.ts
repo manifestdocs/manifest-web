@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'manifest-right-sidebar-width';
 const SSR_FALLBACK = 350;
 const MIN_WIDTH = 250;
-const MAX_WIDTH = 800;
+const MAX_WIDTH = 900;
 
 function getDefaultWidth(): number {
   if (typeof window === 'undefined') return SSR_FALLBACK;

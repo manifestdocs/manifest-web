@@ -1,7 +1,5 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema.js';
-  import { FeatureTreeActions } from '$lib/components/features/index.js';
-  import type { FilterableState } from '$lib/stores/featureFilter.svelte.js';
   import { getFlatIndex, type VersionGroup } from './versionUtils.js';
 
   type Version = components['schemas']['Version'];
@@ -11,12 +9,6 @@
     closingVersionId: string | null;
     isNowFeatureComplete: boolean;
     onCompleteVersion?: (versionId: string) => Promise<void>;
-    activeFilters: Set<FilterableState>;
-    hasAddFeatureAction: boolean;
-    onAddFeature: () => void;
-    onToggleFilter: (state: FilterableState) => void;
-    onExpandAll: () => void;
-    onCollapseAll: () => void;
     totalVersionColumns: number;
   }
 
@@ -25,12 +17,6 @@
     closingVersionId,
     isNowFeatureComplete,
     onCompleteVersion,
-    activeFilters,
-    hasAddFeatureAction,
-    onAddFeature,
-    onToggleFilter,
-    onExpandAll,
-    onCollapseAll,
     totalVersionColumns,
   }: Props = $props();
 </script>
@@ -39,16 +25,6 @@
   class="matrix-subheader"
   class:has-complete-banner={isNowFeatureComplete && onCompleteVersion}
 >
-  <div class="subheader-cell feature-subheader">
-    <FeatureTreeActions
-      {activeFilters}
-      showAddButton={hasAddFeatureAction}
-      {onAddFeature}
-      {onToggleFilter}
-      {onExpandAll}
-      {onCollapseAll}
-    />
-  </div>
   {#each groupedVersions as group, groupIndex}
     {#each group.versions as version, versionIndex}
       {@const colIndex = getFlatIndex(
@@ -96,12 +72,6 @@
     font-size: 11px;
     font-weight: 500;
     color: var(--foreground-muted);
-  }
-
-  .feature-subheader {
-    flex: 0 0 var(--feature-col-width);
-    min-width: 200px;
-    justify-content: flex-end;
   }
 
   .version-name {

@@ -14,13 +14,17 @@
     isSelected: boolean;
     isExpanded: boolean;
     showTrack?: boolean;
-    hasFutureWork?: boolean;
+    hasProposed?: boolean;
+    hasInProgress?: boolean;
+    isHovered?: boolean;
     isDraggable?: boolean;
     isDragging?: boolean;
+    isLongPressActive?: boolean;
     onSelect: (id: string) => void;
     onToggle: (id: string) => void;
     onContextMenu?: (id: string, x: number, y: number) => void;
-    onDragStart?: (featureId: string, e: PointerEvent) => void;
+    onRowPointerDown?: (featureId: string, e: PointerEvent) => void;
+    shouldSuppressClick?: () => boolean;
   }
 
   let {
@@ -29,13 +33,17 @@
     isSelected,
     isExpanded,
     showTrack = false,
-    hasFutureWork = false,
+    hasProposed = false,
+    hasInProgress = false,
+    isHovered = false,
     isDraggable = false,
     isDragging = false,
+    isLongPressActive = false,
     onSelect,
     onToggle,
     onContextMenu,
-    onDragStart,
+    onRowPointerDown,
+    shouldSuppressClick,
   }: Props = $props();
 
   const hasChildren = $derived(feature.children && feature.children.length > 0);
@@ -53,10 +61,13 @@
   }
 
   function handlePointerDown(e: PointerEvent) {
-    if (!isDraggable) return;
-    e.preventDefault();
-    e.stopPropagation();
-    onDragStart?.(feature.id, e);
+    if (!isDraggable || isRoot) return;
+    onRowPointerDown?.(feature.id, e);
+  }
+
+  function handleClick() {
+    if (shouldSuppressClick?.()) return;
+    onSelect(feature.id);
   }
 </script>
 
@@ -64,26 +75,15 @@
   type="button"
   class="feature-row"
   class:selected={isSelected}
+  class:hovered={isHovered}
   class:is-root={isRoot}
   class:is-dragging={isDragging}
+  class:long-press-active={isLongPressActive}
   style:--depth={depth}
-  onclick={() => onSelect(feature.id)}
+  onclick={handleClick}
+  onpointerdown={handlePointerDown}
   oncontextmenu={handleContextMenu}
 >
-  {#if isDraggable && !isRoot}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <span class="drag-handle" onpointerdown={handlePointerDown}>
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-        <circle cx="6" cy="4" r="1.5" fill="currentColor" />
-        <circle cx="10" cy="4" r="1.5" fill="currentColor" />
-        <circle cx="6" cy="8" r="1.5" fill="currentColor" />
-        <circle cx="10" cy="8" r="1.5" fill="currentColor" />
-        <circle cx="6" cy="12" r="1.5" fill="currentColor" />
-        <circle cx="10" cy="12" r="1.5" fill="currentColor" />
-      </svg>
-    </span>
-  {/if}
-
   {#if isRoot}
     <span class="project-icon"><BookIcon size={16} /></span>
   {:else if hasChildren}
@@ -123,16 +123,34 @@
 
   <span class="feature-title">{feature.title}</span>
 
-  {#if hasChildren && !isRoot && hasFutureWork}
-    <span class="future-work-indicator" title="Has incomplete work">
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-        <path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
-      </svg>
+  {#if hasChildren && !isRoot && (hasProposed || hasInProgress)}
+    <span class="state-indicators">
+      {#if hasProposed}
+        <span class="future-work-indicator" title="Has incomplete work">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
+          </svg>
+        </span>
+      {/if}
+      {#if hasInProgress}
+        <span class="in-progress-indicator" title="Has work in progress">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+            <circle
+              cx="8"
+              cy="8"
+              r="5.5"
+              stroke="var(--state-in-progress)"
+              stroke-width="1.5"
+              fill="none"
+            />
+          </svg>
+        </span>
+      {/if}
     </span>
   {/if}
 
   {#if feature.desired_details}
-    <span class="pending-indicator" title="Has proposed changes"></span>
+    <span class="changes-badge" title="Has pending changes">changes</span>
   {/if}
 
   {#if showTrack}
@@ -142,23 +160,22 @@
 
 <style>
   .feature-row {
-    /* Layout constants - use fixed px values to prevent compression */
+    /* Layout constants */
     --row-height: 28px;
-    --indent-size: 18px;
-    --base-padding: 9px;
-    --root-padding: 9px;
-    --drag-handle-left: 4px;
+    --indent-size: 10px;
+    --base-padding: 4px;
+    --root-padding: 13px;
     position: relative;
     flex: 0 0 var(--feature-col-width, 350px);
     min-width: 200px;
     height: 28px;
     min-height: 28px;
     flex-shrink: 0;
-    padding-left: calc(var(--depth, 0) * 18px + 9px);
+    padding-left: calc(var(--depth, 0) * var(--indent-size) + var(--base-padding));
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--foreground);
     background: transparent;
     border: none;
@@ -171,13 +188,14 @@
   }
 
   .feature-row.is-root {
-    padding-left: calc(var(--depth, 0) * 18px + 9px);
+    padding-left: calc(var(--depth, 0) * var(--indent-size) + var(--root-padding));
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
   }
 
-  .feature-row:hover {
-    background: var(--background-muted);
+  .feature-row:hover,
+  .feature-row.hovered {
+    background: var(--row-hover-bg, var(--background-muted));
   }
 
   .feature-row.selected {
@@ -188,30 +206,9 @@
     opacity: 0.5;
   }
 
-  .drag-handle {
-    position: absolute;
-    left: var(--drag-handle-left, 4px);
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 12px;
-    height: 16px;
-    color: var(--foreground-subtle);
-    opacity: 0;
-    cursor: grab;
-    touch-action: none;
-    transition: opacity 0.1s ease;
-  }
-
-  .feature-row:hover .drag-handle {
-    opacity: 0.5;
-  }
-
-  .drag-handle:hover {
-    opacity: 1 !important;
-    color: var(--foreground);
+  .feature-row.long-press-active {
+    background: var(--background-muted);
+    cursor: grabbing;
   }
 
   .toggle-btn {
@@ -261,18 +258,25 @@
     min-width: 0;
   }
 
-  .pending-indicator {
+  .changes-badge {
     flex-shrink: 0;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--state-proposed);
+    font-size: 10px;
+    color: var(--state-proposed);
+    font-weight: 500;
+    opacity: 0.85;
   }
 
-  .future-work-indicator {
+  .state-indicators {
     display: flex;
     align-items: center;
+    gap: 2px;
     flex-shrink: 0;
+  }
+
+  .future-work-indicator,
+  .in-progress-indicator {
+    display: flex;
+    align-items: center;
   }
 
   .track {

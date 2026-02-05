@@ -38,11 +38,11 @@
 
 {#if hasPendingChanges}
   <InfoBanner variant="warning" class="content-banner">
-    This feature has proposed changes. <button
+    This feature has pending changes that need to be implemented by an agent. <button
       class="banner-link"
       onclick={onViewDiff}
       type="button">Review changes</button
-    > to apply or discard them.
+    > or discard them.
   </InfoBanner>
 {/if}
 
@@ -62,7 +62,15 @@
 
 <style>
   :global(.content-banner) {
-    margin-bottom: 24px;
+    margin: -20px -26px 24px;
+  }
+
+  :global(.content-banner .banner-content) {
+    padding-left: 26px;
+  }
+
+  :global(.content-banner + .content-banner) {
+    margin-top: -24px;
   }
 
   .banner-link {
@@ -76,7 +84,7 @@
   }
 
   .details-view {
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--foreground);
     transition: background-color 0.3s ease;

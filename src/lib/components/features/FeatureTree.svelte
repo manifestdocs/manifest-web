@@ -17,7 +17,7 @@
   import { useDragAndDrop } from '$lib/composables/useDragAndDrop.svelte.js';
 
   type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
-  type GroupMetadata = { hasFutureWork: boolean };
+  type GroupMetadata = { hasFutureWork: boolean; hasProposed: boolean; hasInProgress: boolean };
 
   // Row context passed to rowExtras snippet
   export type RowContext = {
@@ -63,6 +63,9 @@
     ) => void;
     onRestoreFeature?: (id: string) => Promise<void>;
     onDeleteFeature?: (id: string) => Promise<void>;
+    onScroll?: (scrollTop: number) => void;
+    hoveredFeatureId?: string | null;
+    onHoverFeature?: (id: string | null) => void;
   }
 
   let {
@@ -83,6 +86,9 @@
     onArchiveFeature,
     onRestoreFeature,
     onDeleteFeature,
+    onScroll,
+    hoveredFeatureId = null,
+    onHoverFeature,
   }: Props = $props();
 
   // Layout constant (matches CSS)
@@ -320,6 +326,31 @@
   export function toggleFilter(state: FilterableState): void {
     activeFilters = featureFilter.toggle(state);
   }
+
+  export function scrollTo(top: number): void {
+    if (treeContentRef) {
+      treeContentRef.scrollTop = top;
+    }
+  }
+
+  function handleScroll() {
+    if (treeContentRef && onScroll) {
+      onScroll(treeContentRef.scrollTop);
+    }
+  }
+
+  function handleMouseOver(e: MouseEvent) {
+    if (!onHoverFeature) return;
+    const target = (e.target as HTMLElement).closest('[data-feature-id]');
+    if (target) {
+      const id = (target as HTMLElement).dataset.featureId!;
+      onHoverFeature(id);
+    }
+  }
+
+  function handleMouseLeave() {
+    onHoverFeature?.(null);
+  }
 </script>
 
 <div
@@ -330,7 +361,6 @@
     <div class="tree-header">
       <span class="tree-title">Feature Tree</span>
     </div>
-
     <div class="tree-subheader">
       <FeatureTreeActions
         {activeFilters}
@@ -351,6 +381,9 @@
       class="tree-content"
       class:scrollable
       bind:this={treeContentRef}
+      onscroll={handleScroll}
+      onmouseover={handleMouseOver}
+      onmouseleave={handleMouseLeave}
       oncontextmenu={handleTreeContextMenu}
       onpointermove={dnd.handlePointerMove}
       onpointerup={dnd.handlePointerUp}
@@ -398,15 +431,19 @@
       {feature}
       {depth}
       isSelected={selectedId === feature.id}
+      isHovered={hoveredFeatureId === feature.id}
       {isExpanded}
       showTrack={!hasChildren && !isRoot}
-      hasFutureWork={groupMeta?.hasFutureWork ?? false}
+      hasProposed={groupMeta?.hasProposed ?? false}
+      hasInProgress={groupMeta?.hasInProgress ?? false}
       isDraggable={!!(onReparent || onCreateGroup) && !isRoot}
       {isDragging}
+      isLongPressActive={dnd.longPressFeatureId === feature.id}
       {onSelect}
       onToggle={handleToggle}
       onContextMenu={handleRowContextMenu}
-      onDragStart={dnd.handleDragStart}
+      onRowPointerDown={dnd.handleRowPointerDown}
+      shouldSuppressClick={dnd.shouldSuppressClick}
     />
     {#if rowExtras}
       {@render rowExtras(rowContext)}
@@ -472,6 +509,7 @@
     padding: 0 12px;
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
   }
 
   .tree-title {

@@ -61,7 +61,7 @@
   <button
     class="nav-row"
     class:active={selectedId === node.id}
-    style="padding-left: {9 + (depth + 1) * 18}px"
+    style="padding-left: {6 + (depth + 1) * 14}px"
     onclick={() => onSelect(node.id)}
   >
     <span class="set-icon"><GroupIcon size={18} /></span>
@@ -121,7 +121,7 @@
     gap: 7px;
     height: 28px;
     min-height: 28px;
-    padding-left: 9px;
+    padding-left: 6px;
     font-size: 14px;
     color: var(--foreground);
     background: transparent;

@@ -17,14 +17,14 @@
   import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
   import { StateIcon } from '$lib/components/icons/index.js';
   import AiChat from '$lib/components/features/AiChat.svelte';
-  import Terminal from '$lib/components/terminal/Terminal.svelte';
-  import { groupVersions } from '$lib/components/versions/versionUtils.js';
+  import TerminalTabs from '$lib/components/terminal/TerminalTabs.svelte';
   import type { VersionSummary } from '@manifest/svelte/commands';
   import {
     sidebarWidth,
     rightSidebarWidth,
     debugEmptyState,
     serverConnection,
+    type DebugEmptyState,
   } from '$lib/stores/index.js';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
@@ -56,6 +56,9 @@
     setTerminalMounted(v: boolean): void;
     toggleTab(): void;
     resetToChat(): void;
+    createTerminalTab(): void;
+    closeTerminalTab(tabId: string): void;
+    selectTerminalTab(tabId: string): void;
   }
 
   const rightPanel = getContext<RightPanelContext>('rightPanel');
@@ -209,9 +212,6 @@
     const leaves = collectLeaves(featureTree);
     return leaves.filter((f) => !f.target_version_id && !f.is_root).length;
   });
-
-  // Grouped versions for secondary header
-  const groupedVersions = $derived(groupVersions(versions));
 
   // --- Data loading ---
 
@@ -789,41 +789,6 @@
   </div>
 {:else}
   <div class="project-layout" class:plan-view={isVersionView}>
-    <!-- Secondary header bar -->
-    <div class="secondary-header">
-      <div class="header-left-section" style="width: {sidebarWidth.value}px"></div>
-      <div class="header-center-section">
-        {#if isVersionView}
-          {#each groupedVersions as group}
-            <div
-              class="header-group-label"
-              style="width: {group.versions.length * 80}px"
-            >
-              {group.label}
-            </div>
-          {/each}
-          <div class="header-group-label" style="width: 80px">Backlog</div>
-        {/if}
-      </div>
-      <div class="header-right-section" style="width: {rightSidebarWidth.value}px">
-        <button
-          class="panel-tab"
-          class:active={rightPanel.activeTab === 'chat'}
-          onclick={() => rightPanel.setActiveTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          class="panel-tab"
-          class:active={rightPanel.activeTab === 'terminal'}
-          onclick={() => rightPanel.setActiveTab('terminal')}
-          title="Cmd+`"
-        >
-          Terminal
-        </button>
-      </div>
-    </div>
-
     <div class="project-columns">
     <!-- Left panel: FeatureTree (always visible) -->
     <aside class="left-panel" style="width: {sidebarWidth.value}px">
@@ -888,7 +853,7 @@
       </div>
       <div class="tab-content" class:hidden={rightPanel.activeTab !== 'terminal'}>
         {#if rightPanel.terminalMounted}
-          <Terminal cwd={primaryDirectoryPath} />
+          <TerminalTabs cwd={primaryDirectoryPath} />
         {/if}
       </div>
     </aside>
@@ -910,6 +875,20 @@
         </div>
       </div>
       <div class="footer-right">
+        {#if import.meta.env.DEV}
+          <select
+            class="debug-select"
+            class:active={debugEmptyState.isActive}
+            value={debugEmptyState.value}
+            onchange={(e: Event) => debugEmptyState.set((e.target as HTMLSelectElement).value as DebugEmptyState)}
+            title="Debug: Test empty states"
+          >
+            <option value="none">Debug</option>
+            <option value="no-projects">No Projects</option>
+            <option value="no-directory">No Directory</option>
+            <option value="no-features">No Features</option>
+          </select>
+        {/if}
         <span class="status-dot" class:disconnected={!serverConnection.connected}></span>
         <span class="status-text">{serverConnection.connected ? 'Server running' : 'Disconnected'}</span>
       </div>
@@ -984,70 +963,15 @@
     );
   }
 
-  /* Secondary header bar */
-  .secondary-header {
-    display: flex;
-    align-items: stretch;
-    height: 36px;
-    background: var(--background-subtle);
-    border-bottom: 1px solid var(--border-default);
-    flex-shrink: 0;
+  /* Panel header (right panel) */
+  /* Hide feature tree scrollbar in plan view — VersionColumns provides the scrollbar */
+  .project-layout.plan-view :global(.tree-content) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  .header-left-section {
-    flex-shrink: 0;
-    border-right: 1px solid var(--border-default);
-  }
-
-  .header-center-section {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .header-group-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--foreground);
-    border-left: 1px solid var(--border-default);
-    flex: none;
-  }
-
-  .header-right-section {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 0 12px;
-    flex-shrink: 0;
-    border-left: 1px solid var(--border-default);
-  }
-
-  .panel-tab {
-    padding: 0 10px;
-    height: 100%;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--foreground-muted);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: color 0.15s ease;
-  }
-
-  .panel-tab:hover {
-    color: var(--foreground);
-  }
-
-  .panel-tab.active {
-    color: var(--foreground);
-    box-shadow: inset 0 -2px 0 var(--accent-blue);
+  .project-layout.plan-view :global(.tree-content::-webkit-scrollbar) {
+    display: none;
   }
 
   .left-panel {
@@ -1075,7 +999,7 @@
     flex-direction: column;
     flex-shrink: 0;
     min-width: 250px;
-    max-width: 800px;
+    max-width: 900px;
     border-left: 1px solid var(--border-default);
     background: var(--background);
     min-height: 0;
@@ -1167,5 +1091,31 @@
     height: 100%;
     color: var(--foreground-subtle);
     font-size: 14px;
+  }
+
+  .debug-select {
+    padding: 2px 20px 2px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    color: var(--foreground-muted);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+  }
+
+  .debug-select:hover {
+    border-color: var(--foreground-subtle);
+    color: var(--foreground);
+  }
+
+  .debug-select.active {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    color: black;
   }
 </style>

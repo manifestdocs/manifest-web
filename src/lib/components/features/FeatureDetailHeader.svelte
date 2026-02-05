@@ -32,7 +32,6 @@
     onCancel: () => void;
     onSave: () => void;
     onDiscardChanges: () => void;
-    onApplyChanges: () => void;
   }
 
   let {
@@ -57,7 +56,6 @@
     onCancel,
     onSave,
     onDiscardChanges,
-    onApplyChanges,
   }: Props = $props();
 
   function formatDate(dateStr: string): string {
@@ -104,6 +102,9 @@
                 {/each}
               </select>
             </div>
+          {/if}
+          {#if hasPendingChanges}
+            <span class="changes-badge">changes</span>
           {/if}
           <span class="meta-item">Updated {formatDate(feature.updated_at)}</span
           >
@@ -236,7 +237,7 @@
       <div class="header-left">
         <h1 class="feature-title">{feature.title}</h1>
         <div class="meta">
-          <span class="diff-badge">Reviewing Changes</span>
+          <span class="diff-badge">Pending Changes</span>
           <span class="meta-item">Updated {formatDate(feature.updated_at)}</span
           >
         </div>
@@ -255,14 +256,6 @@
             disabled={isSaving}
             type="button">Discard</button
           >
-          <button
-            class="btn btn-primary"
-            onclick={onApplyChanges}
-            disabled={isSaving}
-            type="button"
-          >
-            {isSaving ? 'Applying...' : 'Apply Changes'}
-          </button>
         </div>
       </div>
     {/if}
@@ -271,7 +264,7 @@
 
 <style>
   .detail-header {
-    padding: 20px 36px 16px;
+    padding: 20px 26px 16px;
     border-bottom: 1px solid var(--border-default);
   }
 
@@ -299,7 +292,7 @@
     gap: 6px;
     padding: 4px 8px 4px 6px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
   }
 
@@ -358,7 +351,7 @@
   }
 
   .feature-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
     line-height: 1.3;
     margin: 0 0 8px 0;
@@ -367,7 +360,7 @@
   }
 
   .title-input {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
     line-height: 1.3;
     margin: 0 0 8px 0;
@@ -388,7 +381,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--foreground-muted);
   }
 
@@ -400,12 +393,24 @@
     color: var(--border-default);
   }
 
+  .changes-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    background: rgba(210, 153, 34, 0.15);
+    color: #d29922;
+    border: 1px solid rgba(210, 153, 34, 0.3);
+  }
+
   .diff-badge {
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     background: rgba(210, 153, 34, 0.15);
     color: #d29922;

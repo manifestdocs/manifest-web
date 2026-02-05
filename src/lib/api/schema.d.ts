@@ -183,6 +183,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{id}/focus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Get the focused feature for a project */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ProjectId"];
+                };
+                cookie?: never;
+            };
+            responses: {
+                /** @description Focused feature info */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            feature_id: string;
+                            feature_title: string;
+                            feature_state: string;
+                        };
+                    };
+                };
+                /** @description No feature is focused */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        /** Set or clear the focused feature for a project */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ProjectId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        feature_id: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Focus updated */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{id}/directories": {
         parameters: {
             query?: never;

@@ -5,7 +5,9 @@
  * and remote cloud APIs (Gemini, OpenAI-compatible).
  */
 
-import { API_BASE_URL } from './client.js';
+import { getApiBaseUrl } from './client.js';
+
+const API_BASE_URL = getApiBaseUrl();
 
 // ============================================================================
 // Message Types (aligned with ACP ContentBlock patterns)

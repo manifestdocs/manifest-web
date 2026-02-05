@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation';
   import StepIndicator from './StepIndicator.svelte';
 
+
   // Get authenticated API client from context
   const authApi = getAuthApiContext();
 

@@ -140,7 +140,7 @@
 <style>
   .tree-actions {
     display: flex;
-    gap: 4px;
+    gap: 1px;
   }
 
   .action-btn {

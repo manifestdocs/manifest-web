@@ -215,22 +215,6 @@
     activeTab = 'edit';
   }
 
-  async function handleApplyChanges() {
-    if (!feature || !feature.desired_details) return;
-
-    isSaving = true;
-    try {
-      await onSave(feature.id, {
-        details: feature.desired_details,
-        desired_details: null,
-      });
-      activeTab = 'view';
-      diffData = null;
-    } finally {
-      isSaving = false;
-    }
-  }
-
   async function handleDiscardChanges() {
     if (!feature) return;
 
@@ -301,10 +285,9 @@
       onCancel={handleCancel}
       onSave={handleSave}
       onDiscardChanges={handleDiscardChanges}
-      onApplyChanges={handleApplyChanges}
     />
 
-    <div class="detail-content">
+    <div class="detail-content" class:editing={activeTab === 'edit'}>
       {#if activeTab === 'view'}
         <FeatureDetailView
           {feature}
@@ -316,14 +299,10 @@
         />
       {:else if activeTab === 'edit'}
         <FeatureDetailEdit
-          {feature}
           {isRoot}
           {isGroup}
           {editDetails}
-          {unreleasedVersions}
-          {isSavingVersion}
           onDetailsChange={handleDetailsChange}
-          onVersionChange={handleVersionChange}
         />
       {:else}
         <FeatureDetailDiff {diffData} {isLoadingDiff} />
@@ -366,6 +345,13 @@
   .detail-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 36px;
+    padding: 20px 26px;
+  }
+
+  .detail-content.editing {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
   }
 </style>

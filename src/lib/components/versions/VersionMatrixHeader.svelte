@@ -12,10 +12,6 @@
 </script>
 
 <div class="matrix-header">
-  <div class="header-cell feature-header">
-    <span class="feature-title">Feature Tree</span>
-  </div>
-
   {#each groupedVersions as group}
     {@const isGroupClosing = group.versions.some(
       (v) => v.id === closingVersionId,
@@ -55,23 +51,6 @@
     display: flex;
     align-items: center;
     padding: 0 12px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--foreground-muted);
-  }
-
-  .feature-header {
-    flex: 0 0 var(--feature-col-width);
-    min-width: 200px;
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-    padding: 0 12px;
-  }
-
-  .feature-title {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;

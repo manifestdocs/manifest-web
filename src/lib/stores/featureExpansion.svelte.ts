@@ -80,6 +80,20 @@ function hasIncompleteDescendants(node: FeatureTreeNode): boolean {
   return node.children.some((child) => hasIncompleteDescendants(child));
 }
 
+function hasInProgressDescendants(node: FeatureTreeNode): boolean {
+  if (node.children.length === 0) {
+    return node.state === 'in_progress';
+  }
+  return node.children.some((child) => hasInProgressDescendants(child));
+}
+
+function hasProposedDescendants(node: FeatureTreeNode): boolean {
+  if (node.children.length === 0) {
+    return node.state === 'proposed';
+  }
+  return node.children.some((child) => hasProposedDescendants(child));
+}
+
 function getGroupsWithIncompleteWork(nodes: FeatureTreeNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
@@ -213,10 +227,14 @@ function createFeatureExpansionStore() {
     getGroupMetadata(node: FeatureTreeNode): {
       isComplete: boolean;
       hasFutureWork: boolean;
+      hasProposed: boolean;
+      hasInProgress: boolean;
     } {
       return {
         isComplete: isGroupComplete(node),
         hasFutureWork: hasIncompleteDescendants(node),
+        hasProposed: hasProposedDescendants(node),
+        hasInProgress: hasInProgressDescendants(node),
       };
     },
 

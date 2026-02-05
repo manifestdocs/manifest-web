@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'manifest-sidebar-width';
-const DEFAULT_WIDTH = 350;
+const DEFAULT_WIDTH = 270;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 500;
 

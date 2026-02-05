@@ -10,7 +10,7 @@
 </script>
 
 {#if !serverConnection.connected}
-  <InfoBanner variant="warning" {spacerWidth}>
+  <InfoBanner variant={serverConnection.startupError ? 'error' : 'warning'} {spacerWidth}>
     {#snippet icon()}
       <svg
         width="16"
@@ -22,24 +22,37 @@
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M12 2v4" />
-        <path d="m16.24 7.76-2.12 2.12" />
-        <path d="M20 12h-4" />
-        <path d="m16.24 16.24-2.12-2.12" />
-        <path d="M12 18v4" />
-        <path d="m7.76 16.24 2.12-2.12" />
-        <path d="M4 12h4" />
-        <path d="m7.76 7.76 2.12 2.12" />
+        {#if serverConnection.startupError}
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        {:else}
+          <path d="M12 2v4" />
+          <path d="m16.24 7.76-2.12 2.12" />
+          <path d="M20 12h-4" />
+          <path d="m16.24 16.24-2.12-2.12" />
+          <path d="M12 18v4" />
+          <path d="m7.76 16.24 2.12-2.12" />
+          <path d="M4 12h4" />
+          <path d="m7.76 7.76 2.12 2.12" />
+        {/if}
       </svg>
     {/snippet}
-    <span class="reconnecting-text">
-      Reconnecting to server<span class="dots"></span>
-    </span>
+    {#if serverConnection.startupError}
+      <span class="error-text">
+        Server failed to start: {serverConnection.startupError}
+      </span>
+    {:else}
+      <span class="reconnecting-text">
+        Reconnecting to server<span class="dots"></span>
+      </span>
+    {/if}
   </InfoBanner>
 {/if}
 
 <style>
-  .reconnecting-text {
+  .reconnecting-text,
+  .error-text {
     font-weight: 500;
   }
 

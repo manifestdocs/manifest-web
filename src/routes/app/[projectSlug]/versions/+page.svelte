@@ -97,7 +97,6 @@
     expandedIds={ctx.expandedIds}
     activeFilters={ctx.activeFilters}
     treeScrollTop={ctx.treeScrollTop}
-    showHeader={false}
     onCreateVersion={handleCreateVersion}
     onUpdateFeatureVersion={handleUpdateFeatureVersion}
     onCompleteVersion={handleCompleteVersion}

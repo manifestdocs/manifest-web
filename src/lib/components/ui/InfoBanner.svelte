@@ -5,7 +5,7 @@
     children: Snippet;
     icon?: Snippet;
     spacerWidth?: string;
-    variant?: 'info' | 'warning';
+    variant?: 'info' | 'warning' | 'error';
     class?: string;
   }
 
@@ -99,5 +99,14 @@
 
   .info-banner[data-variant='warning'] .banner-icon {
     color: var(--state-proposed);
+  }
+
+  .info-banner[data-variant='error'] .banner-content {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--foreground);
+  }
+
+  .info-banner[data-variant='error'] .banner-icon {
+    color: #f85149;
   }
 </style>

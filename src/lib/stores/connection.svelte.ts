@@ -1,6 +1,7 @@
 /**
  * Reactive connection state store.
- * Tracks whether the server is reachable and triggers reconnection polling.
+ * Tracks whether the server is reachable, surfaces startup errors,
+ * and triggers reconnection polling.
  */
 
 import { API_BASE_URL } from '$lib/api/client.js';
@@ -10,6 +11,7 @@ const POLL_INTERVAL_MS = 2000;
 function createConnectionStore() {
   let connected = $state(true);
   let polling = $state(false);
+  let startupError = $state<string | null>(null);
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   function setDisconnected() {
@@ -20,7 +22,14 @@ function createConnectionStore() {
 
   function setConnected() {
     connected = true;
+    startupError = null;
     stopPolling();
+  }
+
+  function setStartupError(message: string) {
+    startupError = message;
+    connected = false;
+    startPolling();
   }
 
   function startPolling() {
@@ -53,8 +62,12 @@ function createConnectionStore() {
     get connected() {
       return connected;
     },
+    get startupError() {
+      return startupError;
+    },
     setDisconnected,
     setConnected,
+    setStartupError,
   };
 }
 
