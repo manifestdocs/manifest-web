@@ -63,6 +63,7 @@
   let rightPanelTab = $state<'chat' | 'terminal'>('chat');
   let terminalMounted = $state(false);
   let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
+  let attentionTabIds = $state<Set<string>>(new Set());
 
   function createTerminalTab() {
     if (terminalTabs.length >= MAX_TERMINAL_TABS) return;
@@ -114,6 +115,18 @@
     activeTerminalTabId = tabId;
     rightPanelTab = 'terminal';
     if (!terminalMounted) terminalMounted = true;
+    // Clear attention when tab is selected
+    if (attentionTabIds.has(tabId)) {
+      attentionTabIds = new Set([...attentionTabIds].filter(id => id !== tabId));
+    }
+  }
+
+  function markTerminalAttention(tabId: string) {
+    // Only mark attention if tab is not currently active and visible
+    const isActiveAndVisible = rightPanelTab === 'terminal' && activeTerminalTabId === tabId;
+    if (!isActiveAndVisible && !attentionTabIds.has(tabId)) {
+      attentionTabIds = new Set([...attentionTabIds, tabId]);
+    }
   }
 
   setContext('rightPanel', {
@@ -138,10 +151,12 @@
       terminalTabs = [newTab];
       activeTerminalTabId = newTab.id;
       nextTerminalNumber = 2;
+      attentionTabIds = new Set();
     },
     createTerminalTab,
     closeTerminalTab,
     selectTerminalTab,
+    markTerminalAttention,
   });
 
   // Debug state change handler
@@ -347,6 +362,7 @@
               <div
                 class="panel-tab terminal-tab"
                 class:active={rightPanelTab === 'terminal' && activeTerminalTabId === tab.id}
+                class:needs-attention={attentionTabIds.has(tab.id)}
               >
                 <button
                   class="terminal-tab-label"
@@ -720,6 +736,20 @@
   .panel-tab.active {
     background: rgba(156, 220, 254, 0.2);
     color: var(--state-implemented);
+  }
+
+  .panel-tab.terminal-tab.needs-attention {
+    background: rgba(210, 153, 34, 0.25);
+    color: #e3b341;
+  }
+
+  .panel-tab.terminal-tab.needs-attention:not(.active) {
+    animation: attention-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes attention-pulse {
+    0%, 100% { background: rgba(210, 153, 34, 0.25); }
+    50% { background: rgba(210, 153, 34, 0.4); }
   }
 
   .panel-tab.terminal-tab {

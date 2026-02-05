@@ -24,6 +24,7 @@
     createTerminalTab(): void;
     closeTerminalTab(tabId: string): void;
     selectTerminalTab(tabId: string): void;
+    markTerminalAttention(tabId: string): void;
   }
 
   let { cwd }: Props = $props();
@@ -35,7 +36,7 @@
   <div class="terminals">
     {#each rightPanel.terminalTabs as tab (tab.id)}
       <div class="terminal-pane" class:active={rightPanel.activeTerminalTabId === tab.id}>
-        <Terminal {cwd} initialInput={tab.initialInput} />
+        <Terminal {cwd} initialInput={tab.initialInput} onBell={() => rightPanel.markTerminalAttention(tab.id)} />
       </div>
     {/each}
   </div>

@@ -2,10 +2,18 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import { WebglAddon } from '@xterm/addon-webgl';
+  import { WebLinksAddon } from '@xterm/addon-web-links';
   import { getWsBaseUrl } from '$lib/api/client.js';
   import '@xterm/xterm/css/xterm.css';
 
-  let { class: className = '', cwd, initialInput }: { class?: string; cwd?: string; initialInput?: string } = $props();
+  interface Props {
+    class?: string;
+    cwd?: string;
+    initialInput?: string;
+    onBell?: () => void;
+  }
+
+  let { class: className = '', cwd, initialInput, onBell }: Props = $props();
 
   function terminalInit(node: HTMLElement) {
     const term = new Terminal({
@@ -49,6 +57,10 @@
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(node);
+
+    // Web links addon — Cmd+click (Mac) or Ctrl+click opens URLs
+    const webLinksAddon = new WebLinksAddon();
+    term.loadAddon(webLinksAddon);
 
     // WebGL addon for smooth rendering — fallback to canvas
     try {
@@ -151,10 +163,16 @@
     });
     resizeObserver.observe(node);
 
+    // Terminal bell — notify parent when process requests attention
+    const bellDisposable = term.onBell(() => {
+      onBell?.();
+    });
+
     return {
       destroy() {
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
         dataDisposable.dispose();
+        bellDisposable.dispose();
         resizeObserver.disconnect();
         if (ws) {
           ws.close();
