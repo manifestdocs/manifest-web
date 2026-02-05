@@ -42,7 +42,7 @@
     display: flex;
     align-items: center;
     height: 36px;
-    background: var(--background-subtle);
+    background: var(--background);
     border-bottom: 1px solid var(--border-default);
     overflow: hidden;
   }
@@ -64,7 +64,7 @@
     align-self: stretch;
     justify-content: center;
     text-align: center;
-    border-left: 1px solid var(--border-default);
+    border-left: none;
     flex: none;
     transition:
       width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -82,11 +82,11 @@
   }
 
   .backlog-header {
-    border-right: 1px solid var(--border-default);
+    border-right: none;
   }
 
   .group-header:has(+ .add-version-btn) {
-    border-right: 1px solid var(--border-default);
+    border-right: none;
   }
 
   .group-label {

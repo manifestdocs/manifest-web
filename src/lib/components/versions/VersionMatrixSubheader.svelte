@@ -92,12 +92,12 @@
   }
 
   .version-name.group-start {
-    border-left: 1px solid var(--border-default);
+    border-left: 1px solid var(--border-subtle);
   }
 
   .version-name:last-child,
   .version-name.backlog-name {
-    border-right: 1px solid var(--border-default);
+    border-right: 1px solid var(--border-subtle);
   }
 
   .version-name.zebra {

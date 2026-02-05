@@ -207,7 +207,7 @@
   }
 
   .col-bg.version-col.group-start {
-    border-left: 1px solid var(--border-default);
+    border-left: 1px solid var(--border-subtle);
   }
 
   .col-bg.version-col.zebra {
@@ -215,7 +215,7 @@
   }
 
   .col-bg.version-col:last-child {
-    border-right: 1px solid var(--border-default);
+    border-right: 1px solid var(--border-subtle);
   }
 
   .version-columns-scroll {

@@ -246,7 +246,7 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    border-left: 1px solid var(--border-default);
+    border-left: 1px solid var(--border-subtle);
     min-height: 32px;
   }
 
