@@ -87,16 +87,12 @@
   {#if isRoot}
     <span class="project-icon"><BookIcon size={16} /></span>
   {:else if hasChildren}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <span
+    <button
+      type="button"
       class="toggle-btn"
       onclick={handleToggleClick}
-      onkeydown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleToggleClick(e);
-        }
-      }}
+      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+      tabindex={-1}
     >
       <svg
         class="chevron"
@@ -114,7 +110,7 @@
           stroke-linejoin="round"
         />
       </svg>
-    </span>
+    </button>
     <span class="set-icon"><GroupIcon size={18} /></span>
   {:else}
     <span class="toggle-spacer"></span>
@@ -217,6 +213,9 @@
     justify-content: center;
     width: 18px;
     height: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
     cursor: pointer;
     color: var(--foreground-subtle);
     flex-shrink: 0;

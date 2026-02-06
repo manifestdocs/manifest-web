@@ -267,6 +267,7 @@
               value={selectedProjectSlug}
               onchange={handleProjectChange}
               disabled={isLoadingProjects}
+              aria-label="Select project"
             >
               {#if isLoadingProjects}
                 <option value="">Loading...</option>
@@ -282,6 +283,7 @@
               class="icon-btn"
               onclick={() => (settingsDialogOpen = true)}
               title="Settings"
+              aria-label="Settings"
             >
               <SettingsIcon size={16} />
             </button>
@@ -289,6 +291,7 @@
               class="icon-btn"
               onclick={() => (newProjectWizardOpen = true)}
               title="New project"
+              aria-label="New project"
             >
               <PlusIcon size={16} />
             </button>
@@ -343,6 +346,7 @@
                   class="terminal-tab-close"
                   onclick={(e: MouseEvent) => { e.stopPropagation(); closeTerminalTab(tab.id); }}
                   title="Close terminal"
+                  aria-label="Close terminal"
                 >
                   <CloseIcon size={10} />
                 </button>
@@ -353,6 +357,7 @@
               onclick={() => createTerminalTab()}
               disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
               title="New terminal (Cmd+`)"
+              aria-label="New terminal"
             >
               <PlusIcon size={12} />
             </button>

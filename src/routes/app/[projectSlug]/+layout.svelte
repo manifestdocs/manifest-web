@@ -15,6 +15,7 @@
     WelcomeScreen,
   } from '$lib/components/projects/index.js';
   import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
+  import InfoBanner from '$lib/components/ui/InfoBanner.svelte';
   import { StateIcon } from '$lib/components/icons/index.js';
   import TerminalTabs from '$lib/components/terminal/TerminalTabs.svelte';
   import type { VersionSummary } from '@manifest/svelte/commands';
@@ -70,6 +71,7 @@
   let hasDirectories = $state<boolean | null>(null);
   let isLoadingFeatures = $state(false);
   let isLoadingFeature = $state(false);
+  let loadError = $state<string | null>(null);
 
   // Dialog state
   let createDialogOpen = $state(false);
@@ -321,9 +323,11 @@
       });
       if (error || !data) {
         console.error('Failed to load features:', error);
+        loadError = 'Failed to load features. Check that the server is running.';
         featureTree = [];
         return;
       }
+      loadError = null;
       featureTree = data;
 
       // Auto-select first feature if none selected
@@ -856,8 +860,16 @@
     <div class="project-columns">
       <!-- Left panel: FeatureTree (always visible) -->
       <aside class="left-panel" style="width: {sidebarWidth.value}px">
-        {#if isLoadingFeatures && featureTree.length === 0}
-          <div class="loading-state">Loading features...</div>
+        {#if loadError}
+          <div class="error-state">
+            <p class="error-message">{loadError}</p>
+            <button class="btn btn-secondary" onclick={() => projectId && loadFeatureTree(projectId)}>Retry</button>
+          </div>
+        {:else if isLoadingFeatures && featureTree.length === 0}
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Loading features...</span>
+          </div>
         {:else}
           <FeatureTree
             bind:this={featureTreeRef}
@@ -1141,11 +1153,45 @@
 
   .loading-state {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
+    gap: 12px;
     color: var(--foreground-subtle);
     font-size: 14px;
+  }
+
+  .loading-state .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-default);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .error-message {
+    color: var(--accent-red);
+    font-size: 13px;
+    margin: 0;
   }
 
   .debug-select {

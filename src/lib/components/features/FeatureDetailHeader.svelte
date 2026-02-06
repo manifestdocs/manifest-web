@@ -98,6 +98,7 @@
                 onchange={(e) =>
                   onStateChange(e.currentTarget.value as FeatureState)}
                 disabled={isSaving}
+                aria-label="Feature state"
               >
                 {#each stateOptions as opt}
                   <option value={opt.value}>{opt.label}</option>
@@ -195,6 +196,7 @@
             value={editTitle}
             oninput={(e) => onEditTitleChange(e.currentTarget.value)}
             placeholder="Feature title"
+            aria-label="Feature title"
           />
         {/if}
         <div class="meta">
@@ -272,7 +274,7 @@
 <style>
   .detail-header {
     box-sizing: border-box;
-    height: 91px;
+    min-height: 91px;
     padding: 20px 21px 0 26px;
     border-bottom: 1px solid var(--border-default);
   }
@@ -355,8 +357,10 @@
     outline: none;
   }
 
-  .state-select:focus {
-    text-decoration: underline;
+  .state-select:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 
   .feature-title {
@@ -454,78 +458,5 @@
     font-size: 13px;
   }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    border: 1px solid transparent;
-    height: 32px;
-  }
-
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--accent-green);
-    color: #0d1117;
-    border-color: var(--accent-green);
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--foreground);
-    border-color: var(--border-default);
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--background-muted);
-  }
-
-  .btn-danger {
-    background: var(--accent-red);
-    color: white;
-    border-color: var(--accent-red);
-  }
-
-  .btn-warning {
-    background: #d29922;
-    color: white;
-    border-color: #d29922;
-  }
-
-  .btn-warning:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  .btn-warning-subtle {
-    background: transparent;
-    color: #d29922;
-    border-color: rgba(210, 153, 34, 0.4);
-  }
-
-  .btn-warning-subtle:hover:not(:disabled) {
-    background: rgba(210, 153, 34, 0.1);
-  }
-
-  .btn-agent {
-    background: var(--accent-blue, #58a6ff);
-    color: #0d1117;
-    border-color: var(--accent-blue, #58a6ff);
-  }
-
-  .btn-agent:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
+  /* Button styles are global from dialog.css */
 </style>

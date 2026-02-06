@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { PlusIcon } from '$lib/components/icons/index.js';
+
   interface Props {
     open: boolean;
     x: number;
@@ -68,11 +70,11 @@
 </script>
 
 {#if open}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="context-menu-backdrop"
     onclick={handleClickOutside}
     onkeydown={handleKeydown}
+    role="presentation"
   >
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
@@ -146,14 +148,7 @@
             role="menuitem"
             onclick={handleAddChild}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M8 3V13M3 8H13"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
+            <PlusIcon size={14} />
             <span>{featureTitle ? 'Add Child Feature' : 'Add Feature'}</span>
           </button>
         {/if}

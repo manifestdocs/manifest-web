@@ -95,12 +95,14 @@
 
 <div class="markdown-editor">
   <div class="editor-header">
-    <div class="tabs">
+    <div class="tabs" role="tablist">
       <button
         type="button"
         class="tab"
         class:active={activeTab === 'write'}
         onclick={() => (activeTab = 'write')}
+        role="tab"
+        aria-selected={activeTab === 'write'}
       >
         Write
       </button>
@@ -109,6 +111,8 @@
         class="tab"
         class:active={activeTab === 'preview'}
         onclick={() => (activeTab = 'preview')}
+        role="tab"
+        aria-selected={activeTab === 'preview'}
       >
         Preview
       </button>
@@ -120,6 +124,7 @@
           type="button"
           class="toolbar-btn"
           title="Heading (Ctrl+Shift+H)"
+          aria-label="Heading"
           onclick={() => insertLinePrefix('## ')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -132,6 +137,7 @@
           type="button"
           class="toolbar-btn"
           title="Bold (Ctrl+B)"
+          aria-label="Bold"
           onclick={() => insertAtCursor('**', '**')}
         >
           <svg
@@ -150,6 +156,7 @@
           type="button"
           class="toolbar-btn"
           title="Italic (Ctrl+I)"
+          aria-label="Italic"
           onclick={() => insertAtCursor('_', '_')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -165,6 +172,7 @@
           type="button"
           class="toolbar-btn"
           title="Quote"
+          aria-label="Quote"
           onclick={() => insertLinePrefix('> ')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -177,6 +185,7 @@
           type="button"
           class="toolbar-btn"
           title="Code"
+          aria-label="Code"
           onclick={() => insertAtCursor('`', '`')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -189,6 +198,7 @@
           type="button"
           class="toolbar-btn"
           title="Link (Ctrl+K)"
+          aria-label="Link"
           onclick={() => insertAtCursor('[', '](url)')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -204,6 +214,7 @@
           type="button"
           class="toolbar-btn"
           title="Bulleted list"
+          aria-label="Bulleted list"
           onclick={() => insertLinePrefix('- ')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -216,6 +227,7 @@
           type="button"
           class="toolbar-btn"
           title="Numbered list"
+          aria-label="Numbered list"
           onclick={() => insertLinePrefix('1. ')}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -228,6 +240,7 @@
           type="button"
           class="toolbar-btn"
           title="Task list"
+          aria-label="Task list"
           onclick={() => insertLinePrefix('- [ ] ')}
         >
           <svg
@@ -260,6 +273,7 @@
         {value}
         oninput={handleInput}
         onkeydown={handleKeydown}
+        aria-label="Markdown editor"
       ></textarea>
     {:else}
       <div class="editor-preview prose">

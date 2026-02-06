@@ -82,27 +82,11 @@
     margin: 0 0 24px;
   }
 
+  /* Button styles are global from dialog.css.
+     Only override padding for this larger CTA context. */
   .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     padding: 10px 20px;
     font-size: 14px;
-    font-weight: 500;
-    border-radius: 2px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .btn-primary {
-    background: var(--accent-green);
-    color: #000;
-    border-color: var(--accent-green);
-  }
-
-  .btn-primary:hover {
-    filter: brightness(1.1);
   }
 
   .guide-hint {
