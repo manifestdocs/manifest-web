@@ -20,6 +20,14 @@
 
   let { class: className = '', cwd, initialInput, isActive = false, onBell, onIdle, onReady }: Props = $props();
 
+  let termRef: Terminal | null = null;
+
+  $effect(() => {
+    if (isActive && termRef) {
+      termRef.focus();
+    }
+  });
+
   function terminalInit(node: HTMLElement) {
     const term = new Terminal({
       cursorBlink: true,
@@ -77,6 +85,7 @@
     }
 
     fitAddon.fit();
+    termRef = term;
     term.focus();
 
     // Cmd+C copies selected text instead of sending SIGINT.
@@ -190,6 +199,7 @@
           ws.close();
           ws = null;
         }
+        termRef = null;
         term.dispose();
       },
     };

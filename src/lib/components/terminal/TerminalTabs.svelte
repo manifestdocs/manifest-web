@@ -97,6 +97,7 @@
         <Terminal
           {cwd}
           initialInput={tab.initialInput}
+          isActive={rightPanel.activeTerminalTabId === tab.id}
           onBell={() => rightPanel.markTerminalAttention(tab.id)}
           onReady={(send) => handleReady(tab.id, send)}
         />
