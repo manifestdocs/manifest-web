@@ -82,7 +82,7 @@
           <textarea
             id="feature-details"
             class="form-textarea"
-            placeholder="User stories, implementation notes..."
+            placeholder="Specification, constraints, key interfaces... (title is already shown above — don't repeat it here)"
             rows="3"
             bind:value={details}
             disabled={isCreating}
