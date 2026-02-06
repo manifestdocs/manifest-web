@@ -38,50 +38,29 @@ export function getDescendantIds(node: FeatureTreeNode): Set<string> {
 }
 
 /**
- * Check if a node or any of its descendants has proposed state.
- */
-export function hasProposedDescendant(node: FeatureTreeNode): boolean {
-  if (node.state === 'proposed') return true;
-  return node.children.some(hasProposedDescendant);
-}
-
-/**
- * Filter features to only show proposed features and groups containing proposed.
- */
-export function filterProposed(nodes: FeatureTreeNode[]): FeatureTreeNode[] {
-  return nodes
-    .filter((node) => hasProposedDescendant(node))
-    .map((node) => ({
-      ...node,
-      children: filterProposed(node.children),
-    }));
-}
-
-/**
- * Check if a node or any of its descendants matches one of the given states.
- */
-export function hasDescendantWithState(
-  node: FeatureTreeNode,
-  states: Set<string>,
-): boolean {
-  if (states.has(node.state)) return true;
-  return node.children.some((child) => hasDescendantWithState(child, states));
-}
-
-/**
- * Filter features to only show features matching any of the given states,
- * plus groups containing matching descendants.
+ * Filter features to only show leaf nodes matching any of the given states,
+ * plus ancestor groups that contain matching leaves.
+ *
+ * Groups (nodes with children) are included only when they contain matching
+ * descendants — the group's own state is irrelevant. This prevents a group
+ * from appearing as a leaf when its children are all filtered out.
  */
 export function filterByStates(
   nodes: FeatureTreeNode[],
   states: Set<string>,
 ): FeatureTreeNode[] {
   return nodes
-    .filter((node) => hasDescendantWithState(node, states))
-    .map((node) => ({
-      ...node,
-      children: filterByStates(node.children, states),
-    }));
+    .map((node) => {
+      if (node.children.length > 0) {
+        // Group: include only if it has matching descendants
+        const filteredChildren = filterByStates(node.children, states);
+        if (filteredChildren.length === 0) return null;
+        return { ...node, children: filteredChildren };
+      }
+      // Leaf: include only if its own state matches
+      return states.has(node.state) ? node : null;
+    })
+    .filter((node): node is FeatureTreeNode => node !== null);
 }
 
 /**
