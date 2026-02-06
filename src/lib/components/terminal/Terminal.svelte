@@ -10,11 +10,15 @@
     class?: string;
     cwd?: string;
     initialInput?: string;
+    isActive?: boolean;
     onBell?: () => void;
+    onIdle?: () => void;
     onReady?: (send: (text: string) => void) => void;
   }
 
-  let { class: className = '', cwd, initialInput, onBell, onReady }: Props = $props();
+  const IDLE_TIMEOUT_MS = 3000;
+
+  let { class: className = '', cwd, initialInput, isActive = false, onBell, onIdle, onReady }: Props = $props();
 
   function terminalInit(node: HTMLElement) {
     const term = new Terminal({
@@ -73,6 +77,7 @@
     }
 
     fitAddon.fit();
+    term.focus();
 
     // Cmd+C copies selected text instead of sending SIGINT.
     // Cmd+V pastes from clipboard into the terminal.
