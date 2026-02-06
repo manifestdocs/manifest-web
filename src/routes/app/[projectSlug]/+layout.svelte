@@ -222,11 +222,16 @@
 
   // --- Data loading ---
 
-  // Reset terminals when project changes (terminal remounts with new CWD)
+  // Reset terminals when project changes.
+  // Setting hasDirectories=null unmounts TerminalTabs (closing all WebSockets),
+  // then resetTerminals() creates a single fresh tab. When loadDirectories()
+  // completes, TerminalTabs remounts with the new project's CWD.
   let prevProjectId: string | undefined = undefined;
   $effect(() => {
     const pid = projectId;
     if (prevProjectId !== undefined && pid !== prevProjectId) {
+      hasDirectories = null;
+      primaryDirectoryPath = undefined;
       rightPanel.resetTerminals();
     }
     prevProjectId = pid;
