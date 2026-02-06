@@ -50,7 +50,11 @@
   // Right panel context — state lives in app layout
   interface RightPanelContext {
     resetTerminals(): void;
-    createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }): void;
+    createTerminalTab(opts?: {
+      label?: string;
+      initialInput?: string;
+      featureId?: string;
+    }): void;
     closeTerminalTab(tabId: string): void;
     selectTerminalTab(tabId: string): void;
   }
@@ -112,12 +116,12 @@
   );
   const projectId = $derived(project?.id);
   const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
-  const acFormat = $derived((project as any)?.ac_format as 'checkbox' | 'gherkin' | undefined);
+  const acFormat = $derived(
+    (project as any)?.ac_format as 'checkbox' | 'gherkin' | undefined,
+  );
 
   // Derive whether we're on the versions (plan) route
-  const isVersionView = $derived(
-    page.url.pathname.endsWith('/versions'),
-  );
+  const isVersionView = $derived(page.url.pathname.endsWith('/versions'));
 
   // Derive feature node info from tree
   const selectedNode = $derived(
@@ -132,17 +136,13 @@
     selectedNode ? selectedNode.children.length : 0,
   );
 
-  const selectedFeatureParentId = $derived(
-    selectedNode?.parent_id ?? null,
-  );
+  const selectedFeatureParentId = $derived(selectedNode?.parent_id ?? null);
 
   const isSelectedLeaf = $derived(
     selectedNode ? selectedNode.children.length === 0 : true,
   );
 
-  const isSelectedRoot = $derived(
-    selectedNode?.is_root ?? false,
-  );
+  const isSelectedRoot = $derived(selectedNode?.is_root ?? false);
 
   // Merge is_root from tree node into selectedFeature
   const selectedFeatureWithRoot = $derived.by(() => {
@@ -201,6 +201,17 @@
 
   const nextVersion = $derived(versions.find((v) => !v.released_at));
   const nextVersionName = $derived(nextVersion?.name);
+
+  // Check if "Next" version is feature complete (all targeted leaves are implemented)
+  const isNowFeatureComplete = $derived.by(() => {
+    if (!nextVersion) return false;
+    const leaves = collectLeaves(featureTree);
+    const nextVersionFeatures = leaves.filter(
+      (f) => f.target_version_id === nextVersion.id,
+    );
+    if (nextVersionFeatures.length === 0) return false;
+    return nextVersionFeatures.every((f) => f.state === 'implemented');
+  });
 
   const unassignedFeatureCount = $derived.by(() => {
     const leaves = collectLeaves(featureTree);
@@ -760,24 +771,58 @@
 
   // --- Provide context to child routes ---
   setContext('projectData', {
-    get featureTree() { return featureTree; },
-    get selectedFeature() { return selectedFeatureWithRoot; },
-    get selectedFeatureId() { return selectedFeatureId; },
-    get selectedFeatureIsGroup() { return selectedFeatureIsGroup; },
-    get versions() { return versions; },
-    get projectId() { return projectId; },
-    get projectSlug() { return projectSlug; },
-    get gitRemote() { return gitRemote; },
-    get isLoadingFeatures() { return isLoadingFeatures; },
-    get isLoadingFeature() { return isLoadingFeature; },
-    get isProjectEmpty() { return isProjectEmpty; },
-    get acFormat() { return acFormat; },
-    get treeScrollTop() { return treeScrollTop; },
-    get expandedIds() { return featureTreeRef?.getExpandedIds() ?? new Set<string>(); },
-    get activeFilters() { return featureTreeRef?.getActiveFilters() ?? new Set(); },
-    get hoveredFeatureId() { return hoveredFeatureId; },
-    loadFeatureTree: () => projectId ? loadFeatureTree(projectId) : Promise.resolve(),
-    loadVersions: () => projectId ? loadVersions(projectId) : Promise.resolve(),
+    get featureTree() {
+      return featureTree;
+    },
+    get selectedFeature() {
+      return selectedFeatureWithRoot;
+    },
+    get selectedFeatureId() {
+      return selectedFeatureId;
+    },
+    get selectedFeatureIsGroup() {
+      return selectedFeatureIsGroup;
+    },
+    get versions() {
+      return versions;
+    },
+    get projectId() {
+      return projectId;
+    },
+    get projectSlug() {
+      return projectSlug;
+    },
+    get gitRemote() {
+      return gitRemote;
+    },
+    get isLoadingFeatures() {
+      return isLoadingFeatures;
+    },
+    get isLoadingFeature() {
+      return isLoadingFeature;
+    },
+    get isProjectEmpty() {
+      return isProjectEmpty;
+    },
+    get acFormat() {
+      return acFormat;
+    },
+    get treeScrollTop() {
+      return treeScrollTop;
+    },
+    get expandedIds() {
+      return featureTreeRef?.getExpandedIds() ?? new Set<string>();
+    },
+    get activeFilters() {
+      return featureTreeRef?.getActiveFilters() ?? new Set();
+    },
+    get hoveredFeatureId() {
+      return hoveredFeatureId;
+    },
+    loadFeatureTree: () =>
+      projectId ? loadFeatureTree(projectId) : Promise.resolve(),
+    loadVersions: () =>
+      projectId ? loadVersions(projectId) : Promise.resolve(),
     handleSelectFeature,
     handleSaveFeature,
     handleVersionChange,
@@ -794,7 +839,9 @@
     handleHoverFeature,
     handleExpandAll: () => featureTreeRef?.expandAll(),
     handleCollapseAll: () => featureTreeRef?.collapseAll(),
-    handleToggleFilter: (state: import('$lib/stores/featureFilter.svelte.js').FilterableState) => featureTreeRef?.toggleFilter(state),
+    handleToggleFilter: (
+      state: import('$lib/stores/featureFilter.svelte.js').FilterableState,
+    ) => featureTreeRef?.toggleFilter(state),
   });
 </script>
 
@@ -807,57 +854,58 @@
 {:else}
   <div class="project-layout" class:plan-view={isVersionView}>
     <div class="project-columns">
-    <!-- Left panel: FeatureTree (always visible) -->
-    <aside class="left-panel" style="width: {sidebarWidth.value}px">
-      {#if isLoadingFeatures && featureTree.length === 0}
-        <div class="loading-state">Loading features...</div>
-      {:else}
-        <FeatureTree
-          bind:this={featureTreeRef}
-          features={featureTree}
-          selectedId={selectedFeatureId}
-          projectId={projectId!}
-          featureColumnWidth={sidebarWidth.value}
-          onSelect={handleSelectFeature}
-          onAddFeature={handleOpenCreateDialog}
-          onReparent={handleReparentFeature}
-          onCreateGroup={handleCreateGroup}
-          onWrapInGroup={handleOpenWrapDialog}
-          onArchiveFeature={handleOpenArchiveDialog}
-          onRestoreFeature={handleRestoreFeature}
-          onDeleteFeature={handleDeleteFeature}
-          onScroll={handleTreeScroll}
-          {hoveredFeatureId}
-          onHoverFeature={handleHoverFeature}
-        />
-      {/if}
-    </aside>
-
-    <ResizeDivider onResize={handleResize} />
-
-    <!-- Center column: content -->
-    <div class="center-column">
-      {@render children()}
-    </div>
-
-    <!-- Right panel: Terminal -->
-    <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-      <div
-        class="right-resize-handle"
-        class:resizing={isResizingRight}
-        onpointerdown={handleRightResizeStart}
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize right panel"
-        tabindex="0"
-      ></div>
-      <div class="tab-content">
-        {#if hasDirectories !== null}
-          <TerminalTabs cwd={primaryDirectoryPath} />
+      <!-- Left panel: FeatureTree (always visible) -->
+      <aside class="left-panel" style="width: {sidebarWidth.value}px">
+        {#if isLoadingFeatures && featureTree.length === 0}
+          <div class="loading-state">Loading features...</div>
+        {:else}
+          <FeatureTree
+            bind:this={featureTreeRef}
+            features={featureTree}
+            selectedId={selectedFeatureId}
+            projectId={projectId!}
+            featureColumnWidth={sidebarWidth.value}
+            showBannerSpacer={isVersionView && isNowFeatureComplete}
+            onSelect={handleSelectFeature}
+            onAddFeature={handleOpenCreateDialog}
+            onReparent={handleReparentFeature}
+            onCreateGroup={handleCreateGroup}
+            onWrapInGroup={handleOpenWrapDialog}
+            onArchiveFeature={handleOpenArchiveDialog}
+            onRestoreFeature={handleRestoreFeature}
+            onDeleteFeature={handleDeleteFeature}
+            onScroll={handleTreeScroll}
+            {hoveredFeatureId}
+            onHoverFeature={handleHoverFeature}
+          />
         {/if}
+      </aside>
+
+      <ResizeDivider onResize={handleResize} />
+
+      <!-- Center column: content -->
+      <div class="center-column">
+        {@render children()}
       </div>
-    </aside>
+
+      <!-- Right panel: Terminal -->
+      <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="right-resize-handle"
+          class:resizing={isResizingRight}
+          onpointerdown={handleRightResizeStart}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize right panel"
+          tabindex="0"
+        ></div>
+        <div class="tab-content">
+          {#if hasDirectories !== null}
+            <TerminalTabs cwd={primaryDirectoryPath} />
+          {/if}
+        </div>
+      </aside>
     </div>
 
     <footer class="app-footer">
@@ -881,7 +929,10 @@
             class="debug-select"
             class:active={debugEmptyState.isActive}
             value={debugEmptyState.value}
-            onchange={(e: Event) => debugEmptyState.set((e.target as HTMLSelectElement).value as DebugEmptyState)}
+            onchange={(e: Event) =>
+              debugEmptyState.set(
+                (e.target as HTMLSelectElement).value as DebugEmptyState,
+              )}
             title="Debug: Test empty states"
           >
             <option value="none">Debug</option>
@@ -890,8 +941,15 @@
             <option value="no-features">No Features</option>
           </select>
         {/if}
-        <span class="status-dot" class:disconnected={!serverConnection.connected}></span>
-        <span class="status-text">{serverConnection.connected ? 'Server running' : 'Disconnected'}</span>
+        <span
+          class="status-dot"
+          class:disconnected={!serverConnection.connected}
+        ></span>
+        <span class="status-text"
+          >{serverConnection.connected
+            ? 'Server running'
+            : 'Disconnected'}</span
+        >
       </div>
     </footer>
   </div>

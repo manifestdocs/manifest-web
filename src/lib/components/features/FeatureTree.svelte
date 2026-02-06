@@ -17,7 +17,11 @@
   import { useDragAndDrop } from '$lib/composables/useDragAndDrop.svelte.js';
 
   type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
-  type GroupMetadata = { hasFutureWork: boolean; hasProposed: boolean; hasInProgress: boolean };
+  type GroupMetadata = {
+    hasFutureWork: boolean;
+    hasProposed: boolean;
+    hasInProgress: boolean;
+  };
 
   // Row context passed to rowExtras snippet
   export type RowContext = {
@@ -66,6 +70,7 @@
     onScroll?: (scrollTop: number) => void;
     hoveredFeatureId?: string | null;
     onHoverFeature?: (id: string | null) => void;
+    showBannerSpacer?: boolean;
   }
 
   let {
@@ -89,6 +94,7 @@
     onScroll,
     hoveredFeatureId = null,
     onHoverFeature,
+    showBannerSpacer = false,
   }: Props = $props();
 
   // Layout constant (matches CSS)
@@ -375,6 +381,10 @@
     </div>
   {/if}
 
+  {#if showBannerSpacer}
+    <div class="banner-spacer"></div>
+  {/if}
+
   <div class="tree-scroll-container">
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
@@ -527,6 +537,13 @@
     height: 27px;
     padding: 0 12px;
     background: var(--background);
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  /* Matches feature-complete-bar height (button height + padding + border = 44px) */
+  .banner-spacer {
+    height: 44px;
+    flex-shrink: 0;
     border-bottom: 1px solid var(--border-default);
   }
 

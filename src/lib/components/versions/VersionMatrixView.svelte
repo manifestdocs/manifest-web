@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema.js';
   import { findFeature } from '$lib/components/features/featureTreeUtils.js';
-  import { InfoBanner } from '$lib/components/ui/index.js';
   import CreateVersionDialog from './CreateVersionDialog.svelte';
   import VersionMatrixHeader from './VersionMatrixHeader.svelte';
   import VersionMatrixSubheader from './VersionMatrixSubheader.svelte';
@@ -169,24 +168,20 @@
     {groupedVersions}
     {closingVersionId}
     {isNowFeatureComplete}
-    {onCompleteVersion}
     {totalVersionColumns}
   />
 
-  <!-- Feature complete banner -->
   {#if isNowFeatureComplete && onCompleteVersion && nextVersion}
-    <InfoBanner class="feature-complete-banner">
-      {#snippet icon()}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path
-            d="M6 2L6 10M6 2L2 6M6 2L10 6"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      {/snippet}
+    <div class="feature-complete-bar">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path
+          d="M6 2L6 10M6 2L2 6M6 2L10 6"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
       <strong>{nextVersion.name}</strong> is feature complete. Close and advance
       planning?
       <button
@@ -197,27 +192,29 @@
       >
         {isCompleting ? 'Closing...' : 'Close'}
       </button>
-    </InfoBanner>
+    </div>
   {/if}
 
   <!-- Body - VersionColumns synced with left panel tree -->
-  <VersionColumns
-    {features}
-    {versions}
-    {groupedVersions}
-    {expandedIds}
-    {activeFilters}
-    {treeScrollTop}
-    {selectedId}
-    {hoveredFeatureId}
-    {dragHover}
-    {closingVersionId}
-    onScroll={onScrollSync}
-    onDotDrop={handleDotDrop}
-    onDotHover={handleDotHover}
-    {onHoverFeature}
-    {totalVersionColumns}
-  />
+  <div class="matrix-body">
+    <VersionColumns
+      {features}
+      {versions}
+      {groupedVersions}
+      {expandedIds}
+      {activeFilters}
+      {treeScrollTop}
+      {selectedId}
+      {hoveredFeatureId}
+      {dragHover}
+      {closingVersionId}
+      onScroll={onScrollSync}
+      onDotDrop={handleDotDrop}
+      onDotHover={handleDotHover}
+      {onHoverFeature}
+      {totalVersionColumns}
+    />
+  </div>
 </div>
 
 <CreateVersionDialog
@@ -238,14 +235,32 @@
     position: relative;
   }
 
-  :global(.feature-complete-banner .banner-content) {
-    max-width: 800px;
-    background: var(--state-implemented);
-    color: var(--background);
+  .matrix-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
   }
 
-  :global(.feature-complete-banner .banner-icon) {
+  .feature-complete-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--state-implemented);
     color: var(--background);
+    font-size: 13px;
+    line-height: 1.4;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-default);
+    border-left: 1px solid var(--border-subtle);
+    width: fit-content;
+  }
+
+  .feature-complete-bar svg {
+    flex-shrink: 0;
   }
 
   .banner-btn {

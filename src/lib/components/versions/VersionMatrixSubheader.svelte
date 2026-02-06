@@ -8,7 +8,6 @@
     groupedVersions: VersionGroup[];
     closingVersionId: string | null;
     isNowFeatureComplete: boolean;
-    onCompleteVersion?: (versionId: string) => Promise<void>;
     totalVersionColumns: number;
   }
 
@@ -16,15 +15,11 @@
     groupedVersions,
     closingVersionId,
     isNowFeatureComplete,
-    onCompleteVersion,
     totalVersionColumns,
   }: Props = $props();
 </script>
 
-<div
-  class="matrix-subheader"
-  class:has-complete-banner={isNowFeatureComplete && onCompleteVersion}
->
+<div class="matrix-subheader" class:complete={isNowFeatureComplete}>
   {#each groupedVersions as group, groupIndex}
     {#each group.versions as version, versionIndex}
       {@const colIndex = getFlatIndex(
@@ -59,10 +54,6 @@
     background: var(--background);
     border-bottom: 1px solid var(--border-default);
     overflow: hidden;
-  }
-
-  .matrix-subheader.has-complete-banner {
-    border-bottom: none;
   }
 
   .subheader-cell {
@@ -104,9 +95,17 @@
     background: rgba(128, 128, 128, 0.04);
   }
 
-  .version-name.feature-complete {
+  .matrix-subheader.complete {
+    border-bottom: none;
+  }
+
+  .matrix-subheader.complete .subheader-cell {
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .matrix-subheader.complete .version-name.feature-complete {
     background: var(--state-implemented);
     color: var(--background);
-    border-bottom: 1px solid var(--state-implemented);
+    border-bottom: none;
   }
 </style>
