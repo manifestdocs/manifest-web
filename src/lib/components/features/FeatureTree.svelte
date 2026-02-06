@@ -67,6 +67,7 @@
     ) => void;
     onRestoreFeature?: (id: string) => Promise<void>;
     onDeleteFeature?: (id: string) => Promise<void>;
+    onImplementFeature?: (id: string, title: string) => void;
     onScroll?: (scrollTop: number) => void;
     hoveredFeatureId?: string | null;
     onHoverFeature?: (id: string | null) => void;
@@ -91,6 +92,7 @@
     onArchiveFeature,
     onRestoreFeature,
     onDeleteFeature,
+    onImplementFeature,
     onScroll,
     hoveredFeatureId = null,
     onHoverFeature,
@@ -249,6 +251,7 @@
   const contextMenuFeatureIsGroup = $derived(
     contextMenuFeature ? contextMenuFeature.children.length > 0 : false,
   );
+  const contextMenuFeatureState = $derived(contextMenuFeature?.state ?? null);
 
   function handleRowContextMenu(id: string, x: number, y: number) {
     contextMenuFeatureId = id;
@@ -297,6 +300,11 @@
   function handleContextMenuDelete() {
     if (!contextMenuFeature || !onDeleteFeature) return;
     onDeleteFeature(contextMenuFeature.id);
+  }
+
+  function handleContextMenuImplement() {
+    if (!contextMenuFeature || !onImplementFeature) return;
+    onImplementFeature(contextMenuFeature.id, contextMenuFeature.title);
   }
 
   function handleTreeContextMenu(e: MouseEvent) {
@@ -480,6 +488,7 @@
   x={contextMenuX}
   y={contextMenuY}
   featureTitle={contextMenuFeatureTitle}
+  featureState={contextMenuFeatureState}
   isRoot={contextMenuFeatureIsRoot}
   isGroup={contextMenuFeatureIsGroup}
   isArchived={contextMenuFeature?.state === 'archived'}
@@ -489,6 +498,7 @@
   onArchive={onArchiveFeature ? handleContextMenuArchive : undefined}
   onRestore={onRestoreFeature ? handleContextMenuRestore : undefined}
   onDelete={onDeleteFeature ? handleContextMenuDelete : undefined}
+  onImplement={onImplementFeature ? handleContextMenuImplement : undefined}
 />
 
 {#if pendingGroupData}

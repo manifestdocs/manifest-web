@@ -757,25 +757,27 @@
   }
 
   // --- Agent terminal launch ---
-  function handleStartWorking() {
-    if (!selectedFeature || !selectedFeatureId) return;
-    const feature = selectedFeature;
-
+  function handleImplementFeature(featureId: string, featureTitle: string) {
     // Transition to in_progress via state change
-    handleSaveFeature(feature.id, { state: 'in_progress' as FeatureState });
+    handleSaveFeature(featureId, { state: 'in_progress' as FeatureState });
 
     // Build agent command — for now, hardcode "claude"
     // TODO: read agent_command from project settings
     const agentCmd = 'claude';
-    const safeTitle = feature.title.replace(/'/g, "'\\''");
-    const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${feature.id})'\r`;
+    const safeTitle = featureTitle.replace(/'/g, "'\\''");
+    const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${featureId})'\r`;
 
     // Open a feature-linked terminal tab
     rightPanel.createTerminalTab({
-      label: `${agentCmd}: ${feature.title}`.slice(0, 40),
+      label: `${agentCmd}: ${featureTitle}`.slice(0, 40),
       initialInput,
-      featureId: feature.id,
+      featureId,
     });
+  }
+
+  function handleStartWorking() {
+    if (!selectedFeature || !selectedFeatureId) return;
+    handleImplementFeature(selectedFeature.id, selectedFeature.title);
   }
 
   // --- Provide context to child routes ---
@@ -891,6 +893,7 @@
             onArchiveFeature={handleOpenArchiveDialog}
             onRestoreFeature={handleRestoreFeature}
             onDeleteFeature={handleDeleteFeature}
+            onImplementFeature={handleImplementFeature}
             onScroll={handleTreeScroll}
             {hoveredFeatureId}
             onHoverFeature={handleHoverFeature}

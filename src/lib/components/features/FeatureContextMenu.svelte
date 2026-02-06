@@ -6,6 +6,7 @@
     x: number;
     y: number;
     featureTitle?: string | null;
+    featureState?: string | null;
     isRoot?: boolean;
     isGroup?: boolean;
     isArchived?: boolean;
@@ -15,6 +16,7 @@
     onArchive?: () => void;
     onRestore?: () => void;
     onDelete?: () => void;
+    onImplement?: () => void;
   }
 
   let {
@@ -22,6 +24,7 @@
     x,
     y,
     featureTitle = null,
+    featureState = null,
     isRoot = false,
     isGroup = false,
     isArchived = false,
@@ -31,7 +34,12 @@
     onArchive,
     onRestore,
     onDelete,
+    onImplement,
   }: Props = $props();
+
+  const isProposedLeaf = $derived(
+    featureState === 'proposed' && !isRoot && !isGroup && !isArchived,
+  );
 
   function handleAddChild() {
     onAddChild();
@@ -55,6 +63,11 @@
 
   function handleDelete() {
     onDelete?.();
+    onClose();
+  }
+
+  function handleImplement() {
+    onImplement?.();
     onClose();
   }
 
@@ -168,6 +181,26 @@
             <span>Group in Feature Set</span>
           </button>
         {/if}
+        {#if isProposedLeaf && onImplement}
+          <div class="menu-separator"></div>
+          <button
+            type="button"
+            class="menu-item menu-item-implement"
+            role="menuitem"
+            onclick={handleImplement}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M8 1.5L1.5 8.5L4.5 11.5L11 5M8 1.5L10 1.5L14.5 6L11 9.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Implement</span>
+          </button>
+        {/if}
         {#if onArchive && !isRoot}
           <div class="menu-separator"></div>
           <button
@@ -243,6 +276,18 @@
   }
 
   .menu-item-danger svg {
+    color: currentColor;
+  }
+
+  .menu-item-implement {
+    color: var(--accent-blue, #58a6ff);
+  }
+
+  .menu-item-implement:hover {
+    background: rgba(88, 166, 255, 0.15);
+  }
+
+  .menu-item-implement svg {
     color: currentColor;
   }
 
