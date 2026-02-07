@@ -120,7 +120,7 @@
             <div class="form-error">{error}</div>
           {/if}
 
-          <div class="form-actions">
+          <div class="dialog-actions">
             <button
               type="button"
               class="btn btn-secondary"
@@ -172,13 +172,6 @@
     border: 1px solid rgba(204, 167, 0, 0.25);
     border-radius: 6px;
     line-height: 1.4;
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
   }
 
   .loading-state {

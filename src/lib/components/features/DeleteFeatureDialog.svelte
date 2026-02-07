@@ -76,10 +76,4 @@
 
 <style>
   /* Styles handled by globally imported dialog.css */
-
-  .dialog-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
 </style>

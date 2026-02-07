@@ -304,7 +304,7 @@
           </Dialog.Description>
         </div>
         {#if activeTab !== 'delete'}
-          <div class="form-actions">
+          <div class="header-actions">
             <button
               type="button"
               class="btn btn-secondary"
@@ -592,7 +592,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    border-radius: 0;
+    border-radius: 12px;
   }
 
   .dialog-header {
@@ -610,7 +610,7 @@
     margin: 0 0 0;
   }
 
-  .form-actions {
+  .header-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;

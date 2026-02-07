@@ -128,12 +128,6 @@
 <style>
   /* Styles handled by globally imported dialog.css */
 
-  .dialog-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
   .radio-group {
     display: flex;
     flex-direction: column;

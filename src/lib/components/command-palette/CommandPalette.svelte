@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dialog } from 'bits-ui';
+  import { Dialog } from '$lib/components/ui/dialog/index.js';
   import { api } from '$lib/api/client.js';
   import { goto } from '$app/navigation';
   import type { components } from '$lib/api/schema.js';
@@ -153,7 +153,7 @@
 
 <Dialog.Root {open} {onOpenChange}>
   <Dialog.Portal>
-    <Dialog.Overlay class="palette-overlay" />
+    <Dialog.Overlay class="dialog-overlay" />
     <Dialog.Content class="palette-content" onkeydown={handleKeydown}>
       <Dialog.Title class="sr-only">Search Features</Dialog.Title>
       <Dialog.Description class="sr-only">
@@ -243,14 +243,6 @@
 </Dialog.Root>
 
 <style>
-  :global(.palette-overlay) {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    background: rgba(0, 0, 0, 0.5);
-    animation: fadeIn 0.15s ease;
-  }
-
   :global(.palette-content) {
     position: fixed;
     top: 20%;
@@ -261,9 +253,9 @@
     max-width: 560px;
     background: var(--background-subtle);
     border: 1px solid var(--border-default);
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    animation: slideIn 0.15s ease;
+    animation: paletteSlideIn 0.15s ease;
     overflow: hidden;
   }
 
@@ -412,28 +404,7 @@
     text-overflow: ellipsis;
   }
 
-  :global(.sr-only) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideIn {
+  @keyframes paletteSlideIn {
     from {
       opacity: 0;
       transform: translateX(-50%) translateY(-10px);
