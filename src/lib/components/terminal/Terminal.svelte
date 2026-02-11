@@ -3,7 +3,7 @@
   import { FitAddon } from '@xterm/addon-fit';
   import { WebglAddon } from '@xterm/addon-webgl';
   import { WebLinksAddon } from '@xterm/addon-web-links';
-  import { getWsBaseUrl } from '$lib/api/client.js';
+  import { getWsBaseUrl, getApiBaseUrl } from '$lib/api/client.js';
   import '@xterm/xterm/css/xterm.css';
 
   interface Props {
@@ -18,7 +18,15 @@
 
   const IDLE_TIMEOUT_MS = 3000;
 
-  let { class: className = '', cwd, initialInput, isActive = false, onBell, onIdle, onReady }: Props = $props();
+  let {
+    class: className = '',
+    cwd,
+    initialInput,
+    isActive = false,
+    onBell,
+    onIdle,
+    onReady,
+  }: Props = $props();
 
   let termRef: Terminal | null = null;
 
@@ -31,7 +39,8 @@
   function terminalInit(node: HTMLElement) {
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: 'Menlo, "SF Mono", Monaco, "Cascadia Code", Consolas, monospace',
+      fontFamily:
+        'Menlo, "SF Mono", Monaco, "Cascadia Code", Consolas, monospace',
       fontSize: 13,
       lineHeight: 1.0,
       letterSpacing: 0,
@@ -112,73 +121,17 @@
       return true;
     });
 
-    // Connect to server PTY via WebSocket
-    const wsUrl = `${getWsBaseUrl()}/api/v1/terminal/ws${cwd ? `?cwd=${encodeURIComponent(cwd)}` : ''}`;
-    let ws: WebSocket | null = new WebSocket(wsUrl);
-
-    ws.binaryType = 'arraybuffer';
-
+    // Connect to server PTY via WebSocket (async: fetch token first)
+    let ws: WebSocket | null = null;
     let initialInputSent = false;
-
-    ws.onopen = () => {
-      // Send initial resize after connection
-      if (term.cols > 0 && term.rows > 0) {
-        ws?.send(JSON.stringify({ type: 'resize', rows: term.rows, cols: term.cols }));
-      }
-      // Expose send function to parent for external input (context chips, etc.)
-      onReady?.((text: string) => {
-        if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(text);
-        }
-      });
-    };
-
-    // Idle detection: fires onIdle when no output received for IDLE_TIMEOUT_MS
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function resetIdleTimer() {
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        onIdle?.();
-      }, IDLE_TIMEOUT_MS);
-    }
-
-    ws.onmessage = (event) => {
-      if (event.data instanceof ArrayBuffer) {
-        term.write(new Uint8Array(event.data));
-      } else if (typeof event.data === 'string') {
-        term.write(event.data);
-      }
-
-      resetIdleTimer();
-
-      // After first output (shell prompt), inject initial input once
-      if (initialInput && !initialInputSent) {
-        initialInputSent = true;
-        setTimeout(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(initialInput);
-          }
-        }, 150);
-      }
-    };
-
-    ws.onclose = () => {
-      term.write('\r\n\x1b[90m[Terminal disconnected]\x1b[0m\r\n');
-    };
-
-    // Egress: User input -> WebSocket -> PTY
-    const dataDisposable = term.onData((data) => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(data);
-      }
-    });
+    let resizeRaf: number | null = null;
+    let dataDisposable: { dispose(): void } | null = null;
 
     // Resize sync: debounced via rAF to avoid TUI glitching.
     // Skip fit when pane is collapsed (0 dimensions) to avoid corrupting
     // terminal state. ResizeObserver fires again on re-expand with real
     // dimensions, so the session restores cleanly.
-    let resizeRaf: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
@@ -189,8 +142,18 @@
         } catch {
           // Ignore fit errors during rapid resize
         }
-        if (term.cols > 0 && term.rows > 0 && ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'resize', rows: term.rows, cols: term.cols }));
+        if (
+          term.cols > 0 &&
+          term.rows > 0 &&
+          ws?.readyState === WebSocket.OPEN
+        ) {
+          ws.send(
+            JSON.stringify({
+              type: 'resize',
+              rows: term.rows,
+              cols: term.cols,
+            }),
+          );
         }
       });
     });
@@ -201,11 +164,92 @@
       onBell?.();
     });
 
+    async function connectTerminal() {
+      // Fetch the connection token (CORS-protected — cross-origin callers can't get this)
+      let token: string;
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/terminal/token`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        token = data.token;
+      } catch (e) {
+        term.write(
+          `\r\n\x1b[31m[Failed to get terminal token: ${e}]\x1b[0m\r\n`,
+        );
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (cwd) params.set('cwd', cwd);
+      params.set('token', token);
+      const wsUrl = `${getWsBaseUrl()}/api/v1/terminal/ws?${params}`;
+      ws = new WebSocket(wsUrl);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        if (term.cols > 0 && term.rows > 0) {
+          ws?.send(
+            JSON.stringify({
+              type: 'resize',
+              rows: term.rows,
+              cols: term.cols,
+            }),
+          );
+        }
+        onReady?.((text: string) => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(text);
+          }
+        });
+      };
+
+      // Idle detection: fires onIdle when no output received for IDLE_TIMEOUT_MS
+      function resetIdleTimer() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          onIdle?.();
+        }, IDLE_TIMEOUT_MS);
+      }
+
+      ws.onmessage = (event) => {
+        if (event.data instanceof ArrayBuffer) {
+          term.write(new Uint8Array(event.data));
+        } else if (typeof event.data === 'string') {
+          term.write(event.data);
+        }
+
+        resetIdleTimer();
+
+        // After first output (shell prompt), inject initial input once
+        if (initialInput && !initialInputSent) {
+          initialInputSent = true;
+          setTimeout(() => {
+            if (ws?.readyState === WebSocket.OPEN) {
+              ws.send(initialInput);
+            }
+          }, 150);
+        }
+      };
+
+      ws.onclose = () => {
+        term.write('\r\n\x1b[90m[Terminal disconnected]\x1b[0m\r\n');
+      };
+
+      // Egress: User input -> WebSocket -> PTY
+      dataDisposable = term.onData((data) => {
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+    }
+
+    connectTerminal();
+
     return {
       destroy() {
         if (idleTimer) clearTimeout(idleTimer);
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
-        dataDisposable.dispose();
+        dataDisposable?.dispose();
         bellDisposable.dispose();
         resizeObserver.disconnect();
         if (ws) {
