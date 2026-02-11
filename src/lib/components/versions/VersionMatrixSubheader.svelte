@@ -9,6 +9,7 @@
     closingVersionId: string | null;
     isNowFeatureComplete: boolean;
     totalVersionColumns: number;
+    onVersionClick?: (versionId: string | null) => void;
   }
 
   let {
@@ -16,6 +17,7 @@
     closingVersionId,
     isNowFeatureComplete,
     totalVersionColumns,
+    onVersionClick,
   }: Props = $props();
 </script>
 
@@ -27,24 +29,30 @@
         versionIndex,
         groupedVersions,
       )}
-      <div
+      <button
+        type="button"
         class="subheader-cell version-name"
+        class:clickable={!!onVersionClick}
         class:group-start={versionIndex === 0}
         class:zebra={colIndex % 2 === 0}
         class:feature-complete={isNowFeatureComplete && group.label === 'Next'}
         class:closing={version.id === closingVersionId}
         title={version.description || ''}
+        onclick={() => onVersionClick?.(version.id)}
       >
         {version.name}
-      </div>
+      </button>
     {/each}
   {/each}
-  <div
+  <button
+    type="button"
     class="subheader-cell version-name backlog-name group-start"
+    class:clickable={!!onVersionClick}
     class:zebra={totalVersionColumns % 2 === 0}
+    onclick={() => onVersionClick?.(null)}
   >
     &mdash;
-  </div>
+  </button>
 </div>
 
 <style>
@@ -63,6 +71,10 @@
     font-size: 11px;
     font-weight: 500;
     color: var(--foreground-muted);
+    background: none;
+    border: none;
+    font-family: inherit;
+    line-height: inherit;
   }
 
   .version-name {
@@ -91,8 +103,20 @@
     border-right: 1px solid var(--border-subtle);
   }
 
+  .version-name.clickable {
+    cursor: pointer;
+  }
+
+  .version-name.clickable:hover {
+    background: rgba(128, 128, 128, 0.1);
+  }
+
   .version-name.zebra {
     background: rgba(128, 128, 128, 0.04);
+  }
+
+  .version-name.zebra.clickable:hover {
+    background: rgba(128, 128, 128, 0.12);
   }
 
   .matrix-subheader.complete {

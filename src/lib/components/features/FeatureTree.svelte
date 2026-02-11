@@ -225,6 +225,10 @@
     expandedIds = featureExpansion.collapseAll();
   }
 
+  export function expandForVersion(versionId: string | null) {
+    expandedIds = featureExpansion.expandForVersion(features, versionId);
+  }
+
   function handleAddFeature() {
     onAddFeature?.(selectedId);
   }
@@ -394,10 +398,12 @@
   {/if}
 
   <div class="tree-scroll-container">
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="tree-content"
       class:scrollable
+      role="tree"
+      tabindex="-1"
+      aria-label="Feature tree"
       bind:this={treeContentRef}
       onscroll={handleScroll}
       onmouseover={handleMouseOver}

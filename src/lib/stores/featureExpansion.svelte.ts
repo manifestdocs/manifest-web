@@ -94,6 +94,36 @@ function hasProposedDescendants(node: FeatureTreeNode): boolean {
   return node.children.some((child) => hasProposedDescendants(child));
 }
 
+function hasDescendantWithVersion(
+  node: FeatureTreeNode,
+  versionId: string | null,
+): boolean {
+  if (node.children.length === 0) {
+    return versionId === null
+      ? !node.target_version_id
+      : node.target_version_id === versionId;
+  }
+  return node.children.some((child) =>
+    hasDescendantWithVersion(child, versionId),
+  );
+}
+
+function getGroupsContainingVersion(
+  nodes: FeatureTreeNode[],
+  versionId: string | null,
+): string[] {
+  const ids: string[] = [];
+  for (const node of nodes) {
+    if (node.children.length > 0) {
+      if (hasDescendantWithVersion(node, versionId)) {
+        ids.push(node.id);
+      }
+      ids.push(...getGroupsContainingVersion(node.children, versionId));
+    }
+  }
+  return ids;
+}
+
 function getGroupsWithIncompleteWork(nodes: FeatureTreeNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
@@ -273,6 +303,31 @@ function createFeatureExpansionStore() {
       }
 
       return new Set();
+    },
+
+    /**
+     * Expand only groups containing features assigned to a specific version.
+     * Pass null for backlog (unassigned features).
+     */
+    expandForVersion(
+      features: FeatureTreeNode[],
+      versionId: string | null,
+    ): Set<string> {
+      const groupIds = new Set(
+        getGroupsContainingVersion(features, versionId),
+      );
+      currentExpandedIds = groupIds;
+      hasUserInteracted = true;
+
+      if (currentProjectId) {
+        saveToStorage(currentProjectId, {
+          expandedIds: [...groupIds],
+          hasUserInteracted: true,
+          version: STORAGE_VERSION,
+        });
+      }
+
+      return groupIds;
     },
 
     /**

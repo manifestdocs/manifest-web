@@ -33,6 +33,7 @@
     onCompleteVersion?: (versionId: string) => Promise<void>;
     onScrollSync: (scrollTop: number) => void;
     onHoverFeature: (id: string | null) => void;
+    onVersionClick?: (versionId: string | null) => void;
   }
 
   let {
@@ -50,6 +51,7 @@
     onCompleteVersion,
     onScrollSync,
     onHoverFeature,
+    onVersionClick,
   }: Props = $props();
 
   let showCreateDialog = $state(false);
@@ -169,6 +171,7 @@
     {closingVersionId}
     {isNowFeatureComplete}
     {totalVersionColumns}
+    {onVersionClick}
   />
 
   {#if isNowFeatureComplete && onCompleteVersion && nextVersion}
