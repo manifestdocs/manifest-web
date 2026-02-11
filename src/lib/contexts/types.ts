@@ -58,6 +58,7 @@ export interface ProjectDataContext {
   readonly isLoadingFeatures: boolean;
   readonly isLoadingFeature: boolean;
   readonly isProjectEmpty: boolean;
+  readonly hasInstructionsToBreakDown: boolean;
   readonly acFormat: 'checkbox' | 'gherkin' | undefined;
   readonly treeScrollTop: number;
   readonly expandedIds: Set<string>;
@@ -103,6 +104,7 @@ export interface ProjectDataContext {
   handleExpandAll: () => void;
   handleCollapseAll: () => void;
   handleToggleFilter: (state: FilterableState) => void;
+  sendPlanPrompt: () => void;
 }
 
 // --- Context helpers ---

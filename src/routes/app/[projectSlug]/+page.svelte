@@ -7,7 +7,9 @@
 </script>
 
 {#if ctx.isProjectEmpty}
-  <EmptyProjectGuide onCreateFeature={() => ctx.handleOpenCreateDialog(null)} />
+  <EmptyProjectGuide
+    onCreateFeature={() => ctx.handleOpenCreateDialog(null)}
+  />
 {:else if ctx.isLoadingFeature}
   <div class="loading-state">Loading...</div>
 {:else}

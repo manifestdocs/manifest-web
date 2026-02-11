@@ -141,6 +141,12 @@
     debugEmptyState.value === 'no-features' ||
       (!isLoadingFeatures && featureTree.length === 0),
   );
+  const hasInstructionsToBreakDown = $derived.by(() => {
+    if (featureTree.length !== 1) return false;
+    const root = featureTree[0];
+    return root.is_root && root.children.length === 0 && !!root.details?.trim();
+  });
+
   const needsOnboarding = $derived(
     debugEmptyState.value === 'no-directory' || hasDirectories === false,
   );
@@ -301,7 +307,9 @@
       featureTree = result.data;
 
       if (!selectedFeatureId && result.data.length > 0) {
-        goto(`/app/${projectSlug}?feature=${result.data[0].id}`, {
+        const url = new URL(page.url);
+        url.searchParams.set('feature', result.data[0].id);
+        goto(url.pathname + url.search, {
           replaceState: true,
         });
       }
@@ -368,6 +376,32 @@
     navigateTo: (path, opts) => goto(path, opts),
     createTerminalTab: rightPanel.createTerminalTab,
   });
+
+  // Auto-launch breakdown when arriving from wizard with instructions
+  let autoBreakdownFired = false;
+  $effect(() => {
+    if (
+      !autoBreakdownFired &&
+      page.url.searchParams.get('autoBreakdown') === 'true' &&
+      project &&
+      hasDirectories !== null
+    ) {
+      autoBreakdownFired = true;
+      const url = new URL(page.url);
+      url.searchParams.delete('autoBreakdown');
+      goto(url.pathname + (url.search || ''), { replaceState: true });
+      sendPlanPrompt();
+    }
+  });
+
+  function sendPlanPrompt() {
+    const name = project?.name ?? 'this project';
+    const safeName = name.replace(/'/g, "'\\''");
+    rightPanel.createTerminalTab({
+      label: `Plan: ${name}`.slice(0, 40),
+      initialInput: `claude 'Read the project instructions for "${safeName}" using get_project_instructions and break them down into a feature tree using the plan tool. After creating features, assign them across versions to define an implementation roadmap — foundational features in the first version, dependent features in later versions. Create additional versions with create_version and use set_feature_version to distribute features.'\r`,
+    });
+  }
 
   function handleSelectFeature(id: string) {
     const currentPath = page.url.pathname;
@@ -444,6 +478,9 @@
     get isProjectEmpty() {
       return isProjectEmpty;
     },
+    get hasInstructionsToBreakDown() {
+      return hasInstructionsToBreakDown;
+    },
     get acFormat() {
       return acFormat;
     },
@@ -484,6 +521,7 @@
     handleToggleFilter: (
       state: import('$lib/stores/featureFilter.svelte.js').FilterableState,
     ) => featureTreeRef?.toggleFilter(state),
+    sendPlanPrompt,
   });
 </script>
 

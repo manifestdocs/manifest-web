@@ -202,7 +202,8 @@
 
       // Close dialog and navigate to new project
       onOpenChange(false);
-      goto(`/app/${project.slug}`);
+      const query = instructions.trim() ? '?autoBreakdown=true' : '';
+      goto(`/app/${project.slug}${query}`);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to create project';
     } finally {

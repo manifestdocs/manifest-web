@@ -1,9 +1,11 @@
 <script lang="ts">
   interface Props {
     onCreateFeature: () => void;
+    hasInstructions?: boolean;
+    onBreakDown?: () => void;
   }
 
-  let { onCreateFeature }: Props = $props();
+  let { onCreateFeature, hasInstructions = false, onBreakDown }: Props = $props();
 </script>
 
 <div class="empty-guide">
@@ -36,18 +38,33 @@
       />
     </svg>
   </div>
-  <h2 class="guide-title">Get Started</h2>
-  <p class="guide-description">
-    Features are the capabilities your system provides. Unlike tasks that get
-    closed, features evolve with your codebase as living documentation.
-  </p>
-  <button class="btn btn-primary" onclick={onCreateFeature}>
-    Create Your First Feature
-  </button>
-  <p class="guide-hint">
-    Tip: Name features by what users can do, not what you need to build. "User
-    Authentication" instead of "Implement login".
-  </p>
+
+  {#if hasInstructions}
+    <h2 class="guide-title">Break Down Your Instructions</h2>
+    <p class="guide-description">
+      Your project instructions are ready. An AI agent can read them and propose
+      a feature tree — organized capabilities that describe what your system does.
+    </p>
+    <button class="btn btn-primary" onclick={onBreakDown}>
+      Break Down with AI
+    </button>
+    <p class="guide-hint">
+      or <button class="link-button" onclick={onCreateFeature}>create features manually</button>
+    </p>
+  {:else}
+    <h2 class="guide-title">Get Started</h2>
+    <p class="guide-description">
+      Features are the capabilities your system provides. Unlike tasks that get
+      closed, features evolve with your codebase as living documentation.
+    </p>
+    <button class="btn btn-primary" onclick={onCreateFeature}>
+      Create Your First Feature
+    </button>
+    <p class="guide-hint">
+      Tip: Name features by what users can do, not what you need to build. "User
+      Authentication" instead of "Implement login".
+    </p>
+  {/if}
 </div>
 
 <style>
@@ -97,5 +114,20 @@
     background: var(--background-subtle);
     border-radius: 6px;
     border: 1px solid var(--border-default);
+  }
+
+  .link-button {
+    background: none;
+    border: none;
+    color: var(--accent-blue);
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .link-button:hover {
+    color: var(--foreground);
   }
 </style>
