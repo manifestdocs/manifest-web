@@ -28,39 +28,29 @@
   } from '$lib/stores/index.js';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { getContext, setContext } from 'svelte';
+  import {
+    getProjectsContext,
+    getRightPanelContext,
+    setProjectDataContext,
+  } from '$lib/contexts/types.js';
+  import { createFeatureMutations } from '$lib/features/mutations.svelte.js';
+  import {
+    fetchFeatureTree,
+    fetchFeature,
+    fetchVersions,
+    fetchDirectories,
+  } from '$lib/features/loader.js';
 
   const authApi = getAuthApiContext();
 
-  type Project = components['schemas']['Project'];
   type Feature = components['schemas']['Feature'];
   type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
-  type FeatureState = components['schemas']['FeatureState'];
   type Version = components['schemas']['Version'];
-
-  interface ProjectsContext {
-    readonly projects: Project[];
-    readonly isLoading: boolean;
-    refresh: () => Promise<void>;
-  }
 
   let { children } = $props();
 
-  const projectsContext = getContext<ProjectsContext>('projects');
-
-  // Right panel context — state lives in app layout
-  interface RightPanelContext {
-    resetTerminals(): void;
-    createTerminalTab(opts?: {
-      label?: string;
-      initialInput?: string;
-      featureId?: string;
-    }): void;
-    closeTerminalTab(tabId: string): void;
-    selectTerminalTab(tabId: string): void;
-  }
-
-  const rightPanel = getContext<RightPanelContext>('rightPanel');
+  const projectsContext = getProjectsContext();
+  const rightPanel = getRightPanelContext();
 
   // --- Shared data state ---
   let featureTree = $state<FeatureTreeNode[]>([]);
@@ -72,24 +62,6 @@
   let isLoadingFeatures = $state(false);
   let isLoadingFeature = $state(false);
   let loadError = $state<string | null>(null);
-
-  // Dialog state
-  let createDialogOpen = $state(false);
-  let createDialogParentId = $state<string | null>(null);
-  let archiveDialogOpen = $state(false);
-  let archiveTarget = $state<{
-    id: string;
-    title: string;
-    isGroup: boolean;
-    childCount: number;
-    parentId: string | null;
-  } | null>(null);
-  let wrapDialogOpen = $state(false);
-  let wrapTarget = $state<{
-    id: string;
-    title: string;
-    parentId: string | null;
-  } | null>(null);
 
   // FeatureTree ref for scroll sync and tree control
   let featureTreeRef = $state<ReturnType<typeof FeatureTree> | null>(null);
@@ -158,8 +130,8 @@
 
   // Dialog parent title
   const createDialogParentTitle = $derived.by(() => {
-    if (!createDialogParentId) return null;
-    const node = findFeature(featureTree, createDialogParentId);
+    if (!mutations.createDialogParentId) return null;
+    const node = findFeature(featureTree, mutations.createDialogParentId);
     return node?.title ?? null;
   });
 
@@ -319,25 +291,17 @@
     }
   });
 
+  let lastLoadedFeatureId: string | null = null;
+
   async function loadFeatureTree(pid: string) {
     isLoadingFeatures = true;
     try {
-      const api = await authApi.getClient();
-      const { data, error } = await api.GET('/projects/{id}/features/tree', {
-        params: { path: { id: pid } },
-      });
-      if (error || !data) {
-        console.error('Failed to load features:', error);
-        loadError = 'Failed to load features. Check that the server is running.';
-        featureTree = [];
-        return;
-      }
-      loadError = null;
-      featureTree = data;
+      const result = await fetchFeatureTree(authApi, pid);
+      loadError = result.error;
+      featureTree = result.data;
 
-      // Auto-select first feature if none selected
-      if (!selectedFeatureId && data.length > 0) {
-        goto(`/app/${projectSlug}?feature=${data[0].id}`, {
+      if (!selectedFeatureId && result.data.length > 0) {
+        goto(`/app/${projectSlug}?feature=${result.data[0].id}`, {
           replaceState: true,
         });
       }
@@ -345,8 +309,6 @@
       isLoadingFeatures = false;
     }
   }
-
-  let lastLoadedFeatureId: string | null = null;
 
   async function loadFeature(featureId: string, force = false) {
     if (
@@ -362,12 +324,8 @@
       isLoadingFeature = true;
     }
     try {
-      const api = await authApi.getClient();
-      const { data, error } = await api.GET('/features/{id}', {
-        params: { path: { id: featureId } },
-      });
-      if (error || !data) {
-        console.error('Failed to load feature:', error);
+      const data = await fetchFeature(authApi, featureId);
+      if (!data) {
         selectedFeature = null;
         lastLoadedFeatureId = null;
         return;
@@ -382,347 +340,42 @@
   }
 
   async function loadVersions(pid: string) {
-    try {
-      const api = await authApi.getClient();
-      const { data, error } = await api.GET('/projects/{id}/versions', {
-        params: { path: { id: pid } },
-      });
-      if (error || !data) {
-        console.error('Failed to load versions:', error);
-        versions = [];
-        return;
-      }
-      versions = data;
-    } catch (e) {
-      console.error('Failed to load versions:', e);
-      versions = [];
-    }
+    versions = await fetchVersions(authApi, pid);
   }
 
   async function loadDirectories(pid: string) {
-    try {
-      const api = await authApi.getClient();
-      const { data, error } = await api.GET('/projects/{id}/directories', {
-        params: { path: { id: pid } },
-      });
-      if (error || !data) {
-        gitRemote = undefined;
-        hasDirectories = false;
-        return;
-      }
-      hasDirectories = data.length > 0;
-      const primary = data.find((d) => d.is_primary);
-      primaryDirectoryPath = primary?.path ?? data[0]?.path ?? undefined;
-      gitRemote =
-        primary?.git_remote ??
-        data.find((d) => d.git_remote)?.git_remote ??
-        undefined;
-    } catch (e) {
-      gitRemote = undefined;
-      primaryDirectoryPath = undefined;
-      hasDirectories = false;
-    }
+    const info = await fetchDirectories(authApi, pid);
+    hasDirectories = info.hasDirectories;
+    primaryDirectoryPath = info.primaryDirectoryPath;
+    gitRemote = info.gitRemote;
   }
 
-  // --- Mutation handlers ---
-  async function handleSaveFeature(
-    id: string,
-    updates: {
-      title?: string;
-      details?: string | null;
-      desired_details?: string | null;
-      state?: FeatureState;
-    },
-  ) {
-    const api = await authApi.getClient();
-    const { data, error } = await api.PUT('/features/{id}', {
-      params: { path: { id } },
-      body: updates,
-    });
-    if (error || !data) {
-      console.error('Failed to save feature:', error);
-      throw new Error('Failed to save');
-    }
-    selectedFeature = data;
-    if (projectId) {
-      await loadFeatureTree(projectId);
-    }
-  }
-
-  async function handleVersionChange(
-    featureId: string,
-    versionId: string | null,
-  ) {
-    const api = await authApi.getClient();
-    const { error } = await api.PUT('/features/{id}', {
-      params: { path: { id: featureId } },
-      body: { target_version_id: versionId },
-    });
-    if (error) {
-      console.error('Failed to update version:', error);
-      throw new Error('Failed to update version');
-    }
-    await loadFeature(featureId);
-  }
+  // --- Mutation handlers (extracted to composable) ---
+  const mutations = createFeatureMutations({
+    authApi,
+    getProjectId: () => projectId,
+    getProjectSlug: () => projectSlug,
+    getFeatureTree: () => featureTree,
+    getSelectedFeature: () => selectedFeature,
+    getSelectedFeatureId: () => selectedFeatureId,
+    getSelectedFeatureIsGroup: () => selectedFeatureIsGroup,
+    getSelectedFeatureChildCount: () => selectedFeatureChildCount,
+    getSelectedFeatureParentId: () => selectedFeatureParentId,
+    getIsSelectedRoot: () => isSelectedRoot,
+    setSelectedFeature: (f) => { selectedFeature = f; },
+    loadFeatureTree,
+    loadFeature,
+    navigateTo: (path, opts) => goto(path, opts),
+    createTerminalTab: rightPanel.createTerminalTab,
+  });
 
   function handleSelectFeature(id: string) {
-    // Preserve the current route path when selecting a feature
     const currentPath = page.url.pathname;
     goto(`${currentPath}?feature=${id}`);
   }
 
   function handleResize(deltaX: number) {
     sidebarWidth.resize(deltaX);
-  }
-
-  function handleOpenCreateDialog(parentId: string | null) {
-    createDialogParentId = parentId;
-    createDialogOpen = true;
-  }
-
-  async function handleCreateFeature(title: string, details: string | null) {
-    if (!projectId) return;
-
-    const api = await authApi.getClient();
-    const { data, error } = await api.POST('/projects/{id}/features', {
-      params: { path: { id: projectId } },
-      body: {
-        title,
-        details,
-        parent_id: createDialogParentId,
-      },
-    });
-
-    if (error || !data) {
-      console.error('Failed to create feature:', error);
-      throw new Error('Failed to create feature');
-    }
-
-    await loadFeatureTree(projectId);
-    const currentPath = page.url.pathname;
-    goto(`${currentPath}?feature=${data.id}`);
-  }
-
-  async function handleReparentFeature(
-    featureId: string,
-    newParentId: string | null,
-  ) {
-    const api = await authApi.getClient();
-    const { error } = await api.PUT('/features/{id}', {
-      params: { path: { id: featureId } },
-      body: { parent_id: newParentId },
-    });
-
-    if (error) {
-      console.error('Failed to reparent feature:', error);
-      return;
-    }
-
-    if (projectId) {
-      await loadFeatureTree(projectId);
-    }
-  }
-
-  async function handleCreateGroup(
-    title: string,
-    childIds: [string, string],
-    parentId: string | null,
-  ) {
-    if (!projectId) return;
-
-    const api = await authApi.getClient();
-    const { data: newGroup, error: createError } = await api.POST(
-      '/projects/{id}/features',
-      {
-        params: { path: { id: projectId } },
-        body: { title, parent_id: parentId },
-      },
-    );
-
-    if (createError || !newGroup) {
-      console.error('Failed to create group:', createError);
-      return;
-    }
-
-    const reparentResults = await Promise.all(
-      childIds.map((childId) =>
-        api.PUT('/features/{id}', {
-          params: { path: { id: childId } },
-          body: { parent_id: newGroup.id },
-        }),
-      ),
-    );
-
-    const hasError = reparentResults.some((r) => r.error);
-    if (hasError) {
-      console.error('Failed to reparent some features');
-    }
-
-    await loadFeatureTree(projectId);
-    const currentPath = page.url.pathname;
-    goto(`${currentPath}?feature=${newGroup.id}`);
-  }
-
-  function handleOpenArchiveDialog(
-    id: string,
-    title: string,
-    isGroup: boolean,
-    childCount: number,
-    parentId: string | null,
-  ) {
-    archiveTarget = { id, title, isGroup, childCount, parentId };
-    archiveDialogOpen = true;
-  }
-
-  function handleOpenWrapDialog(
-    featureId: string,
-    featureTitle: string,
-    parentId: string | null,
-  ) {
-    wrapTarget = { id: featureId, title: featureTitle, parentId };
-    wrapDialogOpen = true;
-  }
-
-  async function handleWrapInGroup(title: string) {
-    if (!wrapTarget || !projectId) return;
-
-    const api = await authApi.getClient();
-    const { data: newGroup, error: createError } = await api.POST(
-      '/projects/{id}/features',
-      {
-        params: { path: { id: projectId } },
-        body: { title, parent_id: wrapTarget.parentId },
-      },
-    );
-
-    if (createError || !newGroup) {
-      console.error('Failed to create group:', createError);
-      throw new Error('Failed to create feature set');
-    }
-
-    const { error: reparentError } = await api.PUT('/features/{id}', {
-      params: { path: { id: wrapTarget.id } },
-      body: { parent_id: newGroup.id },
-    });
-
-    if (reparentError) {
-      console.error('Failed to reparent feature:', reparentError);
-      throw new Error('Failed to move feature into group');
-    }
-
-    await loadFeatureTree(projectId);
-    const currentPath = page.url.pathname;
-    goto(`${currentPath}?feature=${newGroup.id}`);
-
-    wrapTarget = null;
-  }
-
-  function handleArchiveFromDetail() {
-    if (!selectedFeature) return;
-    if (isSelectedRoot) return;
-
-    handleOpenArchiveDialog(
-      selectedFeature.id,
-      selectedFeature.title,
-      selectedFeatureIsGroup,
-      selectedFeatureChildCount,
-      selectedFeatureParentId,
-    );
-  }
-
-  async function handleRestoreFeature(featureId: string) {
-    if (!projectId) return;
-
-    const api = await authApi.getClient();
-    const { error } = await api.PUT('/features/{id}', {
-      params: { path: { id: featureId } },
-      body: { state: 'proposed' },
-    });
-
-    if (error) {
-      console.error('Failed to restore feature:', error);
-      throw new Error('Failed to restore feature');
-    }
-
-    await loadFeatureTree(projectId);
-  }
-
-  function handleRestoreFromDetail() {
-    if (!selectedFeature) return;
-    handleRestoreFeature(selectedFeature.id);
-  }
-
-  async function handleDeleteFeature(featureId: string) {
-    if (!projectId) return;
-
-    const api = await authApi.getClient();
-    const { error } = await api.DELETE('/features/{id}', {
-      params: { path: { id: featureId } },
-    });
-
-    if (error) {
-      console.error('Failed to delete feature:', error);
-      throw new Error('Failed to delete feature');
-    }
-
-    await loadFeatureTree(projectId);
-
-    if (selectedFeatureId === featureId) {
-      goto(`/app/${projectSlug}`);
-    }
-  }
-
-  async function handleDeleteFromDetail() {
-    if (!selectedFeature) return;
-    await handleDeleteFeature(selectedFeature.id);
-  }
-
-  async function handleArchiveFeature(moveChildrenToParent: boolean) {
-    if (!archiveTarget || !projectId) return;
-
-    const api = await authApi.getClient();
-    const node = findFeature(featureTree, archiveTarget.id);
-
-    if (moveChildrenToParent && archiveTarget.isGroup && node) {
-      await Promise.all(
-        node.children.map((child) =>
-          api.PUT('/features/{id}', {
-            params: { path: { id: child.id } },
-            body: { parent_id: archiveTarget!.parentId },
-          }),
-        ),
-      );
-    } else if (archiveTarget.isGroup && node) {
-      const archiveDescendants = (n: FeatureTreeNode): Promise<unknown>[] => {
-        const promises: Promise<unknown>[] = [];
-        for (const child of n.children) {
-          promises.push(
-            api.PUT('/features/{id}', {
-              params: { path: { id: child.id } },
-              body: { state: 'archived' },
-            }),
-          );
-          promises.push(...archiveDescendants(child));
-        }
-        return promises;
-      };
-      await Promise.all(archiveDescendants(node));
-    }
-
-    const { error } = await api.PUT('/features/{id}', {
-      params: { path: { id: archiveTarget.id } },
-      body: { state: 'archived' },
-    });
-
-    if (error) {
-      console.error('Failed to archive feature:', error);
-      throw new Error('Failed to archive feature');
-    }
-
-    await loadFeatureTree(projectId);
-    goto(`/app/${projectSlug}`);
-
-    archiveTarget = null;
   }
 
   // Right sidebar resize handler
@@ -756,32 +409,8 @@
     document.addEventListener('pointerup', handleUp);
   }
 
-  // --- Agent terminal launch ---
-  function handleImplementFeature(featureId: string, featureTitle: string) {
-    // Transition to in_progress via state change
-    handleSaveFeature(featureId, { state: 'in_progress' as FeatureState });
-
-    // Build agent command — for now, hardcode "claude"
-    // TODO: read agent_command from project settings
-    const agentCmd = 'claude';
-    const safeTitle = featureTitle.replace(/'/g, "'\\''");
-    const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${featureId})'\r`;
-
-    // Open a feature-linked terminal tab
-    rightPanel.createTerminalTab({
-      label: `${agentCmd}: ${featureTitle}`.slice(0, 40),
-      initialInput,
-      featureId,
-    });
-  }
-
-  function handleStartWorking() {
-    if (!selectedFeature || !selectedFeatureId) return;
-    handleImplementFeature(selectedFeature.id, selectedFeature.title);
-  }
-
   // --- Provide context to child routes ---
-  setContext('projectData', {
+  setProjectDataContext({
     get featureTree() {
       return featureTree;
     },
@@ -835,19 +464,21 @@
     loadVersions: () =>
       projectId ? loadVersions(projectId) : Promise.resolve(),
     handleSelectFeature,
-    handleSaveFeature,
-    handleVersionChange,
-    handleReparentFeature,
-    handleOpenCreateDialog,
-    handleOpenArchiveDialog,
-    handleArchiveFromDetail,
-    handleRestoreFeature,
-    handleRestoreFromDetail,
-    handleDeleteFeature,
-    handleDeleteFromDetail,
-    handleStartWorking,
+    handleSaveFeature: mutations.handleSaveFeature,
+    handleVersionChange: mutations.handleVersionChange,
+    handleReparentFeature: mutations.handleReparentFeature,
+    handleOpenCreateDialog: mutations.handleOpenCreateDialog,
+    handleOpenArchiveDialog: mutations.handleOpenArchiveDialog,
+    handleArchiveFromDetail: mutations.handleArchiveFromDetail,
+    handleRestoreFeature: mutations.handleRestoreFeature,
+    handleRestoreFromDetail: mutations.handleRestoreFromDetail,
+    handleDeleteFeature: mutations.handleDeleteFeature,
+    handleDeleteFromDetail: mutations.handleDeleteFromDetail,
+    handleStartWorking: mutations.handleStartWorking,
     handleScrollSync,
     handleHoverFeature,
+    handleExpandForVersion: (versionId: string | null) =>
+      featureTreeRef?.expandForVersion(versionId),
     handleExpandAll: () => featureTreeRef?.expandAll(),
     handleCollapseAll: () => featureTreeRef?.collapseAll(),
     handleToggleFilter: (
@@ -886,14 +517,14 @@
             featureColumnWidth={sidebarWidth.value}
             showBannerSpacer={isVersionView && isNowFeatureComplete}
             onSelect={handleSelectFeature}
-            onAddFeature={handleOpenCreateDialog}
-            onReparent={handleReparentFeature}
-            onCreateGroup={handleCreateGroup}
-            onWrapInGroup={handleOpenWrapDialog}
-            onArchiveFeature={handleOpenArchiveDialog}
-            onRestoreFeature={handleRestoreFeature}
-            onDeleteFeature={handleDeleteFeature}
-            onImplementFeature={handleImplementFeature}
+            onAddFeature={mutations.handleOpenCreateDialog}
+            onReparent={mutations.handleReparentFeature}
+            onCreateGroup={mutations.handleCreateGroup}
+            onWrapInGroup={mutations.handleOpenWrapDialog}
+            onArchiveFeature={mutations.handleOpenArchiveDialog}
+            onRestoreFeature={mutations.handleRestoreFeature}
+            onDeleteFeature={mutations.handleDeleteFeature}
+            onImplementFeature={mutations.handleImplementFeature}
             onScroll={handleTreeScroll}
             {hoveredFeatureId}
             onHoverFeature={handleHoverFeature}
@@ -977,35 +608,35 @@
 
 <!-- Shared dialogs -->
 <CreateFeatureDialog
-  open={createDialogOpen}
-  onOpenChange={(open) => (createDialogOpen = open)}
-  onCreate={handleCreateFeature}
+  open={mutations.createDialogOpen}
+  onOpenChange={(open) => (mutations.createDialogOpen = open)}
+  onCreate={mutations.handleCreateFeature}
   parentTitle={createDialogParentTitle}
 />
 
-{#if archiveTarget}
+{#if mutations.archiveTarget}
   <ArchiveFeatureDialog
-    open={archiveDialogOpen}
+    open={mutations.archiveDialogOpen}
     onOpenChange={(open) => {
-      archiveDialogOpen = open;
-      if (!open) archiveTarget = null;
+      mutations.archiveDialogOpen = open;
+      if (!open) mutations.archiveTarget = null;
     }}
-    featureTitle={archiveTarget.title}
-    isGroup={archiveTarget.isGroup}
-    childCount={archiveTarget.childCount}
-    onArchive={handleArchiveFeature}
+    featureTitle={mutations.archiveTarget.title}
+    isGroup={mutations.archiveTarget.isGroup}
+    childCount={mutations.archiveTarget.childCount}
+    onArchive={mutations.handleArchiveFeature}
   />
 {/if}
 
-{#if wrapTarget}
+{#if mutations.wrapTarget}
   <WrapInGroupDialog
-    open={wrapDialogOpen}
+    open={mutations.wrapDialogOpen}
     onOpenChange={(open) => {
-      wrapDialogOpen = open;
-      if (!open) wrapTarget = null;
+      mutations.wrapDialogOpen = open;
+      if (!open) mutations.wrapTarget = null;
     }}
-    featureTitle={wrapTarget.title}
-    onCreate={handleWrapInGroup}
+    featureTitle={mutations.wrapTarget.title}
+    onCreate={mutations.handleWrapInGroup}
   />
 {/if}
 
