@@ -2,15 +2,26 @@ import createClient from 'openapi-fetch';
 import type { paths } from './schema';
 import { env } from '$env/dynamic/public';
 
-function getDefaultApiBaseUrl(): string {
+function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
+    const override = env.PUBLIC_MANIFEST_API_URL;
+    // Only use the env var if it points to a different origin (cloud mode).
+    // For same-origin (local/embedded), always use window.location.origin
+    // so requests match CSP 'self' regardless of localhost vs 127.0.0.1.
+    if (override) {
+      try {
+        if (new URL(override).origin !== window.location.origin) {
+          return override;
+        }
+      } catch { /* invalid URL, ignore */ }
+    }
     return `${window.location.origin}/api/v1`;
   }
-  return 'http://localhost:17010/api/v1';
+  // SSR/prerender fallback
+  return env.PUBLIC_MANIFEST_API_URL || 'http://localhost:17010/api/v1';
 }
 
-export const API_BASE_URL =
-  env.PUBLIC_MANIFEST_API_URL || getDefaultApiBaseUrl();
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /**
  * API client instance.
