@@ -1,48 +1,9 @@
 <script lang="ts">
-  import type { components } from '$lib/api/schema.js';
   import { FeatureDetail } from '$lib/components/features/index.js';
   import { EmptyProjectGuide } from '$lib/components/projects/index.js';
-  import { getContext } from 'svelte';
+  import { getProjectDataContext } from '$lib/contexts/types.js';
 
-  type Feature = components['schemas']['Feature'];
-  type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
-  type FeatureState = components['schemas']['FeatureState'];
-  type Version = components['schemas']['Version'];
-
-  interface ProjectDataContext {
-    readonly featureTree: FeatureTreeNode[];
-    readonly selectedFeature: Feature | null;
-    readonly selectedFeatureId: string | null;
-    readonly selectedFeatureIsGroup: boolean;
-    readonly versions: Version[];
-    readonly projectId: string | undefined;
-    readonly projectSlug: string | undefined;
-    readonly gitRemote: string | undefined;
-    readonly isLoadingFeatures: boolean;
-    readonly isLoadingFeature: boolean;
-    readonly isProjectEmpty: boolean;
-    readonly acFormat: 'checkbox' | 'gherkin' | undefined;
-    handleSaveFeature: (
-      id: string,
-      updates: {
-        title?: string;
-        details?: string | null;
-        desired_details?: string | null;
-        state?: FeatureState;
-      },
-    ) => Promise<void>;
-    handleVersionChange: (
-      featureId: string,
-      versionId: string | null,
-    ) => Promise<void>;
-    handleArchiveFromDetail: () => void;
-    handleRestoreFromDetail: () => void;
-    handleDeleteFromDetail: () => Promise<void>;
-    handleOpenCreateDialog: (parentId: string | null) => void;
-    handleStartWorking: () => void;
-  }
-
-  const ctx = getContext<ProjectDataContext>('projectData');
+  const ctx = getProjectDataContext();
 </script>
 
 {#if ctx.isProjectEmpty}

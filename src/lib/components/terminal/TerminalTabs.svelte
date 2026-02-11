@@ -1,31 +1,14 @@
 <script lang="ts">
   import Terminal from './Terminal.svelte';
-  import { getContext } from 'svelte';
+  import { getRightPanelContext, getProjectDataContext } from '$lib/contexts/types.js';
 
   interface Props {
     cwd?: string;
   }
 
-  interface TerminalTab {
-    id: string;
-    label: string;
-    initialInput?: string;
-    featureId?: string;
-  }
-
-  interface RightPanelContext {
-    readonly terminalTabs: TerminalTab[];
-    readonly activeTerminalTabId: string | null;
-    resetTerminals(): void;
-    createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }): void;
-    closeTerminalTab(tabId: string): void;
-    selectTerminalTab(tabId: string): void;
-    markTerminalAttention(tabId: string): void;
-  }
-
   let { cwd }: Props = $props();
 
-  const rightPanel = getContext<RightPanelContext>('rightPanel');
+  const rightPanel = getRightPanelContext();
 
   // Track send functions per terminal tab
   let sendFns = $state<Map<string, (text: string) => void>>(new Map());
@@ -48,13 +31,7 @@
   const activeFeatureId = $derived(activeTab?.featureId);
 
   // Context chips based on feature state
-  // We get feature state from the project data context
-  interface ProjectDataContext {
-    readonly selectedFeature: { id: string; title: string; state: string; details?: string | null } | null;
-    readonly featureTree: unknown[];
-  }
-
-  const projectData = getContext<ProjectDataContext>('projectData');
+  const projectData = getProjectDataContext();
 
   // Find the feature for the active terminal tab
   const linkedFeature = $derived.by(() => {
@@ -99,6 +76,7 @@
           initialInput={tab.initialInput}
           isActive={rightPanel.activeTerminalTabId === tab.id}
           onBell={() => rightPanel.markTerminalAttention(tab.id)}
+          onIdle={() => rightPanel.markTerminalAttention(tab.id)}
           onReady={(send) => handleReady(tab.id, send)}
         />
       </div>

@@ -2,38 +2,13 @@
   import { getAuthApiContext } from '$lib/api/auth-context.js';
   import type { components } from '$lib/api/schema.js';
   import { VersionMatrixView } from '$lib/components/versions/index.js';
-  import type { FilterableState } from '$lib/stores/featureFilter.svelte.js';
-  import { getContext } from 'svelte';
+  import { getProjectDataContext } from '$lib/contexts/types.js';
 
   const authApi = getAuthApiContext();
 
-  type Feature = components['schemas']['Feature'];
-  type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
-  type FeatureState = components['schemas']['FeatureState'];
   type Version = components['schemas']['Version'];
 
-  interface ProjectDataContext {
-    readonly featureTree: FeatureTreeNode[];
-    readonly selectedFeature: Feature | null;
-    readonly selectedFeatureId: string | null;
-    readonly versions: Version[];
-    readonly projectId: string | undefined;
-    readonly isLoadingFeatures: boolean;
-    readonly treeScrollTop: number;
-    readonly expandedIds: Set<string>;
-    readonly activeFilters: Set<FilterableState>;
-    readonly hoveredFeatureId: string | null;
-    loadFeatureTree: () => Promise<void>;
-    loadVersions: () => Promise<void>;
-    handleSelectFeature: (id: string) => void;
-    handleScrollSync: (scrollTop: number) => void;
-    handleHoverFeature: (id: string | null) => void;
-    handleExpandAll: () => void;
-    handleCollapseAll: () => void;
-    handleToggleFilter: (state: FilterableState) => void;
-  }
-
-  const ctx = getContext<ProjectDataContext>('projectData');
+  const ctx = getProjectDataContext();
 
   // Version-specific handlers (not shared since only plan view needs them)
   async function handleCreateVersion(name: string) {
@@ -102,6 +77,7 @@
     onCompleteVersion={handleCompleteVersion}
     onScrollSync={ctx.handleScrollSync}
     onHoverFeature={ctx.handleHoverFeature}
+    onVersionClick={ctx.handleExpandForVersion}
   />
 {/if}
 

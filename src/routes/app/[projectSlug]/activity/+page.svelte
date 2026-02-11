@@ -8,24 +8,13 @@
   } from '$lib/components/features/featureTreeUtils.js';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { getContext } from 'svelte';
+  import { getProjectDataContext } from '$lib/contexts/types.js';
 
   const authApi = getAuthApiContext();
 
-  type Feature = components['schemas']['Feature'];
-  type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
   type ProjectHistoryEntry = components['schemas']['ProjectHistoryEntry'];
 
-  interface ProjectDataContext {
-    readonly featureTree: FeatureTreeNode[];
-    readonly selectedFeatureId: string | null;
-    readonly projectId: string | undefined;
-    readonly projectSlug: string | undefined;
-    readonly gitRemote: string | undefined;
-    readonly isLoadingFeatures: boolean;
-  }
-
-  const ctx = getContext<ProjectDataContext>('projectData');
+  const ctx = getProjectDataContext();
 
   // Activity-specific state
   let historyEntries = $state<ProjectHistoryEntry[]>([]);

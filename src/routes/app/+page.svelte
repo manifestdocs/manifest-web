@@ -1,19 +1,10 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
   import { goto } from '$app/navigation';
   import { WelcomeScreen } from '$lib/components/projects/index.js';
-  import type { components } from '$lib/api/schema.js';
   import { debugEmptyState } from '$lib/stores/index.js';
+  import { getProjectsContext } from '$lib/contexts/types.js';
 
-  type Project = components['schemas']['Project'];
-
-  interface ProjectsContext {
-    readonly projects: Project[];
-    readonly isLoading: boolean;
-    refresh: () => Promise<void>;
-  }
-
-  const projectsContext = getContext<ProjectsContext>('projects');
+  const projectsContext = getProjectsContext();
 
   // Check if we should show empty state due to debug mode
   const showNoProjectsState = $derived(

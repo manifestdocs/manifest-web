@@ -22,6 +22,11 @@
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
   import { sidebarWidth, rightSidebarWidth } from '$lib/stores/index.js';
+  import {
+    type TerminalTab,
+    setRightPanelContext,
+    setProjectsContext,
+  } from '$lib/contexts/types.js';
 
   type Project = components['schemas']['Project'];
 
@@ -41,14 +46,6 @@
   let settingsDialogOpen = $state(false);
 
   let commandPaletteOpen = $state(false);
-
-  // Right panel tab state — owned here, consumed by project layout via context
-  interface TerminalTab {
-    id: string;
-    label: string;
-    initialInput?: string;
-    featureId?: string;
-  }
 
   const MAX_TERMINAL_TABS = 8;
   let nextTerminalNumber = $state(2); // Start at 2 since we have a default Terminal 1
@@ -126,7 +123,7 @@
     }
   }
 
-  setContext('rightPanel', {
+  setRightPanelContext({
     get terminalTabs() { return terminalTabs; },
     get activeTerminalTabId() { return activeTerminalTabId; },
     resetTerminals() {
@@ -231,7 +228,7 @@
   });
 
   // Provide projects context to child routes
-  setContext('projects', {
+  setProjectsContext({
     get projects() {
       return projects;
     },
