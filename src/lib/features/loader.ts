@@ -82,8 +82,10 @@ export async function fetchDirectories(
       return { hasDirectories: false, primaryDirectoryPath: undefined, gitRemote: undefined };
     }
     const hasDirectories = data.length > 0;
-    const primary = data.find((d) => d.is_primary);
-    const primaryDirectoryPath = primary?.path ?? data[0]?.path ?? undefined;
+    // Pick the most recently added primary directory (last in the list)
+    const primaries = data.filter((d) => d.is_primary);
+    const primary = primaries.length > 0 ? primaries[primaries.length - 1] : null;
+    const primaryDirectoryPath = primary?.path ?? data[data.length - 1]?.path ?? undefined;
     const gitRemote =
       primary?.git_remote ??
       data.find((d) => d.git_remote)?.git_remote ??
