@@ -2,8 +2,15 @@ import createClient from 'openapi-fetch';
 import type { paths } from './schema';
 import { env } from '$env/dynamic/public';
 
+function getDefaultApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/v1`;
+  }
+  return 'http://localhost:17010/api/v1';
+}
+
 export const API_BASE_URL =
-  env.PUBLIC_MANIFEST_API_URL || 'http://localhost:17010/api/v1';
+  env.PUBLIC_MANIFEST_API_URL || getDefaultApiBaseUrl();
 
 /**
  * API client instance.

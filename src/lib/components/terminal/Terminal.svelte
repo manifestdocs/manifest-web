@@ -133,12 +133,24 @@
       });
     };
 
+    // Idle detection: fires onIdle when no output received for IDLE_TIMEOUT_MS
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function resetIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        onIdle?.();
+      }, IDLE_TIMEOUT_MS);
+    }
+
     ws.onmessage = (event) => {
       if (event.data instanceof ArrayBuffer) {
         term.write(new Uint8Array(event.data));
       } else if (typeof event.data === 'string') {
         term.write(event.data);
       }
+
+      resetIdleTimer();
 
       // After first output (shell prompt), inject initial input once
       if (initialInput && !initialInputSent) {
@@ -191,6 +203,7 @@
 
     return {
       destroy() {
+        if (idleTimer) clearTimeout(idleTimer);
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
         dataDisposable.dispose();
         bellDisposable.dispose();
