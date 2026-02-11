@@ -59,12 +59,15 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
   class="history-entry"
   class:has-body={body !== null}
   class:release-entry={isReleaseEntry}
+  role={body ? 'button' : undefined}
+  tabindex={body ? 0 : undefined}
   onclick={handleEntryClick}
+  onkeydown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && body) { e.preventDefault(); handleEntryClick(); } }}
 >
   {#if isReleaseEntry}
     <!-- Release milestone styling -->

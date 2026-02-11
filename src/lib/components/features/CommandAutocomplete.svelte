@@ -31,8 +31,7 @@
 </script>
 
 {#if matches.length > 0}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="command-menu" onmousedown={(e) => e.preventDefault()}>
+  <div class="command-menu" role="listbox" tabindex="-1" aria-label="Command suggestions" onmousedown={(e) => e.preventDefault()}>
     {#each matches as match, i (match.command.name)}
       {@const segments = getMatchHighlights(
         match.command.name,

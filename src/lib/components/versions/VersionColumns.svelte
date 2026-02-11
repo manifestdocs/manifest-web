@@ -148,9 +148,10 @@
     ></div>
   </div>
 
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="version-columns-scroll"
+    role="region"
+    aria-label="Version columns"
     bind:this={scrollRef}
     onscroll={handleScroll}
     onmouseover={handleMouseOver}
