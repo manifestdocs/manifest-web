@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { getAuthApiContext } from '$lib/api/auth-context.js';
   import type { components } from '$lib/api/schema.js';
   import { MarkdownView } from '$lib/components/markdown/index.js';
   import { InfoBanner } from '$lib/components/ui/index.js';
+
+  const authApi = getAuthApiContext();
 
   type Feature = components['schemas']['Feature'];
 
@@ -22,6 +25,31 @@
     showHighlight,
     onViewDiff,
   }: Props = $props();
+
+  // Blocked-by feature names (fetched when feature is blocked)
+  let blockerNames = $state<string[]>([]);
+
+  $effect(() => {
+    if (feature.state === 'blocked') {
+      loadBlockers(feature.id);
+    } else {
+      blockerNames = [];
+    }
+  });
+
+  async function loadBlockers(featureId: string) {
+    try {
+      const api = await authApi.getClient();
+      const { data } = await api.GET('/features/{id}/blockers' as any, {
+        params: { path: { id: featureId } },
+      });
+      if (Array.isArray(data)) {
+        blockerNames = data.map((b: { title: string }) => b.title);
+      }
+    } catch {
+      blockerNames = [];
+    }
+  }
 </script>
 
 {#if isRoot}
@@ -33,6 +61,16 @@
   <InfoBanner class="content-banner">
     Shared context — flows to all child features. Include architecture and
     constraints for this area.
+  </InfoBanner>
+{/if}
+
+{#if feature.state === 'blocked'}
+  <InfoBanner variant="error" class="content-banner">
+    {#if blockerNames.length > 0}
+      Blocked by: {blockerNames.join(', ')}
+    {:else}
+      This feature is blocked.
+    {/if}
   </InfoBanner>
 {/if}
 

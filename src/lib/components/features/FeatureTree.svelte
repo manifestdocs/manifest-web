@@ -20,6 +20,7 @@
   type GroupMetadata = {
     hasFutureWork: boolean;
     hasProposed: boolean;
+    hasBlocked: boolean;
     hasInProgress: boolean;
   };
 
@@ -459,6 +460,7 @@
       {isExpanded}
       showTrack={!hasChildren && !isRoot}
       hasProposed={groupMeta?.hasProposed ?? false}
+      hasBlocked={groupMeta?.hasBlocked ?? false}
       hasInProgress={groupMeta?.hasInProgress ?? false}
       isDraggable={!!(onReparent || onCreateGroup) && !isRoot}
       {isDragging}
@@ -532,7 +534,7 @@
     display: flex;
     align-items: center;
     height: 36px;
-    padding: 0 12px;
+    padding: 0 14px;
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;

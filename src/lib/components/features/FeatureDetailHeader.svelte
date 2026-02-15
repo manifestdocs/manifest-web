@@ -331,6 +331,12 @@
     border-color: rgba(156, 220, 254, 0.3);
   }
 
+  .state-badge[data-state='blocked'] {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--state-blocked);
+    border-color: rgba(248, 81, 73, 0.3);
+  }
+
   .state-badge[data-state='archived'] {
     background: rgba(110, 118, 129, 0.15);
     color: var(--state-archived);

@@ -15,6 +15,7 @@
     isExpanded: boolean;
     showTrack?: boolean;
     hasProposed?: boolean;
+    hasBlocked?: boolean;
     hasInProgress?: boolean;
     isHovered?: boolean;
     isDraggable?: boolean;
@@ -34,6 +35,7 @@
     isExpanded,
     showTrack = false,
     hasProposed = false,
+    hasBlocked = false,
     hasInProgress = false,
     isHovered = false,
     isDraggable = false,
@@ -119,12 +121,20 @@
 
   <span class="feature-title">{feature.title}</span>
 
-  {#if hasChildren && !isRoot && (hasProposed || hasInProgress)}
+  {#if hasChildren && !isRoot && (hasProposed || hasBlocked || hasInProgress)}
     <span class="state-indicators">
       {#if hasProposed}
         <span class="future-work-indicator" title="Has incomplete work">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
             <path d="M8 2L14 8L8 14L2 8Z" fill="var(--state-proposed)" />
+          </svg>
+        </span>
+      {/if}
+      {#if hasBlocked}
+        <span class="blocked-indicator" title="Has blocked features">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="5.5" stroke="var(--state-blocked)" stroke-width="1.5" fill="none" />
+            <line x1="4" y1="12" x2="12" y2="4" stroke="var(--state-blocked)" stroke-width="1.5" stroke-linecap="round" />
           </svg>
         </span>
       {/if}
@@ -273,6 +283,7 @@
   }
 
   .future-work-indicator,
+  .blocked-indicator,
   .in-progress-indicator {
     display: flex;
     align-items: center;

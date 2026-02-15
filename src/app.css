@@ -8,6 +8,14 @@
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/ibm-plex-mono/600.css';
+/* Zalando Sans Expanded - logotype only */
+@font-face {
+  font-family: 'Zalando Sans Expanded';
+  src: url('$lib/assets/fonts/ZalandoSansExpanded-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 @import 'tailwindcss';
 @import '$lib/components/ui/dialog/dialog.css';
 
@@ -24,6 +32,7 @@
 
   /* Feature state colors */
   --state-proposed: #cca700;
+  --state-blocked: #f85149;
   --state-in-progress: #89d185;
   --state-implemented: #9cdcfe;
   --state-archived: #6e6e6e;

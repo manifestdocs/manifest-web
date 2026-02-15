@@ -86,7 +86,8 @@ export const stateOrder: Record<string, number> = {
   implemented: 0,
   in_progress: 1,
   proposed: 2,
-  archived: 3,
+  blocked: 3,
+  archived: 4,
 };
 
 /**

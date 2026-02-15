@@ -73,9 +73,9 @@ function isGroupComplete(node: FeatureTreeNode): boolean {
 }
 
 function hasIncompleteDescendants(node: FeatureTreeNode): boolean {
-  // Check if any descendant is proposed or in_progress
+  // Check if any descendant is proposed, blocked, or in_progress
   if (node.children.length === 0) {
-    return node.state === 'proposed' || node.state === 'in_progress';
+    return node.state === 'proposed' || node.state === 'blocked' || node.state === 'in_progress';
   }
   return node.children.some((child) => hasIncompleteDescendants(child));
 }
@@ -92,6 +92,13 @@ function hasProposedDescendants(node: FeatureTreeNode): boolean {
     return node.state === 'proposed';
   }
   return node.children.some((child) => hasProposedDescendants(child));
+}
+
+function hasBlockedDescendants(node: FeatureTreeNode): boolean {
+  if (node.children.length === 0) {
+    return node.state === 'blocked';
+  }
+  return node.children.some((child) => hasBlockedDescendants(child));
 }
 
 function hasDescendantWithVersion(
@@ -258,12 +265,14 @@ function createFeatureExpansionStore() {
       isComplete: boolean;
       hasFutureWork: boolean;
       hasProposed: boolean;
+      hasBlocked: boolean;
       hasInProgress: boolean;
     } {
       return {
         isComplete: isGroupComplete(node),
         hasFutureWork: hasIncompleteDescendants(node),
         hasProposed: hasProposedDescendants(node),
+        hasBlocked: hasBlockedDescendants(node),
         hasInProgress: hasInProgressDescendants(node),
       };
     },
