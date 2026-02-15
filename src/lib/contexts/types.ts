@@ -20,11 +20,13 @@ export interface TerminalTab {
   label: string;
   initialInput?: string;
   featureId?: string;
+  featureState?: FeatureState;
 }
 
 export interface RightPanelContext {
   readonly terminalTabs: TerminalTab[];
   readonly activeTerminalTabId: string | null;
+  readonly defaultAgent: string;
   resetTerminals(): void;
   createTerminalTab(opts?: {
     label?: string;
@@ -34,6 +36,9 @@ export interface RightPanelContext {
   closeTerminalTab(tabId: string): void;
   selectTerminalTab(tabId: string): void;
   markTerminalAttention(tabId: string): void;
+  markTerminalIdleAttention(tabId: string): void;
+  markTerminalActivity(tabId: string): void;
+  updateTerminalTabState(tabId: string, state: FeatureState): void;
 }
 
 // --- Projects ---
@@ -64,6 +69,7 @@ export interface ProjectDataContext {
   readonly expandedIds: Set<string>;
   readonly activeFilters: Set<FilterableState>;
   readonly hoveredFeatureId: string | null;
+  readonly activeVersionFilter: { versionId: string | null; versionName: string } | null;
   loadFeatureTree: () => Promise<void>;
   loadVersions: () => Promise<void>;
   handleSelectFeature: (id: string) => void;

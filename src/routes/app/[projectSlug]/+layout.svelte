@@ -67,6 +67,7 @@
   let featureTreeRef = $state<ReturnType<typeof FeatureTree> | null>(null);
   let treeScrollTop = $state(0);
   let hoveredFeatureId = $state<string | null>(null);
+  let activeVersionFilter = $state<{ versionId: string | null; versionName: string } | null>(null);
 
   function handleTreeScroll(scrollTop: number) {
     treeScrollTop = scrollTop;
@@ -375,6 +376,20 @@
     loadFeature,
     navigateTo: (path, opts) => goto(path, opts),
     createTerminalTab: rightPanel.createTerminalTab,
+    getDefaultAgent: () => rightPanel.defaultAgent,
+  });
+
+  // Sync feature states to terminal tabs when tree changes
+  $effect(() => {
+    const tree = featureTree;
+    for (const tab of rightPanel.terminalTabs) {
+      if (!tab.featureId) continue;
+      const node = findFeature(tree, tab.featureId);
+      const state = node?.state ?? undefined;
+      if (state && tab.featureState !== state) {
+        rightPanel.updateTerminalTabState(tab.id, state);
+      }
+    }
   });
 
   // Auto-launch breakdown when arriving from wizard with instructions
@@ -397,9 +412,10 @@
   function sendPlanPrompt() {
     const name = project?.name ?? 'this project';
     const safeName = name.replace(/'/g, "'\\''");
+    const agentCmd = rightPanel.defaultAgent;
     rightPanel.createTerminalTab({
       label: `Plan: ${name}`.slice(0, 40),
-      initialInput: `claude 'Read the project instructions for "${safeName}" using get_project_instructions and break them down into a feature tree using the plan tool. After creating features, assign them across versions to define an implementation roadmap — foundational features in the first version, dependent features in later versions. Create additional versions with create_version and use set_feature_version to distribute features.'\r`,
+      initialInput: `${agentCmd} 'Read the project instructions for "${safeName}" using get_project_instructions and break them down into a feature tree using the plan tool. After creating features, assign them across versions to define an implementation roadmap — foundational features in the first version, dependent features in later versions. Create additional versions with create_version and use set_feature_version to distribute features.'\r`,
     });
   }
 
@@ -496,6 +512,9 @@
     get hoveredFeatureId() {
       return hoveredFeatureId;
     },
+    get activeVersionFilter() {
+      return activeVersionFilter;
+    },
     loadFeatureTree: () =>
       projectId ? loadFeatureTree(projectId) : Promise.resolve(),
     loadVersions: () =>
@@ -514,10 +533,27 @@
     handleStartWorking: mutations.handleStartWorking,
     handleScrollSync,
     handleHoverFeature,
-    handleExpandForVersion: (versionId: string | null) =>
-      featureTreeRef?.expandForVersion(versionId),
-    handleExpandAll: () => featureTreeRef?.expandAll(),
-    handleCollapseAll: () => featureTreeRef?.collapseAll(),
+    handleExpandForVersion: (versionId: string | null) => {
+      // Toggle: if same version is active, clear filter + expand all
+      if (activeVersionFilter && activeVersionFilter.versionId === versionId) {
+        activeVersionFilter = null;
+        featureTreeRef?.expandAll();
+        return;
+      }
+      // Look up version name
+      const ver = versions.find((v) => v.id === versionId);
+      const name = ver ? ver.name : 'Backlog';
+      activeVersionFilter = { versionId, versionName: name };
+      featureTreeRef?.expandForVersion(versionId);
+    },
+    handleExpandAll: () => {
+      activeVersionFilter = null;
+      featureTreeRef?.expandAll();
+    },
+    handleCollapseAll: () => {
+      activeVersionFilter = null;
+      featureTreeRef?.collapseAll();
+    },
     handleToggleFilter: (
       state: import('$lib/stores/featureFilter.svelte.js').FilterableState,
     ) => featureTreeRef?.toggleFilter(state),

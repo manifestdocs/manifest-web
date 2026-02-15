@@ -178,4 +178,5 @@
     background: transparent;
     color: var(--state-in-progress);
   }
+
 </style>

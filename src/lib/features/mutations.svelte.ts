@@ -42,6 +42,7 @@ interface MutationDeps {
   loadFeature: (fid: string, force?: boolean) => Promise<void>;
   navigateTo: (path: string, opts?: { replaceState?: boolean }) => void;
   createTerminalTab: RightPanelContext['createTerminalTab'];
+  getDefaultAgent: () => string;
 }
 
 export function createFeatureMutations(deps: MutationDeps) {
@@ -358,7 +359,7 @@ export function createFeatureMutations(deps: MutationDeps) {
   function handleImplementFeature(featureId: string, featureTitle: string) {
     handleSaveFeature(featureId, { state: 'in_progress' as FeatureState });
 
-    const agentCmd = 'claude';
+    const agentCmd = deps.getDefaultAgent();
     const safeTitle = featureTitle.replace(/'/g, "'\\''");
     const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${featureId})'\r`;
 

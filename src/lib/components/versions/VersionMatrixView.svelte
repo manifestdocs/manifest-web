@@ -31,6 +31,7 @@
       versionId: string | null,
     ) => Promise<void>;
     onCompleteVersion?: (versionId: string) => Promise<void>;
+    activeVersionId?: string | null | undefined;
     onScrollSync: (scrollTop: number) => void;
     onHoverFeature: (id: string | null) => void;
     onVersionClick?: (versionId: string | null) => void;
@@ -45,6 +46,7 @@
     expandedIds,
     activeFilters,
     treeScrollTop,
+    activeVersionId = undefined,
     showHeader = true,
     onCreateVersion,
     onUpdateFeatureVersion,
@@ -171,6 +173,7 @@
     {closingVersionId}
     {isNowFeatureComplete}
     {totalVersionColumns}
+    {activeVersionId}
     {onVersionClick}
   />
 

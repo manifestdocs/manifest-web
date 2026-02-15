@@ -76,7 +76,8 @@
           initialInput={tab.initialInput}
           isActive={rightPanel.activeTerminalTabId === tab.id}
           onBell={() => rightPanel.markTerminalAttention(tab.id)}
-          onIdle={() => rightPanel.markTerminalAttention(tab.id)}
+          onIdle={() => rightPanel.markTerminalIdleAttention(tab.id)}
+          onActivity={() => rightPanel.markTerminalActivity(tab.id)}
           onReady={(send) => handleReady(tab.id, send)}
         />
       </div>

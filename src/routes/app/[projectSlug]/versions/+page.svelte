@@ -72,6 +72,7 @@
     expandedIds={ctx.expandedIds}
     activeFilters={ctx.activeFilters}
     treeScrollTop={ctx.treeScrollTop}
+    activeVersionId={ctx.activeVersionFilter?.versionId}
     onCreateVersion={handleCreateVersion}
     onUpdateFeatureVersion={handleUpdateFeatureVersion}
     onCompleteVersion={handleCompleteVersion}

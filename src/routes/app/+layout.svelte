@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { api } from '$lib/api/client.js';
+  import { api, API_BASE_URL } from '$lib/api/client.js';
   import { setAuthApiContext } from '$lib/api/auth-context.js';
   import type { components } from '$lib/api/schema.js';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { page } from '$app/state';
   import { setContext } from 'svelte';
-  import headerLogotype from '$lib/assets/manifest_header_logotype.png';
   import {
     NewProjectWizard,
     ProjectSettingsDialog,
@@ -16,6 +15,7 @@
     PlusIcon,
     SearchIcon,
     CloseIcon,
+    StateIcon,
   } from '$lib/components/icons/index.js';
   import { CommandPalette } from '$lib/components/command-palette/index.js';
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
@@ -60,6 +60,18 @@
   let activeTerminalTabId = $state<string | null>(defaultTerminalTab.id);
   let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
   let attentionTabIds = $state<Set<string>>(new Set());
+  let idleSeenTabIds = $state<Set<string>>(new Set());
+  let defaultAgent = $state('claude');
+
+  // Fetch default_agent from server settings on mount
+  $effect(() => {
+    fetch(`${API_BASE_URL}/settings`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.default_agent) defaultAgent = data.default_agent;
+      })
+      .catch(() => {}); // Keep fallback 'claude'
+  });
 
   function createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }) {
     if (terminalTabs.length >= MAX_TERMINAL_TABS) return;
@@ -109,10 +121,9 @@
 
   function selectTerminalTab(tabId: string) {
     activeTerminalTabId = tabId;
-    // Clear attention when tab is selected
-    if (attentionTabIds.has(tabId)) {
-      attentionTabIds = new Set([...attentionTabIds].filter(id => id !== tabId));
-    }
+    // Clear attention and mark as seen (suppress re-highlight until new output)
+    attentionTabIds = new Set([...attentionTabIds].filter(id => id !== tabId));
+    idleSeenTabIds = new Set([...idleSeenTabIds, tabId]);
   }
 
   function markTerminalAttention(tabId: string) {
@@ -123,9 +134,31 @@
     }
   }
 
+  function markTerminalIdleAttention(tabId: string) {
+    // Like markTerminalAttention, but suppressed if user already saw this idle state
+    if (idleSeenTabIds.has(tabId)) return;
+    markTerminalAttention(tabId);
+  }
+
+  function markTerminalActivity(tabId: string) {
+    // New output clears the "seen" flag so idle can re-trigger
+    if (idleSeenTabIds.has(tabId)) {
+      idleSeenTabIds = new Set([...idleSeenTabIds].filter(id => id !== tabId));
+    }
+  }
+
+  function updateTerminalTabState(tabId: string, state: NonNullable<TerminalTab['featureState']>) {
+    const tab = terminalTabs.find((t) => t.id === tabId);
+    if (tab && tab.featureState !== state) {
+      tab.featureState = state;
+      terminalTabs = [...terminalTabs]; // trigger reactivity
+    }
+  }
+
   setRightPanelContext({
     get terminalTabs() { return terminalTabs; },
     get activeTerminalTabId() { return activeTerminalTabId; },
+    get defaultAgent() { return defaultAgent; },
     resetTerminals() {
       const newTab: TerminalTab = {
         id: crypto.randomUUID(),
@@ -135,11 +168,15 @@
       activeTerminalTabId = newTab.id;
       nextTerminalNumber = 2;
       attentionTabIds = new Set();
+      idleSeenTabIds = new Set();
     },
     createTerminalTab,
     closeTerminalTab,
     selectTerminalTab,
     markTerminalAttention,
+    markTerminalIdleAttention,
+    markTerminalActivity,
+    updateTerminalTabState,
   });
 
   // Global keyboard shortcuts
@@ -252,7 +289,7 @@
   <div class="app-layout">
     <header class="app-header">
       <a href="/" class="logo">
-        <img src={headerLogotype} alt="Manifest" class="logo-image" />
+        <span class="logo-text">MANIFEST</span>
       </a>
       <!-- Row 1: Toolbar -->
       <div class="header-toolbar">
@@ -331,12 +368,16 @@
                 class="terminal-tab"
                 class:active={activeTerminalTabId === tab.id}
                 class:needs-attention={attentionTabIds.has(tab.id)}
+                class:linked={tab.featureId != null && tab.featureId === selectedFeatureId}
               >
                 <button
                   class="terminal-tab-label"
                   onclick={() => selectTerminalTab(tab.id)}
                   title={tab.label}
                 >
+                  {#if tab.featureState}
+                    <StateIcon state={tab.featureState} size={10} />
+                  {/if}
                   {tab.label}
                 </button>
                 <button
@@ -553,6 +594,11 @@
     border-left: 1px solid var(--border-default);
   }
 
+  .terminal-tab.linked:not(.active) {
+    border-top: 1px solid var(--accent-blue);
+    background: rgba(56, 139, 253, 0.08);
+  }
+
   .terminal-tab.needs-attention {
     background: rgba(210, 153, 34, 0.25);
     color: #e3b341;
@@ -581,6 +627,9 @@
   }
 
   .terminal-tab-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     padding: 0;
     font-size: 13px;
     font-weight: 500;
@@ -588,7 +637,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    max-width: 100px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -651,7 +700,7 @@
 
   .logo {
     position: absolute;
-    left: 11px;
+    left: 13px;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -665,9 +714,12 @@
     opacity: 0.8;
   }
 
-  .logo-image {
-    height: 36px;
-    width: auto;
+  .logo-text {
+    font-family: 'Zalando Sans Expanded', sans-serif;
+    font-size: 22px;
+    font-weight: 200;
+    letter-spacing: 0.12em;
+    color: var(--foreground);
   }
 
   .project-select {

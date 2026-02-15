@@ -13,6 +13,7 @@
     isActive?: boolean;
     onBell?: () => void;
     onIdle?: () => void;
+    onActivity?: () => void;
     onReady?: (send: (text: string) => void) => void;
   }
 
@@ -25,10 +26,17 @@
     isActive = false,
     onBell,
     onIdle,
+    onActivity,
     onReady,
   }: Props = $props();
 
   let termRef: Terminal | null = null;
+
+  // Bridge reactive prop to imperative closure (actions can't see prop updates)
+  const activeState = { current: isActive };
+  $effect(() => {
+    activeState.current = isActive;
+  });
 
   $effect(() => {
     if (isActive && termRef) {
@@ -219,6 +227,7 @@
         }
 
         resetIdleTimer();
+        onActivity?.();
 
         // After first output (shell prompt), inject initial input once
         if (initialInput && !initialInputSent) {
