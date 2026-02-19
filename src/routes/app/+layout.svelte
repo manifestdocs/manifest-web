@@ -6,6 +6,7 @@
   import { base } from '$app/paths';
   import { page } from '$app/state';
   import { setContext } from 'svelte';
+  import logoSmall from '$lib/assets/manifest_logo_small.png';
   import {
     NewProjectWizard,
     ProjectSettingsDialog,
@@ -289,6 +290,7 @@
   <div class="app-layout">
     <header class="app-header">
       <a href="/" class="logo">
+        <img src={logoSmall} alt="" class="logo-icon" />
         <span class="logo-text">MANIFEST</span>
       </a>
       <!-- Row 1: Toolbar -->
@@ -702,7 +704,7 @@
     position: absolute;
     left: 13px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(calc(-50% + 2px));
     display: flex;
     align-items: center;
     text-decoration: none;
@@ -712,6 +714,14 @@
 
   .logo:hover {
     opacity: 0.8;
+  }
+
+  .logo-icon {
+    height: 50px;
+    width: auto;
+    margin-right: 12px;
+    margin-top: -6px;
+    border-radius: 4px;
   }
 
   .logo-text {
