@@ -24,6 +24,7 @@
 
   const proposedActive = $derived(activeFilters.has('proposed'));
   const inProgressActive = $derived(activeFilters.has('in_progress'));
+  const blockedActive = $derived(activeFilters.has('blocked'));
 </script>
 
 <div class="tree-actions">
@@ -94,6 +95,25 @@
             stroke="currentColor"
             stroke-width="1.5"
           />
+        </svg>
+      {/if}
+    </button>
+    <button
+      class="action-btn filter-btn blocked"
+      class:active={blockedActive}
+      onclick={() => onToggleFilter('blocked')}
+      title={blockedActive ? 'Hide blocked filter' : 'Show blocked'}
+      type="button"
+    >
+      {#if blockedActive}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="currentColor" stroke-width="1.5" />
+          <line x1="4" y1="12" x2="12" y2="4" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      {:else}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none" />
+          <line x1="4" y1="12" x2="12" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
       {/if}
     </button>
@@ -177,6 +197,11 @@
   .action-btn.filter-btn.in-progress.active {
     background: transparent;
     color: var(--state-in-progress);
+  }
+
+  .action-btn.filter-btn.blocked.active {
+    background: transparent;
+    color: var(--state-blocked);
   }
 
 </style>

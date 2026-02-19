@@ -107,10 +107,11 @@ Full navigation and visualization of the feature hierarchy.
 
 **State Indicators:**
 
-- `○` proposed (gray)
-- `◐` specified (blue)
-- `●` implemented (green)
-- `◌` deprecated (faded)
+- `◇` proposed (amber)
+- `⊘` blocked (red)
+- `○` in_progress (green)
+- `●` implemented (blue)
+- `✗` archived (gray)
 
 **Tree Operations:**
 
@@ -141,7 +142,7 @@ Rich editing experience for feature specifications.
 │ ## Details                                              │
 │                                                         │
 │ Enhance get_task_context response to include:           │
-│ 1. Feature state (proposed/specified/implemented)       │
+│ 1. Feature state (proposed/blocked/in_progress/implemented) │
 │ 2. Existing implementation notes on this task           │
 │ 3. Feature history from previous sessions               │
 │                                                         │
@@ -217,7 +218,7 @@ Insights into project health and documentation coverage.
 - Feature coverage (% with complete specs)
 - Activity heatmap (sessions over time)
 - Staleness detection (features unchanged despite code activity)
-- State distribution (proposed/specified/implemented/deprecated)
+- State distribution (proposed/blocked/in_progress/implemented/archived)
 
 ---
 
@@ -433,7 +434,7 @@ These components from shadcn-svelte form our foundation:
 | `SessionDetail` | Expanded session with tasks and logs                                         |
 | `StateSelector` | Feature state dropdown with color coding                                     |
 | `ProjectCard`   | Project summary for dashboard                                                |
-| `StateBadge`    | Colored badge for feature states (proposed/specified/implemented/deprecated) |
+| `StateBadge`    | Colored badge for feature states (proposed/blocked/in_progress/implemented/archived) |
 | `TimeAgo`       | Relative time display                                                        |
 | `Avatar`        | User avatar with presence indicator                                          |
 | `MarkdownView`  | Rendered markdown display                                                    |

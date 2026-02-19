@@ -6,7 +6,7 @@
 
 const STORAGE_KEY_PREFIX = 'manifest:ui:feature-filter:';
 
-export type FilterableState = 'proposed' | 'in_progress';
+export type FilterableState = 'proposed' | 'in_progress' | 'blocked';
 
 interface StoredFilterState {
   activeFilters: FilterableState[];

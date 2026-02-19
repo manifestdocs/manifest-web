@@ -98,7 +98,7 @@ describe('MyComponent', () => {
 - **Feature**: A capability of the system (lives as documentation, not a work item to close)
 - **Session**: A work session on a leaf feature (only one active per feature)
 - **Task**: Work unit within a session, assigned to an AI agent
-- **Feature States**: proposed → in_progress → implemented → archived
+- **Feature States**: proposed → blocked → in_progress → implemented → archived. Features in the `blocked` state depend on other features (tracked via `blocked_by`). They auto-transition to `proposed` when all blockers are implemented.
 
 ## Path Aliases
 
