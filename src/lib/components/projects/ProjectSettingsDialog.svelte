@@ -542,22 +542,20 @@
                       <strong>Built-in protections</strong>
                       <ul>
                         <li>Off by default — you must explicitly enable it here.</li>
-                        <li>A random token is generated each time the server starts. Browsers must obtain it via a CORS-protected endpoint before the WebSocket connection is accepted, preventing cross-site hijacking attacks.</li>
-                        <li>WebSocket connections are only accepted from <code>localhost:17010</code> (or the Vite dev ports in development).</li>
+                        <li>The server binds to <code>127.0.0.1</code> by default, so it is not reachable from other machines on your network.</li>
+                        <li>A random connection token is generated each time the server starts. Browsers must fetch it via a CORS-protected endpoint before the WebSocket is accepted, blocking cross-site hijacking attacks from malicious websites.</li>
+                        <li>WebSocket connections are only accepted from <code>localhost:17010</code>.</li>
                       </ul>
                     </div>
                     <div class="terminal-security-section">
-                      <strong>Remaining risks</strong>
+                      <strong>Remaining risk</strong>
                       <ul>
-                        <li>In local mode there is no authentication. Any process or user on this machine that can reach port 17010 can open a shell.</li>
-                        <li>If the server is reachable on your local network (not just <code>127.0.0.1</code>), other devices on the network can connect.</li>
+                        <li>The connection token protects against browser-based attacks, but any process already running on this machine can fetch the token directly (without a browser) and open a shell. This is the same access those processes already have — the terminal does not make it worse, but it does add an HTTP-accessible path.</li>
                       </ul>
                     </div>
                     <div class="terminal-security-section">
-                      <strong>How to reduce the risk</strong>
+                      <strong>How to eliminate the risk</strong>
                       <ul>
-                        <li>Set the <code>MANIFEST_API_KEY</code> environment variable. All API and terminal requests will then require a Bearer token.</li>
-                        <li>Bind the server to <code>127.0.0.1</code> only so it is not reachable from other machines on your network.</li>
                         <li>Disable the terminal when you are not actively using it.</li>
                       </ul>
                     </div>
