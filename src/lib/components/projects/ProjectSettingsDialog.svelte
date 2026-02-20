@@ -17,9 +17,10 @@
     project: Project;
     onUpdated?: () => Promise<void>;
     onDeleted?: () => Promise<void>;
+    onTerminalToggled?: (enabled: boolean) => void;
   }
 
-  let { open, onOpenChange, project, onUpdated, onDeleted }: Props = $props();
+  let { open, onOpenChange, project, onUpdated, onDeleted, onTerminalToggled }: Props = $props();
 
   // Tab state
   let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
@@ -48,6 +49,7 @@
   let resolvedPath = $state('');
   let configFile = $state('');
   let defaultAgent = $state('claude');
+  let terminalEnabled = $state(false);
   let isSavingServer = $state(false);
   let isLoadingServer = $state(false);
   let serverError = $state<string | null>(null);
@@ -241,6 +243,7 @@
       resolvedPath = data.database_path_resolved;
       configFile = data.config_file;
       defaultAgent = data.default_agent ?? 'claude';
+      terminalEnabled = data.terminal_enabled ?? false;
     } catch (e) {
       serverError = e instanceof Error ? e.message : 'Failed to load settings';
     } finally {
@@ -257,6 +260,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           default_agent: defaultAgent,
+          terminal_enabled: terminalEnabled,
           database_path: databasePath.trim() || null,
         }),
       });
@@ -265,7 +269,9 @@
       }
       const data = await res.json();
       defaultAgent = data.default_agent ?? 'claude';
+      terminalEnabled = data.terminal_enabled ?? false;
       resolvedPath = data.database_path_resolved;
+      onTerminalToggled?.(terminalEnabled);
       onOpenChange(false);
     } catch (e) {
       serverError = e instanceof Error ? e.message : 'Failed to save settings';
@@ -498,6 +504,64 @@
 
                 {#if serverError}
                   <div class="form-error">{serverError}</div>
+                {/if}
+              </div>
+
+              <hr class="section-divider" />
+
+              <!-- Terminal toggle -->
+              <div class="server-section">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="form-label">Terminal</span>
+                    <span class="form-hint">Enable the built-in web terminal for shell access.</span>
+                  </div>
+                  <div class="segmented-control" role="radiogroup" aria-label="Terminal">
+                    <label class="segment" class:active={!terminalEnabled}>
+                      <input type="radio" name="terminal-enabled" value="off" checked={!terminalEnabled} onchange={() => (terminalEnabled = false)} disabled={isSavingServer} />
+                      Off
+                    </label>
+                    <label class="segment" class:active={terminalEnabled}>
+                      <input type="radio" name="terminal-enabled" value="on" checked={terminalEnabled} onchange={() => (terminalEnabled = true)} disabled={isSavingServer} />
+                      On
+                    </label>
+                  </div>
+                </div>
+
+                {#if terminalEnabled}
+                  <div class="terminal-security-notice">
+                    <div class="terminal-security-notice-header">
+                      <span class="terminal-security-notice-icon">⚠</span>
+                      <strong>Security notice</strong>
+                    </div>
+                    <p>
+                      The web terminal opens a full shell session running as <strong>your user account</strong>.
+                      Anyone who can reach the server has the same access.
+                    </p>
+                    <div class="terminal-security-section">
+                      <strong>Built-in protections</strong>
+                      <ul>
+                        <li>Off by default — you must explicitly enable it here.</li>
+                        <li>A random token is generated each time the server starts. Browsers must obtain it via a CORS-protected endpoint before the WebSocket connection is accepted, preventing cross-site hijacking attacks.</li>
+                        <li>WebSocket connections are only accepted from <code>localhost:17010</code> (or the Vite dev ports in development).</li>
+                      </ul>
+                    </div>
+                    <div class="terminal-security-section">
+                      <strong>Remaining risks</strong>
+                      <ul>
+                        <li>In local mode there is no authentication. Any process or user on this machine that can reach port 17010 can open a shell.</li>
+                        <li>If the server is reachable on your local network (not just <code>127.0.0.1</code>), other devices on the network can connect.</li>
+                      </ul>
+                    </div>
+                    <div class="terminal-security-section">
+                      <strong>How to reduce the risk</strong>
+                      <ul>
+                        <li>Set the <code>MANIFEST_API_KEY</code> environment variable. All API and terminal requests will then require a Bearer token.</li>
+                        <li>Bind the server to <code>127.0.0.1</code> only so it is not reachable from other machines on your network.</li>
+                        <li>Disable the terminal when you are not actively using it.</li>
+                      </ul>
+                    </div>
+                  </div>
                 {/if}
               </div>
 
@@ -842,5 +906,57 @@
     border: 1px solid rgba(204, 167, 0, 0.25);
     border-radius: 6px;
     line-height: 1.4;
+  }
+
+  .terminal-security-notice {
+    margin-top: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--foreground-muted);
+    background: rgba(204, 167, 0, 0.08);
+    border: 1px solid rgba(204, 167, 0, 0.3);
+    border-radius: 6px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .terminal-security-notice-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--foreground);
+  }
+
+  .terminal-security-notice-icon {
+    font-size: 14px;
+    color: rgba(204, 167, 0, 0.9);
+  }
+
+  .terminal-security-notice p {
+    margin: 0;
+  }
+
+  .terminal-security-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .terminal-security-notice ul {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .terminal-security-notice code {
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
   }
 </style>

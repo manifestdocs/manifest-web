@@ -27,6 +27,7 @@ export interface RightPanelContext {
   readonly terminalTabs: TerminalTab[];
   readonly activeTerminalTabId: string | null;
   readonly defaultAgent: string;
+  readonly terminalEnabled: boolean;
   resetTerminals(): void;
   createTerminalTab(opts?: {
     label?: string;

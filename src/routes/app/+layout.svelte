@@ -49,29 +49,37 @@
   let commandPaletteOpen = $state(false);
 
   const MAX_TERMINAL_TABS = 8;
-  let nextTerminalNumber = $state(2); // Start at 2 since we have a default Terminal 1
+  let nextTerminalNumber = $state(2); // Start at 2 since default tab is Terminal 1
 
-  // Create default terminal tab
-  const defaultTerminalTab: TerminalTab = {
-    id: crypto.randomUUID(),
-    label: 'Terminal 1',
-  };
-
-  let terminalTabs = $state<TerminalTab[]>([defaultTerminalTab]);
-  let activeTerminalTabId = $state<string | null>(defaultTerminalTab.id);
+  // Terminal tabs start empty — populated when settings confirm terminal is enabled
+  let terminalTabs = $state<TerminalTab[]>([]);
+  let activeTerminalTabId = $state<string | null>(null);
   let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
   let attentionTabIds = $state<Set<string>>(new Set());
   let idleSeenTabIds = $state<Set<string>>(new Set());
   let defaultAgent = $state('claude');
+  let terminalEnabled = $state(false);
 
-  // Fetch default_agent from server settings on mount
+  // Fetch settings (default_agent, terminal_enabled) from server on mount
   $effect(() => {
     fetch(`${API_BASE_URL}/settings`)
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.default_agent) defaultAgent = data.default_agent;
+        if (typeof data?.terminal_enabled === 'boolean') {
+          terminalEnabled = data.terminal_enabled;
+          // Create default terminal tab when terminal is first enabled
+          if (data.terminal_enabled && terminalTabs.length === 0) {
+            const tab: TerminalTab = {
+              id: crypto.randomUUID(),
+              label: 'Terminal 1',
+            };
+            terminalTabs = [tab];
+            activeTerminalTabId = tab.id;
+          }
+        }
       })
-      .catch(() => {}); // Keep fallback 'claude'
+      .catch(() => {}); // Keep fallbacks
   });
 
   function createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }) {
@@ -160,6 +168,7 @@
     get terminalTabs() { return terminalTabs; },
     get activeTerminalTabId() { return activeTerminalTabId; },
     get defaultAgent() { return defaultAgent; },
+    get terminalEnabled() { return terminalEnabled; },
     resetTerminals() {
       const newTab: TerminalTab = {
         id: crypto.randomUUID(),
@@ -182,8 +191,8 @@
 
   // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
-    // Cmd+` create new terminal tab
-    if ((e.metaKey || e.ctrlKey) && e.key === '`') {
+    // Cmd+` create new terminal tab (only when terminal is enabled)
+    if (terminalEnabled && (e.metaKey || e.ctrlKey) && e.key === '`') {
       e.preventDefault();
       createTerminalTab();
       return;
@@ -363,46 +372,48 @@
           </a>
         </nav>
         <div class="tab-strip-fill"></div>
-        <div class="tab-strip-right" style="width: {rightSidebarWidth.value}px">
-          <div class="terminal-tabs-scroll" bind:this={terminalTabsScrollRef}>
-            {#each terminalTabs as tab (tab.id)}
-              <div
-                class="terminal-tab"
-                class:active={activeTerminalTabId === tab.id}
-                class:needs-attention={attentionTabIds.has(tab.id)}
-                class:linked={tab.featureId != null && tab.featureId === selectedFeatureId}
+        {#if terminalEnabled}
+          <div class="tab-strip-right" style="width: {rightSidebarWidth.value}px">
+            <div class="terminal-tabs-scroll" bind:this={terminalTabsScrollRef}>
+              {#each terminalTabs as tab (tab.id)}
+                <div
+                  class="terminal-tab"
+                  class:active={activeTerminalTabId === tab.id}
+                  class:needs-attention={attentionTabIds.has(tab.id)}
+                  class:linked={tab.featureId != null && tab.featureId === selectedFeatureId}
+                >
+                  <button
+                    class="terminal-tab-label"
+                    onclick={() => selectTerminalTab(tab.id)}
+                    title={tab.label}
+                  >
+                    {#if tab.featureState}
+                      <StateIcon state={tab.featureState} size={10} />
+                    {/if}
+                    {tab.label}
+                  </button>
+                  <button
+                    class="terminal-tab-close"
+                    onclick={(e: MouseEvent) => { e.stopPropagation(); closeTerminalTab(tab.id); }}
+                    title="Close terminal"
+                    aria-label="Close terminal"
+                  >
+                    <CloseIcon size={10} />
+                  </button>
+                </div>
+              {/each}
+              <button
+                class="add-terminal-btn"
+                onclick={() => createTerminalTab()}
+                disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
+                title="New terminal (Cmd+`)"
+                aria-label="New terminal"
               >
-                <button
-                  class="terminal-tab-label"
-                  onclick={() => selectTerminalTab(tab.id)}
-                  title={tab.label}
-                >
-                  {#if tab.featureState}
-                    <StateIcon state={tab.featureState} size={10} />
-                  {/if}
-                  {tab.label}
-                </button>
-                <button
-                  class="terminal-tab-close"
-                  onclick={(e: MouseEvent) => { e.stopPropagation(); closeTerminalTab(tab.id); }}
-                  title="Close terminal"
-                  aria-label="Close terminal"
-                >
-                  <CloseIcon size={10} />
-                </button>
-              </div>
-            {/each}
-            <button
-              class="add-terminal-btn"
-              onclick={() => createTerminalTab()}
-              disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
-              title="New terminal (Cmd+`)"
-              aria-label="New terminal"
-            >
-              <PlusIcon size={12} />
-            </button>
+                <PlusIcon size={12} />
+              </button>
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
     </header>
 
@@ -430,6 +441,22 @@
     onOpenChange={(open) => (settingsDialogOpen = open)}
     project={selectedProject}
     onUpdated={loadProjects}
+    onTerminalToggled={(enabled) => {
+      terminalEnabled = enabled;
+      if (enabled && terminalTabs.length === 0) {
+        const tab: TerminalTab = {
+          id: crypto.randomUUID(),
+          label: 'Terminal 1',
+        };
+        terminalTabs = [tab];
+        activeTerminalTabId = tab.id;
+        nextTerminalNumber = 2;
+      } else if (!enabled) {
+        terminalTabs = [];
+        activeTerminalTabId = null;
+        nextTerminalNumber = 2;
+      }
+    }}
     onDeleted={async () => {
       await loadProjects();
       if (projects.length > 0) {

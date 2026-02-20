@@ -613,24 +613,26 @@
         {@render children()}
       </div>
 
-      <!-- Right panel: Terminal -->
-      <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <div
-          class="right-resize-handle"
-          class:resizing={isResizingRight}
-          onpointerdown={handleRightResizeStart}
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize right panel"
-          tabindex="0"
-        ></div>
-        <div class="tab-content">
-          {#if hasDirectories !== null}
-            <TerminalTabs cwd={primaryDirectoryPath} />
-          {/if}
-        </div>
-      </aside>
+      <!-- Right panel: Terminal (only when enabled) -->
+      {#if rightPanel.terminalEnabled}
+        <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <div
+            class="right-resize-handle"
+            class:resizing={isResizingRight}
+            onpointerdown={handleRightResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize right panel"
+            tabindex="0"
+          ></div>
+          <div class="tab-content">
+            {#if hasDirectories !== null}
+              <TerminalTabs cwd={primaryDirectoryPath} />
+            {/if}
+          </div>
+        </aside>
+      {/if}
     </div>
 
     <footer class="app-footer">
