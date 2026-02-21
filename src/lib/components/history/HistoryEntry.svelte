@@ -197,7 +197,8 @@
     display: flex;
     align-items: baseline;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow: hidden;
   }
 
   .feature-link {
@@ -211,6 +212,7 @@
     color: var(--foreground);
     font-weight: 500;
     font-size: 14px;
+    flex-shrink: 0;
   }
 
   .feature-link:hover .feature-title {
@@ -225,15 +227,23 @@
   .separator {
     color: var(--foreground-subtle);
     opacity: 0.5;
+    flex-shrink: 0;
   }
 
   .headline {
     color: var(--foreground-muted);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .commits {
     color: var(--foreground-subtle);
     font-size: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .sha {
