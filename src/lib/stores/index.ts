@@ -1,4 +1,5 @@
 export { sidebarWidth } from './sidebarWidth.svelte.js';
+export { viewMode, type ViewMode } from './viewMode.svelte.js';
 export { rightSidebarWidth } from './rightSidebarWidth.svelte.js';
 export { featureExpansion } from './featureExpansion.svelte.js';
 export { featureFilter } from './featureFilter.svelte.js';

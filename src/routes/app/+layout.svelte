@@ -19,7 +19,8 @@
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
-  import { sidebarWidth } from '$lib/stores/index.js';
+  import ViewModeToggle from '$lib/components/ui/ViewModeToggle.svelte';
+  import { sidebarWidth, viewMode } from '$lib/stores/index.js';
   import {
     setRightPanelContext,
     setProjectsContext,
@@ -80,6 +81,15 @@
     ) {
       e.preventDefault();
       commandPaletteOpen = true;
+    }
+    if (
+      (e.key === 'p' || e.key === 'P') &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      e.preventDefault();
+      viewMode.toggle();
     }
   }
 
@@ -189,6 +199,7 @@
                 {/each}
               {/if}
             </select>
+            <ViewModeToggle />
             <button
               class="icon-btn"
               onclick={() => (settingsDialogOpen = true)}
