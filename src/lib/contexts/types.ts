@@ -40,6 +40,7 @@ export interface RightPanelContext {
   markTerminalIdleAttention(tabId: string): void;
   markTerminalActivity(tabId: string): void;
   updateTerminalTabState(tabId: string, state: FeatureState): void;
+  openSettings(tab?: 'project' | 'features' | 'system'): void;
 }
 
 // --- Projects ---

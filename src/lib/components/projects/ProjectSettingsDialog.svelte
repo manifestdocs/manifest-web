@@ -15,12 +15,13 @@
     open: boolean;
     onOpenChange: (open: boolean) => void;
     project: Project;
+    initialTab?: 'project' | 'features' | 'system' | 'delete';
     onUpdated?: () => Promise<void>;
     onDeleted?: () => Promise<void>;
     onTerminalToggled?: (enabled: boolean) => void;
   }
 
-  let { open, onOpenChange, project, onUpdated, onDeleted, onTerminalToggled }: Props = $props();
+  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted, onTerminalToggled }: Props = $props();
 
   // Tab state
   let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
@@ -67,7 +68,7 @@
       error = null;
       deleteConfirmText = '';
       deleteError = null;
-      activeTab = 'project';
+      activeTab = initialTab ?? 'project';
       loadDirectories();
     }
   });

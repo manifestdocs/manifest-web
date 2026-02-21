@@ -45,6 +45,7 @@
   // Dialog state
   let newProjectWizardOpen = $state(false);
   let settingsDialogOpen = $state(false);
+  let settingsInitialTab = $state<'project' | 'features' | 'system' | undefined>(undefined);
 
   let commandPaletteOpen = $state(false);
 
@@ -187,6 +188,10 @@
     markTerminalIdleAttention,
     markTerminalActivity,
     updateTerminalTabState,
+    openSettings(tab?: 'project' | 'features' | 'system') {
+      settingsInitialTab = tab;
+      settingsDialogOpen = true;
+    },
   });
 
   // Global keyboard shortcuts
@@ -438,7 +443,8 @@
 {#if selectedProject}
   <ProjectSettingsDialog
     open={settingsDialogOpen}
-    onOpenChange={(open) => (settingsDialogOpen = open)}
+    initialTab={settingsInitialTab}
+    onOpenChange={(open) => { settingsDialogOpen = open; if (!open) settingsInitialTab = undefined; }}
     project={selectedProject}
     onUpdated={loadProjects}
     onTerminalToggled={(enabled) => {
@@ -760,7 +766,7 @@
   }
 
   .project-select {
-    padding: 5px 26px 5px 10px;
+    padding: 5px 26px 6px 10px;
     font-size: 13px;
     font-weight: 500;
     background: var(--background);
