@@ -60,15 +60,5 @@ export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
-/**
- * Get the WebSocket base URL for terminal connections.
- * Converts http(s) to ws(s) protocol.
- */
-export function getWsBaseUrl(): string {
-  const url = new URL(API_BASE_URL);
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  return url.origin;
-}
-
 // Re-export types for convenience
 export type { paths, components } from './schema';

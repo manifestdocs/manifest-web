@@ -157,6 +157,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{id}/focus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get focused feature for project
+         * @description Returns the currently focused feature for the project (used by MCP agents to know what the user is looking at).
+         */
+        get: operations["getProjectFocus"];
+        /** Set or clear focused feature for project */
+        put: operations["setProjectFocus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{id}/history": {
         parameters: {
             query?: never;
@@ -176,87 +200,6 @@ export interface paths {
          */
         get: operations["getProjectHistory"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{id}/focus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        /** Get the focused feature for a project */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: components["parameters"]["ProjectId"];
-                };
-                cookie?: never;
-            };
-            responses: {
-                /** @description Focused feature info */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            feature_id: string;
-                            feature_title: string;
-                            feature_state: string;
-                        };
-                    };
-                };
-                /** @description No feature is focused */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-            };
-        };
-        /** Set or clear the focused feature for a project */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: components["parameters"]["ProjectId"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        feature_id: string | null;
-                    };
-                };
-            };
-            responses: {
-                /** @description Focus updated */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         post?: never;
         delete?: never;
         options?: never;
@@ -587,6 +530,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/{id}/blockers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get feature blockers
+         * @description Returns the features that are blocking this feature.
+         *     Only returns results for features in the 'blocked' state.
+         */
+        get: operations["getFeatureBlockers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -599,6 +566,11 @@ export interface components {
              * @example manifest
              */
             slug: string;
+            /**
+             * @description Uppercase prefix for human-friendly feature IDs (e.g., "MAN" produces MAN-1, MAN-2). Auto-derived from slug, max 5 chars.
+             * @example MAN
+             */
+            key_prefix: string;
             /** @example Manifest */
             name: string;
             /** @example Living feature documentation server */
@@ -650,6 +622,11 @@ export interface components {
              * @example my-project
              */
             slug?: string | null;
+            /**
+             * @description Uppercase prefix for feature display IDs (max 5 chars). Auto-derived from slug if not provided.
+             * @example MYPRJ
+             */
+            key_prefix?: string | null;
             description?: string | null;
             /** @description Project-wide instructions for AI agents */
             instructions?: string | null;
@@ -661,6 +638,11 @@ export interface components {
              * @example my-project
              */
             slug?: string;
+            /**
+             * @description Uppercase prefix for feature display IDs (max 5 chars).
+             * @example MYPRJ
+             */
+            key_prefix?: string;
             description?: string | null;
             /** @description Project-wide instructions for AI agents */
             instructions?: string | null;
@@ -784,6 +766,8 @@ export interface components {
              * @default 0
              */
             priority: number;
+            /** @description Per-project sequential number for display IDs (e.g., 42 in MAN-42). Assigned at creation time. */
+            feature_number?: number | null;
             /**
              * Format: uuid
              * @description Target version ID for release planning
@@ -796,12 +780,13 @@ export interface components {
         };
         /**
          * @description - proposed: Initial state, in backlog
+         *     - blocked: Cannot proceed until blocker features are implemented
          *     - in_progress: Actively being worked on
          *     - implemented: Feature is live in codebase
          *     - archived: Feature archived (soft-deleted)
          * @enum {string}
          */
-        FeatureState: "proposed" | "in_progress" | "implemented" | "archived";
+        FeatureState: "proposed" | "blocked" | "in_progress" | "implemented" | "archived";
         /** @description Lightweight feature summary without details (used for list operations) */
         FeatureSummary: {
             /** Format: uuid */
@@ -859,6 +844,8 @@ export interface components {
              * @description Move feature under a different parent. Set null to make root-level.
              */
             parent_id?: string | null;
+            /** @description Feature IDs that block this feature. Required when transitioning to 'blocked' state. The feature auto-transitions to 'proposed' when all blockers reach 'implemented'. */
+            blocked_by?: string[];
         };
         /** @description Input for bulk feature creation with hierarchical structure */
         BulkCreateFeaturesInput: {
@@ -986,11 +973,6 @@ export interface components {
              * @description Version this work was done for (defaults to feature's target_version_id if not specified)
              */
             version_id?: string | null;
-            /**
-             * @description If true, also transitions the feature to 'implemented' state
-             * @default false
-             */
-            mark_implemented: boolean;
         };
         /** @description Reference to a git commit */
         CommitRef: {
@@ -1438,6 +1420,76 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    getProjectFocus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Focused feature info */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        feature_id: string;
+                        feature_title: string;
+                        feature_state: string;
+                    };
+                };
+            };
+            /** @description No feature is focused */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: string;
+                    };
+                };
+            };
+        };
+    };
+    setProjectFocus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Feature ID to focus on, or null to clear focus.
+                     */
+                    feature_id?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Focus updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getProjectHistory: {
@@ -2023,6 +2075,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeatureDiff"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getFeatureBlockers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of blocking features */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureSummary"][];
                 };
             };
             404: components["responses"]["NotFound"];

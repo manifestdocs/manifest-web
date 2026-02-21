@@ -17,11 +17,9 @@
   import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
   import InfoBanner from '$lib/components/ui/InfoBanner.svelte';
   import { StateIcon } from '$lib/components/icons/index.js';
-  import TerminalTabs from '$lib/components/terminal/TerminalTabs.svelte';
   import type { VersionSummary } from '@manifest/svelte/commands';
   import {
     sidebarWidth,
-    rightSidebarWidth,
     debugEmptyState,
     serverConnection,
     type DebugEmptyState,
@@ -81,9 +79,6 @@
   function handleHoverFeature(id: string | null) {
     hoveredFeatureId = id;
   }
-
-  // Right sidebar resize
-  let isResizingRight = $state(false);
 
   const projectSlug = $derived(page.params.projectSlug);
   const project = $derived(
@@ -201,17 +196,13 @@
 
   // --- Data loading ---
 
-  // Reset terminals when project changes.
-  // Setting hasDirectories=null unmounts TerminalTabs (closing all WebSockets),
-  // then resetTerminals() creates a single fresh tab. When loadDirectories()
-  // completes, TerminalTabs remounts with the new project's CWD.
+  // Reset state when project changes.
   let prevProjectId: string | undefined = undefined;
   $effect(() => {
     const pid = projectId;
     if (prevProjectId !== undefined && pid !== prevProjectId) {
       hasDirectories = null;
       primaryDirectoryPath = undefined;
-      rightPanel.resetTerminals();
     }
     prevProjectId = pid;
   });
@@ -375,21 +366,7 @@
     loadFeatureTree,
     loadFeature,
     navigateTo: (path, opts) => goto(path, opts),
-    createTerminalTab: rightPanel.createTerminalTab,
     getDefaultAgent: () => rightPanel.defaultAgent,
-  });
-
-  // Sync feature states to terminal tabs when tree changes
-  $effect(() => {
-    const tree = featureTree;
-    for (const tab of rightPanel.terminalTabs) {
-      if (!tab.featureId) continue;
-      const node = findFeature(tree, tab.featureId);
-      const state = node?.state ?? undefined;
-      if (state && tab.featureState !== state) {
-        rightPanel.updateTerminalTabState(tab.id, state);
-      }
-    }
   });
 
   // Auto-launch breakdown when arriving from wizard with instructions
@@ -410,13 +387,7 @@
   });
 
   function sendPlanPrompt() {
-    const name = project?.name ?? 'this project';
-    const safeName = name.replace(/'/g, "'\\''");
-    const agentCmd = rightPanel.defaultAgent;
-    rightPanel.createTerminalTab({
-      label: `Plan: ${name}`.slice(0, 40),
-      initialInput: `${agentCmd} 'Read the project instructions for "${safeName}" using get_project_instructions and break them down into a feature tree using the plan tool. After creating features, assign them across versions to define an implementation roadmap — foundational features in the first version, dependent features in later versions. Create additional versions with create_version and use set_feature_version to distribute features.'\r`,
-    });
+    // No-op: terminal has been removed. Planning is done via the CLI agent.
   }
 
   function handleSelectFeature(id: string) {
@@ -428,36 +399,6 @@
     sidebarWidth.resize(deltaX);
   }
 
-  // Right sidebar resize handler
-  function handleRightResizeStart(e: PointerEvent) {
-    e.preventDefault();
-    isResizingRight = true;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-
-    const startX = e.clientX;
-    const startWidth = rightSidebarWidth.value;
-
-    function handleMove(e: PointerEvent) {
-      const delta = startX - e.clientX;
-      const newWidth = Math.max(
-        rightSidebarWidth.MIN_WIDTH,
-        Math.min(rightSidebarWidth.MAX_WIDTH, startWidth + delta),
-      );
-      rightSidebarWidth.set(newWidth);
-    }
-
-    function handleUp() {
-      isResizingRight = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('pointermove', handleMove);
-      document.removeEventListener('pointerup', handleUp);
-    }
-
-    document.addEventListener('pointermove', handleMove);
-    document.addEventListener('pointerup', handleUp);
-  }
 
   // --- Provide context to child routes ---
   setProjectDataContext({
@@ -613,26 +554,6 @@
         {@render children()}
       </div>
 
-      <!-- Right panel: Terminal (only when enabled) -->
-      {#if rightPanel.terminalEnabled}
-        <aside class="right-panel" style="width: {rightSidebarWidth.value}px">
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <div
-            class="right-resize-handle"
-            class:resizing={isResizingRight}
-            onpointerdown={handleRightResizeStart}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize right panel"
-            tabindex="0"
-          ></div>
-          <div class="tab-content">
-            {#if hasDirectories !== null}
-              <TerminalTabs cwd={primaryDirectoryPath} />
-            {/if}
-          </div>
-        </aside>
-      {/if}
     </div>
 
     <footer class="app-footer">
@@ -774,44 +695,6 @@
     flex-direction: column;
     flex: 1;
     min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* Right panel: Terminal */
-  .right-panel {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    min-width: 250px;
-    max-width: 1200px;
-    border-left: 1px solid var(--border-default);
-    background: var(--background);
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .right-resize-handle {
-    position: absolute;
-    left: -3px;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-    z-index: 10;
-  }
-
-  .right-resize-handle:hover,
-  .right-resize-handle.resizing {
-    background: var(--accent-blue);
-    opacity: 0.5;
-  }
-
-  .tab-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
     min-height: 0;
     overflow: hidden;
   }

@@ -18,10 +18,9 @@
     initialTab?: 'project' | 'features' | 'system' | 'delete';
     onUpdated?: () => Promise<void>;
     onDeleted?: () => Promise<void>;
-    onTerminalToggled?: (enabled: boolean) => void;
   }
 
-  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted, onTerminalToggled }: Props = $props();
+  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted }: Props = $props();
 
   // Tab state
   let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
@@ -30,7 +29,7 @@
 
   // Form state
   let name = $state('');
-  let defaultFeatureDestination = $state<'backlog' | 'next'>('backlog');
+  let defaultFeatureDestination = $state<'backlog' | 'now'>('backlog');
   let detailLevel = $state<'concise' | 'standard' | 'thorough'>('standard');
   let acFormat = $state<'checkbox' | 'gherkin'>('checkbox');
   let isSaving = $state(false);
@@ -50,7 +49,6 @@
   let resolvedPath = $state('');
   let configFile = $state('');
   let defaultAgent = $state('claude');
-  let terminalEnabled = $state(false);
   let isSavingServer = $state(false);
   let isLoadingServer = $state(false);
   let serverError = $state<string | null>(null);
@@ -60,7 +58,7 @@
     if (open) {
       name = project.name;
       defaultFeatureDestination =
-        (project.default_feature_destination as 'backlog' | 'next') ?? 'backlog';
+        (project.default_feature_destination as 'backlog' | 'now') ?? 'backlog';
       detailLevel =
         (project.detail_level as 'concise' | 'standard' | 'thorough') ?? 'standard';
       acFormat =
@@ -244,7 +242,6 @@
       resolvedPath = data.database_path_resolved;
       configFile = data.config_file;
       defaultAgent = data.default_agent ?? 'claude';
-      terminalEnabled = data.terminal_enabled ?? false;
     } catch (e) {
       serverError = e instanceof Error ? e.message : 'Failed to load settings';
     } finally {
@@ -261,7 +258,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           default_agent: defaultAgent,
-          terminal_enabled: terminalEnabled,
           database_path: databasePath.trim() || null,
         }),
       });
@@ -270,9 +266,7 @@
       }
       const data = await res.json();
       defaultAgent = data.default_agent ?? 'claude';
-      terminalEnabled = data.terminal_enabled ?? false;
       resolvedPath = data.database_path_resolved;
-      onTerminalToggled?.(terminalEnabled);
       onOpenChange(false);
     } catch (e) {
       serverError = e instanceof Error ? e.message : 'Failed to save settings';
@@ -408,7 +402,7 @@
               <div class="setting-info">
                 <span class="form-label">New feature destination</span>
                 <span class="form-hint">
-                  {#if defaultFeatureDestination === 'backlog'}
+                  {#if defaultFeatureDestination !== 'now'}
                     New features start unscheduled until manually assigned to a version.
                   {:else}
                     New features go directly into the next version.
@@ -420,8 +414,8 @@
                   <input type="radio" name="feature-destination" value="backlog" bind:group={defaultFeatureDestination} disabled={isSaving} />
                   Backlog
                 </label>
-                <label class="segment" class:active={defaultFeatureDestination === 'next'}>
-                  <input type="radio" name="feature-destination" value="next" bind:group={defaultFeatureDestination} disabled={isSaving} />
+                <label class="segment" class:active={defaultFeatureDestination === 'now'}>
+                  <input type="radio" name="feature-destination" value="now" bind:group={defaultFeatureDestination} disabled={isSaving} />
                   Next
                 </label>
               </div>
@@ -505,62 +499,6 @@
 
                 {#if serverError}
                   <div class="form-error">{serverError}</div>
-                {/if}
-              </div>
-
-              <hr class="section-divider" />
-
-              <!-- Terminal toggle -->
-              <div class="server-section">
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="form-label">Terminal</span>
-                    <span class="form-hint">Enable the built-in web terminal for shell access.</span>
-                  </div>
-                  <div class="segmented-control" role="radiogroup" aria-label="Terminal">
-                    <label class="segment" class:active={!terminalEnabled}>
-                      <input type="radio" name="terminal-enabled" value="off" checked={!terminalEnabled} onchange={() => (terminalEnabled = false)} disabled={isSavingServer} />
-                      Off
-                    </label>
-                    <label class="segment" class:active={terminalEnabled}>
-                      <input type="radio" name="terminal-enabled" value="on" checked={terminalEnabled} onchange={() => (terminalEnabled = true)} disabled={isSavingServer} />
-                      On
-                    </label>
-                  </div>
-                </div>
-
-                {#if terminalEnabled}
-                  <div class="terminal-security-notice">
-                    <div class="terminal-security-notice-header">
-                      <span class="terminal-security-notice-icon">⚠</span>
-                      <strong>Security notice</strong>
-                    </div>
-                    <p>
-                      The web terminal opens a full shell session running as <strong>your user account</strong>.
-                      Anyone who can reach the server has the same access.
-                    </p>
-                    <div class="terminal-security-section">
-                      <strong>Built-in protections</strong>
-                      <ul>
-                        <li>Off by default — you must explicitly enable it here.</li>
-                        <li>The server binds to <code>127.0.0.1</code> by default, so it is not reachable from other machines on your network.</li>
-                        <li>A random connection token is generated each time the server starts. Browsers must fetch it via a CORS-protected endpoint before the WebSocket is accepted, blocking cross-site hijacking attacks from malicious websites.</li>
-                        <li>WebSocket connections are only accepted from <code>localhost:17010</code>.</li>
-                      </ul>
-                    </div>
-                    <div class="terminal-security-section">
-                      <strong>Remaining risk</strong>
-                      <ul>
-                        <li>The connection token protects against browser-based attacks, but any process already running on this machine can fetch the token directly (without a browser) and open a shell. This is the same access those processes already have — the terminal does not make it worse, but it does add an HTTP-accessible path.</li>
-                      </ul>
-                    </div>
-                    <div class="terminal-security-section">
-                      <strong>How to eliminate the risk</strong>
-                      <ul>
-                        <li>Disable the terminal when you are not actively using it.</li>
-                      </ul>
-                    </div>
-                  </div>
                 {/if}
               </div>
 
@@ -907,55 +845,5 @@
     line-height: 1.4;
   }
 
-  .terminal-security-notice {
-    margin-top: 12px;
-    padding: 12px 14px;
-    font-size: 13px;
-    color: var(--foreground-muted);
-    background: rgba(204, 167, 0, 0.08);
-    border: 1px solid rgba(204, 167, 0, 0.3);
-    border-radius: 6px;
-    line-height: 1.5;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
 
-  .terminal-security-notice-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--foreground);
-  }
-
-  .terminal-security-notice-icon {
-    font-size: 14px;
-    color: rgba(204, 167, 0, 0.9);
-  }
-
-  .terminal-security-notice p {
-    margin: 0;
-  }
-
-  .terminal-security-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .terminal-security-notice ul {
-    margin: 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .terminal-security-notice code {
-    font-family: var(--font-mono, monospace);
-    font-size: 12px;
-    background: rgba(0, 0, 0, 0.1);
-    padding: 1px 4px;
-    border-radius: 3px;
-  }
 </style>

@@ -280,6 +280,59 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /projects/{id}/focus:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      summary: Get focused feature for project
+      description: Returns the currently focused feature for the project (used by MCP agents to know what the user is looking at).
+      operationId: getProjectFocus
+      responses:
+        '200':
+          description: Focused feature info
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feature_id, feature_title, feature_state]
+                properties:
+                  feature_id:
+                    type: string
+                    format: uuid
+                  feature_title:
+                    type: string
+                  feature_state:
+                    type: string
+        '404':
+          description: No feature is focused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    put:
+      tags: [Projects]
+      summary: Set or clear focused feature for project
+      operationId: setProjectFocus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feature_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Feature ID to focus on, or null to clear focus.
+      responses:
+        '204':
+          description: Focus updated
+
   /projects/{id}/history:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -773,6 +826,28 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /features/{id}/blockers:
+    parameters:
+      - $ref: '#/components/parameters/FeatureId'
+    get:
+      tags: [Features]
+      summary: Get feature blockers
+      description: |
+        Returns the features that are blocking this feature.
+        Only returns results for features in the 'blocked' state.
+      operationId: getFeatureBlockers
+      responses:
+        '200':
+          description: List of blocking features
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
     ProjectId:
@@ -852,7 +927,7 @@ components:
     # ============================================================
     Project:
       type: object
-      required: [id, slug, name, created_at, updated_at]
+      required: [id, slug, name, key_prefix, created_at, updated_at]
       properties:
         id:
           type: string
@@ -861,6 +936,10 @@ components:
           type: string
           description: URL-friendly identifier (lowercase, hyphenated). Unique across all projects.
           example: 'manifest'
+        key_prefix:
+          type: string
+          description: Uppercase prefix for human-friendly feature IDs (e.g., "MAN" produces MAN-1, MAN-2). Auto-derived from slug, max 5 chars.
+          example: 'MAN'
         name:
           type: string
           example: 'Manifest'
@@ -917,6 +996,11 @@ components:
           nullable: true
           description: URL-friendly identifier. If not provided, auto-generated from name.
           example: 'my-project'
+        key_prefix:
+          type: string
+          nullable: true
+          description: Uppercase prefix for feature display IDs (max 5 chars). Auto-derived from slug if not provided.
+          example: 'MYPRJ'
         description:
           type: string
           nullable: true
@@ -934,6 +1018,10 @@ components:
           type: string
           description: URL-friendly identifier. Must be unique.
           example: 'my-project'
+        key_prefix:
+          type: string
+          description: Uppercase prefix for feature display IDs (max 5 chars).
+          example: 'MYPRJ'
         description:
           type: string
           nullable: true
@@ -1100,6 +1188,10 @@ components:
           type: integer
           default: 0
           description: Priority for ordering within parent (lower values first)
+        feature_number:
+          type: integer
+          nullable: true
+          description: Per-project sequential number for display IDs (e.g., 42 in MAN-42). Assigned at creation time.
         target_version_id:
           type: string
           format: uuid
@@ -1114,9 +1206,10 @@ components:
 
     FeatureState:
       type: string
-      enum: [proposed, in_progress, implemented, archived]
+      enum: [proposed, blocked, in_progress, implemented, archived]
       description: |
         - proposed: Initial state, in backlog
+        - blocked: Cannot proceed until blocker features are implemented
         - in_progress: Actively being worked on
         - implemented: Feature is live in codebase
         - archived: Feature archived (soft-deleted)
@@ -1202,6 +1295,12 @@ components:
           format: uuid
           nullable: true
           description: Move feature under a different parent. Set null to make root-level.
+        blocked_by:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Feature IDs that block this feature. Required when transitioning to 'blocked' state. The feature auto-transitions to 'proposed' when all blockers reach 'implemented'.
 
     BulkCreateFeaturesInput:
       type: object
@@ -1395,10 +1494,6 @@ components:
           format: uuid
           nullable: true
           description: Version this work was done for (defaults to feature's target_version_id if not specified)
-        mark_implemented:
-          type: boolean
-          default: false
-          description: If true, also transitions the feature to 'implemented' state
 
     CommitRef:
       type: object

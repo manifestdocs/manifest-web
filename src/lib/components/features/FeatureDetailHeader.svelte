@@ -5,9 +5,6 @@
     GroupIcon,
     StateIcon,
   } from '$lib/components/icons/index.js';
-  import { getRightPanelContext } from '$lib/contexts/types.js';
-
-  const rightPanel = getRightPanelContext();
 
   type Feature = components['schemas']['Feature'];
   type FeatureState = components['schemas']['FeatureState'];
@@ -181,22 +178,11 @@
               >Edit</button
             >
             {#if onStartWorking}
-              {#if rightPanel.terminalEnabled}
-                <button
-                  class="btn btn-agent"
-                  onclick={onStartWorking}
-                  type="button"
-                >Implement</button>
-              {:else}
-                <div class="implement-wrap">
-                  <button
-                    class="btn btn-agent"
-                    onclick={() => rightPanel.openSettings('system')}
-                    type="button"
-                  >Implement</button>
-                  <span class="no-terminal-hint">Implement requires terminal<br />activate in settings</span>
-                </div>
-              {/if}
+              <button
+                class="btn btn-agent"
+                onclick={onStartWorking}
+                type="button"
+              >Implement</button>
             {/if}
           </div>
         {/if}
@@ -478,27 +464,6 @@
 
   .locked-text {
     font-size: 13px;
-  }
-
-  .implement-wrap {
-    position: relative;
-  }
-
-  .no-terminal-hint {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 4px;
-    text-align: right;
-    font-size: 11px;
-    line-height: 1.2;
-    color: var(--foreground-subtle);
-    white-space: nowrap;
-  }
-
-  .implement-wrap:hover .no-terminal-hint {
-    display: block;
   }
 
   /* Button styles are global from dialog.css */

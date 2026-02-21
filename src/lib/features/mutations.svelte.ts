@@ -6,7 +6,6 @@
 import type { AuthApiContext } from '$lib/api/auth-context.js';
 import type { components } from '$lib/api/schema.js';
 import { findFeature } from '$lib/components/features/featureTreeUtils.js';
-import type { RightPanelContext } from '$lib/contexts/types.js';
 
 type Feature = components['schemas']['Feature'];
 type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
@@ -41,7 +40,6 @@ interface MutationDeps {
   loadFeatureTree: (pid: string) => Promise<void>;
   loadFeature: (fid: string, force?: boolean) => Promise<void>;
   navigateTo: (path: string, opts?: { replaceState?: boolean }) => void;
-  createTerminalTab: RightPanelContext['createTerminalTab'];
   getDefaultAgent: () => string;
 }
 
@@ -356,18 +354,8 @@ export function createFeatureMutations(deps: MutationDeps) {
     archiveTarget = null;
   }
 
-  function handleImplementFeature(featureId: string, featureTitle: string) {
+  function handleImplementFeature(featureId: string, _featureTitle: string) {
     handleSaveFeature(featureId, { state: 'in_progress' as FeatureState });
-
-    const agentCmd = deps.getDefaultAgent();
-    const safeTitle = featureTitle.replace(/'/g, "'\\''");
-    const initialInput = `${agentCmd} 'Implement "${safeTitle}" — start_feature(${featureId})'\r`;
-
-    deps.createTerminalTab({
-      label: `${agentCmd}: ${featureTitle}`.slice(0, 40),
-      initialInput,
-      featureId,
-    });
   }
 
   function handleStartWorking() {

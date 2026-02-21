@@ -13,34 +13,10 @@ type FeatureTreeNode = components['schemas']['FeatureTreeNode'];
 type FeatureState = components['schemas']['FeatureState'];
 type Version = components['schemas']['Version'];
 
-// --- Terminal / Right Panel ---
-
-export interface TerminalTab {
-  id: string;
-  label: string;
-  initialInput?: string;
-  featureId?: string;
-  featureState?: FeatureState;
-}
+// --- Right Panel ---
 
 export interface RightPanelContext {
-  readonly terminalTabs: TerminalTab[];
-  readonly activeTerminalTabId: string | null;
   readonly defaultAgent: string;
-  readonly terminalEnabled: boolean;
-  resetTerminals(): void;
-  createTerminalTab(opts?: {
-    label?: string;
-    initialInput?: string;
-    featureId?: string;
-  }): void;
-  closeTerminalTab(tabId: string): void;
-  selectTerminalTab(tabId: string): void;
-  markTerminalAttention(tabId: string): void;
-  markTerminalIdleAttention(tabId: string): void;
-  markTerminalActivity(tabId: string): void;
-  updateTerminalTabState(tabId: string, state: FeatureState): void;
-  openSettings(tab?: 'project' | 'features' | 'system'): void;
 }
 
 // --- Projects ---

@@ -14,17 +14,13 @@
   import {
     SettingsIcon,
     PlusIcon,
-    SearchIcon,
-    CloseIcon,
-    StateIcon,
   } from '$lib/components/icons/index.js';
   import { CommandPalette } from '$lib/components/command-palette/index.js';
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
-  import { sidebarWidth, rightSidebarWidth } from '$lib/stores/index.js';
+  import { sidebarWidth } from '$lib/stores/index.js';
   import {
-    type TerminalTab,
     setRightPanelContext,
     setProjectsContext,
   } from '$lib/contexts/types.js';
@@ -49,160 +45,24 @@
 
   let commandPaletteOpen = $state(false);
 
-  const MAX_TERMINAL_TABS = 8;
-  let nextTerminalNumber = $state(2); // Start at 2 since default tab is Terminal 1
-
-  // Terminal tabs start empty — populated when settings confirm terminal is enabled
-  let terminalTabs = $state<TerminalTab[]>([]);
-  let activeTerminalTabId = $state<string | null>(null);
-  let terminalTabsScrollRef = $state<HTMLDivElement | null>(null);
-  let attentionTabIds = $state<Set<string>>(new Set());
-  let idleSeenTabIds = $state<Set<string>>(new Set());
   let defaultAgent = $state('claude');
-  let terminalEnabled = $state(false);
 
-  // Fetch settings (default_agent, terminal_enabled) from server on mount
+  // Fetch settings (default_agent) from server on mount
   $effect(() => {
     fetch(`${API_BASE_URL}/settings`)
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.default_agent) defaultAgent = data.default_agent;
-        if (typeof data?.terminal_enabled === 'boolean') {
-          terminalEnabled = data.terminal_enabled;
-          // Create default terminal tab when terminal is first enabled
-          if (data.terminal_enabled && terminalTabs.length === 0) {
-            const tab: TerminalTab = {
-              id: crypto.randomUUID(),
-              label: 'Terminal 1',
-            };
-            terminalTabs = [tab];
-            activeTerminalTabId = tab.id;
-          }
-        }
       })
       .catch(() => {}); // Keep fallbacks
   });
 
-  function createTerminalTab(opts?: { label?: string; initialInput?: string; featureId?: string }) {
-    if (terminalTabs.length >= MAX_TERMINAL_TABS) return;
-
-    const tab: TerminalTab = {
-      id: crypto.randomUUID(),
-      label: opts?.label ?? `Terminal ${nextTerminalNumber}`,
-      initialInput: opts?.initialInput,
-      featureId: opts?.featureId,
-    };
-    nextTerminalNumber++;
-
-    terminalTabs = [...terminalTabs, tab];
-    activeTerminalTabId = tab.id;
-
-    // Scroll to show the new tab after DOM updates
-    requestAnimationFrame(() => {
-      if (terminalTabsScrollRef) {
-        terminalTabsScrollRef.scrollLeft = terminalTabsScrollRef.scrollWidth;
-      }
-    });
-  }
-
-  function closeTerminalTab(tabId: string) {
-    const idx = terminalTabs.findIndex((t) => t.id === tabId);
-    if (idx === -1) return;
-
-    terminalTabs = terminalTabs.filter((t) => t.id !== tabId);
-
-    if (activeTerminalTabId === tabId) {
-      if (terminalTabs.length === 0) {
-        // Last tab closed — create a fresh default terminal
-        const newTab: TerminalTab = {
-          id: crypto.randomUUID(),
-          label: `Terminal ${nextTerminalNumber}`,
-        };
-        nextTerminalNumber++;
-        terminalTabs = [newTab];
-        activeTerminalTabId = newTab.id;
-      } else {
-        // Switch to adjacent tab
-        const newIdx = Math.min(idx, terminalTabs.length - 1);
-        activeTerminalTabId = terminalTabs[newIdx].id;
-      }
-    }
-  }
-
-  function selectTerminalTab(tabId: string) {
-    activeTerminalTabId = tabId;
-    // Clear attention and mark as seen (suppress re-highlight until new output)
-    attentionTabIds = new Set([...attentionTabIds].filter(id => id !== tabId));
-    idleSeenTabIds = new Set([...idleSeenTabIds, tabId]);
-  }
-
-  function markTerminalAttention(tabId: string) {
-    // Only mark attention if tab is not currently active
-    const isActiveAndVisible = activeTerminalTabId === tabId;
-    if (!isActiveAndVisible && !attentionTabIds.has(tabId)) {
-      attentionTabIds = new Set([...attentionTabIds, tabId]);
-    }
-  }
-
-  function markTerminalIdleAttention(tabId: string) {
-    // Like markTerminalAttention, but suppressed if user already saw this idle state
-    if (idleSeenTabIds.has(tabId)) return;
-    markTerminalAttention(tabId);
-  }
-
-  function markTerminalActivity(tabId: string) {
-    // New output clears the "seen" flag so idle can re-trigger
-    if (idleSeenTabIds.has(tabId)) {
-      idleSeenTabIds = new Set([...idleSeenTabIds].filter(id => id !== tabId));
-    }
-  }
-
-  function updateTerminalTabState(tabId: string, state: NonNullable<TerminalTab['featureState']>) {
-    const tab = terminalTabs.find((t) => t.id === tabId);
-    if (tab && tab.featureState !== state) {
-      tab.featureState = state;
-      terminalTabs = [...terminalTabs]; // trigger reactivity
-    }
-  }
-
   setRightPanelContext({
-    get terminalTabs() { return terminalTabs; },
-    get activeTerminalTabId() { return activeTerminalTabId; },
     get defaultAgent() { return defaultAgent; },
-    get terminalEnabled() { return terminalEnabled; },
-    resetTerminals() {
-      const newTab: TerminalTab = {
-        id: crypto.randomUUID(),
-        label: 'Terminal 1',
-      };
-      terminalTabs = [newTab];
-      activeTerminalTabId = newTab.id;
-      nextTerminalNumber = 2;
-      attentionTabIds = new Set();
-      idleSeenTabIds = new Set();
-    },
-    createTerminalTab,
-    closeTerminalTab,
-    selectTerminalTab,
-    markTerminalAttention,
-    markTerminalIdleAttention,
-    markTerminalActivity,
-    updateTerminalTabState,
-    openSettings(tab?: 'project' | 'features' | 'system') {
-      settingsInitialTab = tab;
-      settingsDialogOpen = true;
-    },
   });
 
   // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
-    // Cmd+` create new terminal tab (only when terminal is enabled)
-    if (terminalEnabled && (e.metaKey || e.ctrlKey) && e.key === '`') {
-      e.preventDefault();
-      createTerminalTab();
-      return;
-    }
-
     // T for command palette (not in inputs)
     const target = e.target as HTMLElement;
     if (
@@ -377,48 +237,6 @@
           </a>
         </nav>
         <div class="tab-strip-fill"></div>
-        {#if terminalEnabled}
-          <div class="tab-strip-right" style="width: {rightSidebarWidth.value}px">
-            <div class="terminal-tabs-scroll" bind:this={terminalTabsScrollRef}>
-              {#each terminalTabs as tab (tab.id)}
-                <div
-                  class="terminal-tab"
-                  class:active={activeTerminalTabId === tab.id}
-                  class:needs-attention={attentionTabIds.has(tab.id)}
-                  class:linked={tab.featureId != null && tab.featureId === selectedFeatureId}
-                >
-                  <button
-                    class="terminal-tab-label"
-                    onclick={() => selectTerminalTab(tab.id)}
-                    title={tab.label}
-                  >
-                    {#if tab.featureState}
-                      <StateIcon state={tab.featureState} size={10} />
-                    {/if}
-                    {tab.label}
-                  </button>
-                  <button
-                    class="terminal-tab-close"
-                    onclick={(e: MouseEvent) => { e.stopPropagation(); closeTerminalTab(tab.id); }}
-                    title="Close terminal"
-                    aria-label="Close terminal"
-                  >
-                    <CloseIcon size={10} />
-                  </button>
-                </div>
-              {/each}
-              <button
-                class="add-terminal-btn"
-                onclick={() => createTerminalTab()}
-                disabled={terminalTabs.length >= MAX_TERMINAL_TABS}
-                title="New terminal (Cmd+`)"
-                aria-label="New terminal"
-              >
-                <PlusIcon size={12} />
-              </button>
-            </div>
-          </div>
-        {/if}
       </div>
     </header>
 
@@ -447,22 +265,6 @@
     onOpenChange={(open) => { settingsDialogOpen = open; if (!open) settingsInitialTab = undefined; }}
     project={selectedProject}
     onUpdated={loadProjects}
-    onTerminalToggled={(enabled) => {
-      terminalEnabled = enabled;
-      if (enabled && terminalTabs.length === 0) {
-        const tab: TerminalTab = {
-          id: crypto.randomUUID(),
-          label: 'Terminal 1',
-        };
-        terminalTabs = [tab];
-        activeTerminalTabId = tab.id;
-        nextTerminalNumber = 2;
-      } else if (!enabled) {
-        terminalTabs = [];
-        activeTerminalTabId = null;
-        nextTerminalNumber = 2;
-      }
-    }}
     onDeleted={async () => {
       await loadProjects();
       if (projects.length > 0) {
@@ -548,14 +350,6 @@
     flex: 1;
   }
 
-  .tab-strip-right {
-    display: flex;
-    align-items: flex-end;
-    flex-shrink: 0;
-    border-left: none;
-    padding-left: 0;
-  }
-
   /* --- Tabs --- */
 
   .header-tab {
@@ -587,148 +381,6 @@
     border-right: 1px solid var(--border-default);
     border-bottom: 1px solid var(--background);
     border-left: 1px solid var(--border-default);
-  }
-
-  /* --- Terminal tabs --- */
-
-  .terminal-tab {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: 2px;
-    padding: 6px 4px 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground-muted);
-    background: transparent;
-    border: 1px solid var(--border-default);
-    border-left: none;
-    border-bottom: none;
-    border-radius: 0;
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .terminal-tab:first-child {
-    border-left: 1px solid var(--border-default);
-  }
-
-  .terminal-tab:hover {
-    color: var(--foreground);
-    background: var(--background-emphasis);
-  }
-
-  .terminal-tab.active {
-    background: var(--background);
-    color: var(--state-implemented);
-    border-top: 1px solid var(--state-implemented);
-    border-right: 1px solid var(--border-default);
-    border-bottom: 1px solid var(--background);
-    border-left: 1px solid var(--border-default);
-  }
-
-  .terminal-tab.linked:not(.active) {
-    border-top: 1px solid var(--accent-blue);
-    background: rgba(56, 139, 253, 0.08);
-  }
-
-  .terminal-tab.needs-attention {
-    background: rgba(210, 153, 34, 0.25);
-    color: #e3b341;
-  }
-
-  .terminal-tab.needs-attention:not(.active) {
-    animation: attention-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes attention-pulse {
-    0%, 100% { background: rgba(210, 153, 34, 0.25); }
-    50% { background: rgba(210, 153, 34, 0.4); }
-  }
-
-  .terminal-tabs-scroll {
-    display: flex;
-    flex: 1;
-    gap: 0;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .terminal-tabs-scroll::-webkit-scrollbar {
-    display: none;
-  }
-
-  .terminal-tab-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0;
-    font-size: 13px;
-    font-weight: 500;
-    color: inherit;
-    background: none;
-    border: none;
-    cursor: pointer;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .terminal-tab-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 3px;
-    color: var(--foreground-subtle);
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.1s ease, background 0.1s ease;
-  }
-
-  .terminal-tab:hover .terminal-tab-close,
-  .terminal-tab.active .terminal-tab-close {
-    opacity: 1;
-  }
-
-  .terminal-tab-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--foreground);
-  }
-
-  .add-terminal-btn {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--foreground-muted);
-    background: transparent;
-    border: 1px solid var(--border-default);
-    border-left: none;
-    border-bottom: none;
-    border-radius: 0;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .add-terminal-btn:hover {
-    color: var(--foreground);
-    background: var(--background-emphasis);
-  }
-
-  .add-terminal-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
   }
 
   /* --- Shared elements --- */

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { getAuthApiContext } from '$lib/api/auth-context.js';
-  import { getRightPanelContext } from '$lib/contexts/types.js';
   import type { components } from '$lib/api/schema.js';
   import FeatureDetailHeader from './FeatureDetailHeader.svelte';
   import FeatureDetailView from './FeatureDetailView.svelte';
@@ -10,7 +9,6 @@
 
   // Get authenticated API client from context
   const authApi = getAuthApiContext();
-  const rightPanel = getRightPanelContext();
 
   type Feature = components['schemas']['Feature'];
   type FeatureState = components['schemas']['FeatureState'];
@@ -245,7 +243,7 @@
   }
 </script>
 
-<div class="feature-detail" class:no-terminal={!rightPanel.terminalEnabled}>
+<div class="feature-detail">
   {#if !feature}
     <div class="empty-state">
       <div class="empty-icon">
@@ -364,11 +362,5 @@
     border-left: none;
   }
 
-  .no-terminal :global(.header-content) {
-    max-width: 900px;
-  }
 
-  .no-terminal .detail-content {
-    max-width: 900px;
-  }
 </style>
