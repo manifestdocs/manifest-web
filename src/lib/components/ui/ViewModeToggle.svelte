@@ -1,5 +1,20 @@
 <script lang="ts">
-  import { viewMode } from '$lib/stores/viewMode.svelte.js';
+  import { viewMode, type ViewMode } from '$lib/stores/viewMode.svelte.js';
+
+  interface Props {
+    /** Optional handler called instead of directly setting viewMode. Use for navigation. */
+    onmode?: (mode: ViewMode) => void;
+  }
+
+  let { onmode }: Props = $props();
+
+  function select(mode: ViewMode) {
+    if (onmode) {
+      onmode(mode);
+    } else {
+      viewMode.set(mode);
+    }
+  }
 </script>
 
 <div class="view-toggle" role="group" aria-label="View mode">
@@ -9,7 +24,7 @@
     aria-label="Portfolio view"
     aria-pressed={viewMode.value === 'portfolio'}
     title="Portfolio view (P)"
-    onclick={() => viewMode.set('portfolio')}
+    onclick={() => select('portfolio')}
   >
     <!-- Three horizontal lines: portfolio / all-projects view -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -24,7 +39,7 @@
     aria-label="Project view"
     aria-pressed={viewMode.value === 'project'}
     title="Project view (P)"
-    onclick={() => viewMode.set('project')}
+    onclick={() => select('project')}
   >
     <!-- Three vertical lines: project / focused view -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

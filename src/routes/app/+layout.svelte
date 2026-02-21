@@ -20,7 +20,7 @@
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
   import ViewModeToggle from '$lib/components/ui/ViewModeToggle.svelte';
-  import { sidebarWidth, viewMode } from '$lib/stores/index.js';
+  import { sidebarWidth, viewMode, type ViewMode } from '$lib/stores/index.js';
   import {
     setRightPanelContext,
     setProjectsContext,
@@ -62,9 +62,26 @@
     get defaultAgent() { return defaultAgent; },
   });
 
+  // Navigate on mode switch: portfolio → /app, project → last project slug
+  function navigateToMode(mode: ViewMode) {
+    viewMode.set(mode);
+    if (mode === 'portfolio') {
+      goto('/app');
+    } else {
+      const lastSlug =
+        typeof localStorage !== 'undefined'
+          ? localStorage.getItem('manifest_last_project')
+          : null;
+      const target = lastSlug
+        ? projects.find((p) => p.slug === lastSlug)
+        : null;
+      const dest = target || projects[0];
+      if (dest) goto(`/app/${dest.slug}`);
+    }
+  }
+
   // Global keyboard shortcuts
   function handleGlobalKeydown(e: KeyboardEvent) {
-    // T for command palette (not in inputs)
     const target = e.target as HTMLElement;
     if (
       target.tagName === 'INPUT' ||
@@ -89,7 +106,7 @@
       !e.altKey
     ) {
       e.preventDefault();
-      viewMode.toggle();
+      navigateToMode(viewMode.value === 'portfolio' ? 'project' : 'portfolio');
     }
   }
 
@@ -166,102 +183,121 @@
       newProjectWizardOpen = true;
     },
   });
+
+  const isPortfolioMode = $derived(viewMode.value === 'portfolio' && !selectedProjectSlug);
 </script>
 
 <svelte:document onkeydown={handleGlobalKeydown} />
 
-{#if page.params.projectSlug}
-  <div class="app-layout">
-    <header class="app-header">
-      <a href="/" class="logo">
-        <img src={logoSmall} alt="" class="logo-icon" />
-        <span class="logo-text">MANIFEST</span>
-      </a>
-      <!-- Row 1: Toolbar -->
+<div class="app-layout">
+  <header class="app-header" class:portfolio-mode={isPortfolioMode}>
+    <a href="/" class="logo">
+      <img src={logoSmall} alt="" class="logo-icon" />
+      <span class="logo-text">MANIFEST</span>
+    </a>
+
+    {#if isPortfolioMode}
+      <!-- Portfolio mode: minimal toolbar — logo (absolute) + toggle only -->
+      <div class="header-toolbar portfolio-toolbar">
+        <div class="toolbar-fill"></div>
+        <div class="project-controls">
+          <ViewModeToggle onmode={navigateToMode} />
+          <button
+            class="icon-btn"
+            onclick={() => (newProjectWizardOpen = true)}
+            title="New project"
+            aria-label="New project"
+          >
+            <PlusIcon size={16} />
+          </button>
+        </div>
+      </div>
+    {:else}
+      <!-- Project mode: full header -->
       <div class="header-toolbar">
         <div class="header-left"></div>
         <div class="toolbar-fill"></div>
         <div class="project-controls">
-            <select
-              class="project-select"
-              value={selectedProjectSlug}
-              onchange={handleProjectChange}
-              disabled={isLoadingProjects}
-              aria-label="Select project"
-            >
-              {#if isLoadingProjects}
-                <option value="">Loading...</option>
-              {:else if projects.length === 0}
-                <option value="">No projects</option>
-              {:else}
-                {#each projects as project (project.id)}
-                  <option value={project.slug}>{project.name}</option>
-                {/each}
-              {/if}
-            </select>
-            <ViewModeToggle />
-            <button
-              class="icon-btn"
-              onclick={() => (settingsDialogOpen = true)}
-              title="Settings"
-              aria-label="Settings"
-            >
-              <SettingsIcon size={16} />
-            </button>
-            <button
-              class="icon-btn"
-              onclick={() => (newProjectWizardOpen = true)}
-              title="New project"
-              aria-label="New project"
-            >
-              <PlusIcon size={16} />
-            </button>
+          <select
+            class="project-select"
+            value={selectedProjectSlug}
+            onchange={handleProjectChange}
+            disabled={isLoadingProjects}
+            aria-label="Select project"
+          >
+            {#if isLoadingProjects}
+              <option value="">Loading...</option>
+            {:else if projects.length === 0}
+              <option value="">No projects</option>
+            {:else}
+              {#each projects as project (project.id)}
+                <option value={project.slug}>{project.name}</option>
+              {/each}
+            {/if}
+          </select>
+          <ViewModeToggle onmode={navigateToMode} />
+          <button
+            class="icon-btn"
+            onclick={() => (settingsDialogOpen = true)}
+            title="Settings"
+            aria-label="Settings"
+          >
+            <SettingsIcon size={16} />
+          </button>
+          <button
+            class="icon-btn"
+            onclick={() => (newProjectWizardOpen = true)}
+            title="New project"
+            aria-label="New project"
+          >
+            <PlusIcon size={16} />
+          </button>
         </div>
       </div>
 
-      <!-- Row 2: Tab strips aligned to columns below -->
-      <div class="header-tabs">
-        <div class="tab-spacer" style="width: {sidebarWidth.value}px"></div>
-        <nav class="tab-strip">
-          <a
-            href="{base}/app/{selectedProjectSlug}{featureQueryParam}"
-            class="header-tab"
-            class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
-          >
-            Edit
-          </a>
-          <a
-            href="{base}/app/{selectedProjectSlug}/versions{featureQueryParam}"
-            class="header-tab"
-            class:active={page.url.pathname ===
-              `/app/${selectedProjectSlug}/versions`}
-          >
-            Plan
-          </a>
-          <a
-            href="{base}/app/{selectedProjectSlug}/activity"
-            class="header-tab"
-            class:active={page.url.pathname ===
-              `/app/${selectedProjectSlug}/activity`}
-          >
-            Activity
-          </a>
-        </nav>
-        <div class="tab-strip-fill"></div>
-      </div>
-    </header>
+      {#if selectedProjectSlug}
+        <!-- Row 2: Tab strips aligned to columns below -->
+        <div class="header-tabs">
+          <div class="tab-spacer" style="width: {sidebarWidth.value}px"></div>
+          <nav class="tab-strip">
+            <a
+              href="{base}/app/{selectedProjectSlug}{featureQueryParam}"
+              class="header-tab"
+              class:active={page.url.pathname === `/app/${selectedProjectSlug}`}
+            >
+              Edit
+            </a>
+            <a
+              href="{base}/app/{selectedProjectSlug}/versions{featureQueryParam}"
+              class="header-tab"
+              class:active={page.url.pathname ===
+                `/app/${selectedProjectSlug}/versions`}
+            >
+              Plan
+            </a>
+            <a
+              href="{base}/app/{selectedProjectSlug}/activity"
+              class="header-tab"
+              class:active={page.url.pathname ===
+                `/app/${selectedProjectSlug}/activity`}
+            >
+              Activity
+            </a>
+          </nav>
+          <div class="tab-strip-fill"></div>
+        </div>
+      {/if}
+    {/if}
+  </header>
 
-    <ConnectionBanner />
-    <UpdateBanner />
-    <McpConfigBanner />
+  <ConnectionBanner />
+  <UpdateBanner />
+  <McpConfigBanner />
 
-    <main class="app-main">
-      {@render children()}
-    </main>
-  </div>
-{:else}
-  {@render children()}
-{/if}
+  <main class="app-main">
+    {@render children()}
+  </main>
+</div>
 
 <NewProjectWizard
   open={newProjectWizardOpen}
@@ -317,6 +353,10 @@
     display: flex;
     align-items: center;
     padding: 0 0 4px 16px;
+  }
+
+  .portfolio-toolbar {
+    padding-bottom: 4px;
   }
 
   .header-left {
@@ -475,48 +515,10 @@
     border-color: var(--foreground-subtle);
   }
 
-  .search-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 12px;
-    height: 32px;
-    min-width: 160px;
-    margin-left: 0;
-    font-size: 13px;
-    color: var(--foreground-muted);
-    background: var(--background);
-    border: 1px solid var(--border-default);
-    border-radius: 0;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .search-btn:hover {
-    color: var(--foreground);
-    border-color: var(--foreground-subtle);
-  }
-
-  .search-label {
-    flex: 1;
-    font-weight: 500;
-  }
-
-  .search-kbd {
-    padding: 2px 5px;
-    font-size: 11px;
-    font-family: var(--font-mono, monospace);
-    background: var(--background-subtle);
-    border: 1px solid var(--border-default);
-    border-radius: 3px;
-    color: var(--foreground-subtle);
-  }
-
   .app-main {
     display: flex;
     flex: 1;
     min-height: 0;
     overflow: hidden;
   }
-
 </style>
