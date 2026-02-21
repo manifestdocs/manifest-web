@@ -39,7 +39,7 @@ export default defineConfig({
     {
       // SvelteKit dev server — proxies /api to API_PORT
       command: `MANIFEST_API_PORT=${API_PORT} pnpm dev --port ${WEB_PORT}`,
-      port: WEB_PORT,
+      url: `http://localhost:${WEB_PORT}`,
       reuseExistingServer: false,
       timeout: 30_000,
     },

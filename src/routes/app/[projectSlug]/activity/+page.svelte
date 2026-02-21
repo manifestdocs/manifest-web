@@ -6,7 +6,6 @@
     findFeature,
     getDescendantIds,
   } from '$lib/components/features/featureTreeUtils.js';
-  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { getProjectDataContext } from '$lib/contexts/types.js';
 

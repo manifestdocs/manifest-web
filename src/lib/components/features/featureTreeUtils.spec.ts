@@ -79,7 +79,10 @@ describe('getDescendantIds', () => {
 
   describe('when the node has direct children', () => {
     it('returns the child ids', () => {
-      const node = makeNode('parent', 'proposed', [makeNode('child-1'), makeNode('child-2')]);
+      const node = makeNode('parent', 'proposed', [
+        makeNode('child-1'),
+        makeNode('child-2'),
+      ]);
       const ids = getDescendantIds(node);
       expect(ids.has('child-1')).toBe(true);
       expect(ids.has('child-2')).toBe(true);
@@ -119,8 +122,15 @@ describe('filterByStates', () => {
 
   describe('when filtering leaf nodes', () => {
     it('includes leaves whose state matches', () => {
-      const nodes = [makeNode('a', 'proposed'), makeNode('b', 'in_progress'), makeNode('c', 'implemented')];
-      const result = filterByStates(nodes, new Set(['proposed', 'in_progress']));
+      const nodes = [
+        makeNode('a', 'proposed'),
+        makeNode('b', 'in_progress'),
+        makeNode('c', 'implemented'),
+      ];
+      const result = filterByStates(
+        nodes,
+        new Set(['proposed', 'in_progress']),
+      );
       expect(result.map((n) => n.id)).toEqual(['a', 'b']);
     });
 
@@ -172,7 +182,10 @@ describe('filterByStates', () => {
         makeNode('b', 'in_progress'),
         makeNode('c', 'implemented'),
       ];
-      const result = filterByStates(nodes, new Set(['proposed', 'in_progress']));
+      const result = filterByStates(
+        nodes,
+        new Set(['proposed', 'in_progress']),
+      );
       expect(result.map((n) => n.id)).toEqual(['a', 'b']);
     });
   });
@@ -198,7 +211,9 @@ describe('computeFeatureVersion', () => {
     it('returns a different hash', () => {
       const nodes1 = [makeNode('a', 'proposed')];
       const nodes2 = [makeNode('a', 'implemented')];
-      expect(computeFeatureVersion(nodes1)).not.toBe(computeFeatureVersion(nodes2));
+      expect(computeFeatureVersion(nodes1)).not.toBe(
+        computeFeatureVersion(nodes2),
+      );
     });
   });
 
@@ -206,7 +221,9 @@ describe('computeFeatureVersion', () => {
     it('returns a different hash', () => {
       const nodes1 = [makeNode('a', 'proposed')];
       const nodes2 = [makeNode('a', 'proposed', [makeNode('b', 'proposed')])];
-      expect(computeFeatureVersion(nodes1)).not.toBe(computeFeatureVersion(nodes2));
+      expect(computeFeatureVersion(nodes1)).not.toBe(
+        computeFeatureVersion(nodes2),
+      );
     });
   });
 });
@@ -248,8 +265,12 @@ describe('sortFeatures', () => {
     });
 
     it('sorts groups alphabetically by title', () => {
-      const zebra = makeNode('z', 'proposed', [makeNode('c1')], { title: 'Zebra' } as Partial<FeatureTreeNode>);
-      const alpha = makeNode('a', 'proposed', [makeNode('c2')], { title: 'Alpha' } as Partial<FeatureTreeNode>);
+      const zebra = makeNode('z', 'proposed', [makeNode('c1')], {
+        title: 'Zebra',
+      } as Partial<FeatureTreeNode>);
+      const alpha = makeNode('a', 'proposed', [makeNode('c2')], {
+        title: 'Alpha',
+      } as Partial<FeatureTreeNode>);
       const result = sortFeatures([zebra, alpha]);
       expect(result[0].id).toBe('a');
       expect(result[1].id).toBe('z');
@@ -266,16 +287,26 @@ describe('sortFeatures', () => {
 
   describe('with leaves of the same state', () => {
     it('sorts by priority (lower first)', () => {
-      const low = makeNode('low', 'proposed', [], { priority: 10 } as Partial<FeatureTreeNode>);
-      const high = makeNode('high', 'proposed', [], { priority: 1 } as Partial<FeatureTreeNode>);
+      const low = makeNode('low', 'proposed', [], {
+        priority: 10,
+      } as Partial<FeatureTreeNode>);
+      const high = makeNode('high', 'proposed', [], {
+        priority: 1,
+      } as Partial<FeatureTreeNode>);
       const result = sortFeatures([low, high]);
       expect(result[0].id).toBe('high');
       expect(result[1].id).toBe('low');
     });
 
     it('sorts by title when priority is equal', () => {
-      const z = makeNode('z', 'proposed', [], { title: 'Zebra', priority: 0 } as Partial<FeatureTreeNode>);
-      const a = makeNode('a', 'proposed', [], { title: 'Alpha', priority: 0 } as Partial<FeatureTreeNode>);
+      const z = makeNode('z', 'proposed', [], {
+        title: 'Zebra',
+        priority: 0,
+      } as Partial<FeatureTreeNode>);
+      const a = makeNode('a', 'proposed', [], {
+        title: 'Alpha',
+        priority: 0,
+      } as Partial<FeatureTreeNode>);
       const result = sortFeatures([z, a]);
       expect(result[0].id).toBe('a');
       expect(result[1].id).toBe('z');

@@ -292,7 +292,6 @@
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-default);
-    border-radius: 6px;
     background: var(--background-subtle);
     overflow: hidden;
     transition: border-color 0.15s ease;
