@@ -4,6 +4,54 @@
  */
 
 export interface paths {
+    "/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get portfolio snapshot
+         * @description Returns an aggregated health snapshot for all projects in a single call.
+         *     Designed for the Portfolio View — shows next version progress, next proposed
+         *     feature, in-progress features (capped at 5), blocked features, and recent
+         *     completions (last 7 days) for each project.
+         */
+        get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portfolio/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscribe to portfolio change events (SSE)
+         * @description Server-sent event stream that fires a `change` event whenever any feature
+         *     in any project is modified. The client should re-fetch `GET /portfolio` on
+         *     each event. No payload is included — the data endpoint does the work.
+         *
+         *     Reuses the same global broadcast channel as the per-project SSE streams.
+         *     One connection covers all projects regardless of how many exist.
+         */
+        get: operations["subscribePortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1082,6 +1130,67 @@ export interface components {
              */
             error: string;
         };
+        /** @description A minimal feature reference used in portfolio lanes. */
+        PortfolioFeatureRef: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        /** @description Version progress summary for the portfolio lane header. */
+        PortfolioVersionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example v0.2.0 */
+            name: string;
+            /** @description Total leaf features assigned to this version. */
+            feature_count: number;
+            /** @description Leaf features in this version with state `implemented`. */
+            implemented_count: number;
+        };
+        /** @description The single next actionable feature for a project. */
+        PortfolioNextFeature: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @description Whether this feature is assigned to the next version (vs backlog). */
+            in_version: boolean;
+        };
+        /** @description A recent feature completion for the activity section. */
+        PortfolioCompletion: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            completed_at: string;
+        };
+        /** @description Aggregated health snapshot for a single project in the portfolio view. */
+        PortfolioProject: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            next_version?: components["schemas"]["PortfolioVersionSummary"];
+            next_feature?: components["schemas"]["PortfolioNextFeature"];
+            /** @description Up to 5 in-progress leaf features. */
+            in_progress: components["schemas"]["PortfolioFeatureRef"][];
+            /** @description Total count of in-progress leaf features (may exceed in_progress.length). */
+            in_progress_total: number;
+            /** @description All blocked leaf features. */
+            blocked: components["schemas"]["PortfolioFeatureRef"][];
+            /** @description Total count of blocked leaf features. */
+            blocked_count: number;
+            /** @description Up to 5 features completed in the last 7 days, newest-first. */
+            recent_completions: components["schemas"]["PortfolioCompletion"][];
+            /**
+             * Format: date-time
+             * @description Timestamp of the most recent completion (for stalled detection).
+             */
+            last_activity_at?: string | null;
+        };
+        /** @description Full portfolio response — health snapshots for all projects. */
+        Portfolio: {
+            projects: components["schemas"]["PortfolioProject"][];
+        };
     };
     responses: {
         /** @description Resource not found */
@@ -1123,6 +1232,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getPortfolio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Portfolio snapshot for all projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+        };
+    };
+    subscribePortfolio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE stream of portfolio change events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
