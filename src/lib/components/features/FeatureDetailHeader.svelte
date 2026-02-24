@@ -32,7 +32,6 @@
     onCancel: () => void;
     onSave: () => void;
     onDiscardChanges: () => void;
-    onStartWorking?: () => void;
   }
 
   let {
@@ -57,7 +56,6 @@
     onCancel,
     onSave,
     onDiscardChanges,
-    onStartWorking,
   }: Props = $props();
 
   function formatDate(dateStr: string): string {
@@ -177,13 +175,6 @@
             <button class="btn btn-primary" onclick={onEdit} type="button"
               >Edit</button
             >
-            {#if onStartWorking}
-              <button
-                class="btn btn-agent"
-                onclick={onStartWorking}
-                type="button"
-              >Implement</button>
-            {/if}
           </div>
         {/if}
       </div>

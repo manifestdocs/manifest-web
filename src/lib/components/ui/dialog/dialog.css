@@ -204,12 +204,3 @@
   background: rgba(210, 153, 34, 0.1);
 }
 
-.btn-agent {
-  background: var(--accent-blue);
-  color: #0d1117;
-  border-color: var(--accent-blue);
-}
-
-.btn-agent:hover:not(:disabled) {
-  filter: brightness(1.1);
-}

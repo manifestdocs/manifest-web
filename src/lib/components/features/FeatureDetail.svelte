@@ -35,7 +35,6 @@
     onArchive?: () => void;
     onRestore?: () => void;
     onDelete?: () => Promise<void>;
-    onStartWorking?: () => void;
   }
 
   let {
@@ -47,7 +46,6 @@
     onArchive,
     onRestore,
     onDelete,
-    onStartWorking,
   }: Props = $props();
 
   const isRoot = $derived(feature?.is_root ?? false);
@@ -287,7 +285,6 @@
       onCancel={handleCancel}
       onSave={handleSave}
       onDiscardChanges={handleDiscardChanges}
-      {onStartWorking}
     />
 
     <div class="detail-content" class:editing={activeTab === 'edit'}>

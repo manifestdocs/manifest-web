@@ -471,7 +471,6 @@
     handleRestoreFromDetail: mutations.handleRestoreFromDetail,
     handleDeleteFeature: mutations.handleDeleteFeature,
     handleDeleteFromDetail: mutations.handleDeleteFromDetail,
-    handleStartWorking: mutations.handleStartWorking,
     handleScrollSync,
     handleHoverFeature,
     handleExpandForVersion: (versionId: string | null) => {

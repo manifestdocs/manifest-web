@@ -358,13 +358,6 @@ export function createFeatureMutations(deps: MutationDeps) {
     handleSaveFeature(featureId, { state: 'in_progress' as FeatureState });
   }
 
-  function handleStartWorking() {
-    const feature = deps.getSelectedFeature();
-    const featureId = deps.getSelectedFeatureId();
-    if (!feature || !featureId) return;
-    handleImplementFeature(feature.id, feature.title);
-  }
-
   // Helper to get the current pathname (used by several handlers)
   function currentPath(): string {
     const slug = deps.getProjectSlug();
@@ -403,6 +396,5 @@ export function createFeatureMutations(deps: MutationDeps) {
     handleDeleteFromDetail,
     handleArchiveFeature,
     handleImplementFeature,
-    handleStartWorking,
   };
 }

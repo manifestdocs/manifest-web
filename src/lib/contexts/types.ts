@@ -81,7 +81,6 @@ export interface ProjectDataContext {
   handleRestoreFromDetail: () => void;
   handleDeleteFeature: (featureId: string) => Promise<void>;
   handleDeleteFromDetail: () => Promise<void>;
-  handleStartWorking: () => void;
   handleScrollSync: (scrollTop: number) => void;
   handleHoverFeature: (id: string | null) => void;
   handleExpandForVersion: (versionId: string | null) => void;
