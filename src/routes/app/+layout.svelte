@@ -20,6 +20,7 @@
   import ConnectionBanner from '$lib/components/ui/ConnectionBanner.svelte';
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
   import ViewModeToggle from '$lib/components/ui/ViewModeToggle.svelte';
+  import NotificationToggle from '$lib/components/ui/NotificationToggle.svelte';
   import { sidebarWidth, viewMode, type ViewMode } from '$lib/stores/index.js';
   import {
     setRightPanelContext,
@@ -218,6 +219,7 @@
           >
             <PlusIcon size={16} />
           </button>
+          <NotificationToggle />
           <ViewModeToggle onmode={navigateToMode} />
         </div>
       </div>
@@ -264,6 +266,7 @@
           >
             <PlusIcon size={16} />
           </button>
+          <NotificationToggle />
           <ViewModeToggle onmode={navigateToMode} />
         </div>
       </div>

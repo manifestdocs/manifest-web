@@ -22,6 +22,7 @@
     sidebarWidth,
     debugEmptyState,
     serverConnection,
+    notifications,
     type DebugEmptyState,
   } from '$lib/stores/index.js';
   import { page } from '$app/state';
@@ -297,6 +298,13 @@
       const result = await fetchFeatureTree(authApi, pid);
       loadError = result.error;
       featureTree = result.data;
+
+      // Track feature states for browser notification detection.
+      // First call seeds the baseline; subsequent calls detect transitions
+      // to 'implemented' and fire notifications when appropriate.
+      if (projectSlug) {
+        notifications.processTreeUpdate(pid, projectSlug, result.data);
+      }
 
       if (!selectedFeatureId && result.data.length > 0) {
         const url = new URL(page.url);

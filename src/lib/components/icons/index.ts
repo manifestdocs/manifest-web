@@ -1,3 +1,4 @@
+export { default as BellIcon } from './BellIcon.svelte';
 export { default as BookIcon } from './BookIcon.svelte';
 export { default as CheckIcon } from './CheckIcon.svelte';
 export { default as GroupIcon } from './GroupIcon.svelte';
