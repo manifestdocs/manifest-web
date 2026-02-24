@@ -2,7 +2,7 @@
   import { api, API_BASE_URL } from '$lib/api/client.js';
   import { setAuthApiContext } from '$lib/api/auth-context.js';
   import type { components } from '$lib/api/schema.js';
-  import { goto } from '$app/navigation';
+  import { goto, afterNavigate } from '$app/navigation';
   import { base } from '$app/paths';
   import { page } from '$app/state';
   import { setContext } from 'svelte';
@@ -185,6 +185,15 @@
   });
 
   const isPortfolioMode = $derived(viewMode.value === 'portfolio' && !selectedProjectSlug);
+
+  // Sync viewMode with the URL after each navigation so the toggle icon is always correct
+  afterNavigate(() => {
+    if (selectedProjectSlug) {
+      viewMode.set('project');
+    } else {
+      viewMode.set('portfolio');
+    }
+  });
 </script>
 
 <svelte:document onkeydown={handleGlobalKeydown} />
@@ -201,7 +210,6 @@
       <div class="header-toolbar portfolio-toolbar">
         <div class="toolbar-fill"></div>
         <div class="project-controls">
-          <ViewModeToggle onmode={navigateToMode} />
           <button
             class="icon-btn"
             onclick={() => (newProjectWizardOpen = true)}
@@ -210,7 +218,12 @@
           >
             <PlusIcon size={16} />
           </button>
+          <ViewModeToggle onmode={navigateToMode} />
         </div>
+      </div>
+      <!-- Invisible tab placeholder — keeps header the same height as project mode -->
+      <div class="header-tabs" aria-hidden="true">
+        <span class="header-tab tab-height-placeholder">&nbsp;</span>
       </div>
     {:else}
       <!-- Project mode: full header -->
@@ -235,7 +248,6 @@
               {/each}
             {/if}
           </select>
-          <ViewModeToggle onmode={navigateToMode} />
           <button
             class="icon-btn"
             onclick={() => (settingsDialogOpen = true)}
@@ -252,6 +264,7 @@
           >
             <PlusIcon size={16} />
           </button>
+          <ViewModeToggle onmode={navigateToMode} />
         </div>
       </div>
 
@@ -359,6 +372,10 @@
     padding-bottom: 4px;
   }
 
+  .portfolio-toolbar .icon-btn:first-child {
+    border-left: 1px solid var(--border-default);
+  }
+
   .header-left {
     display: flex;
     align-items: center;
@@ -399,6 +416,11 @@
 
   .tab-strip-fill {
     flex: 1;
+  }
+
+  .tab-height-placeholder {
+    visibility: hidden;
+    pointer-events: none;
   }
 
   /* --- Tabs --- */
@@ -486,6 +508,9 @@
 
   .project-select:hover {
     border-color: var(--foreground-subtle);
+    outline: 1px solid var(--foreground-subtle);
+    outline-offset: -1px;
+    z-index: 1;
   }
 
   .project-select:focus {
@@ -513,6 +538,9 @@
     background: var(--background-emphasis);
     color: var(--foreground);
     border-color: var(--foreground-subtle);
+    outline: 1px solid var(--foreground-subtle);
+    outline-offset: -1px;
+    z-index: 1;
   }
 
   .app-main {
