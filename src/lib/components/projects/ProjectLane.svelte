@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema.js';
+  import { StateIcon } from '$lib/components/icons/index.js';
 
   type PortfolioProject = components['schemas']['PortfolioProject'];
 
@@ -92,7 +93,7 @@
         onclick={() => onFeatureClick(project.slug, project.next_feature!.id)}
         title={project.next_feature.title}
       >
-        <span class="feature-dot proposed">◇</span>
+        <StateIcon state="proposed" size={12} />
         <span class="feature-title">{project.next_feature.title}</span>
         {#if !project.next_feature.in_version}
           <span class="backlog-badge">backlog</span>
@@ -112,7 +113,7 @@
           onclick={() => onFeatureClick(project.slug, f.id)}
           title={f.title}
         >
-          <span class="feature-dot in-progress">○</span>
+          <StateIcon state="in_progress" size={12} />
           <span class="feature-title">{f.title}</span>
         </button>
       {/each}
@@ -137,7 +138,7 @@
           onclick={() => onBlockerClick(project.slug)}
           title={f.title}
         >
-          <span class="feature-dot blocked">✗</span>
+          <StateIcon state="blocked" size={12} />
           <span class="feature-title">{f.title}</span>
         </button>
       {/each}
@@ -158,7 +159,7 @@
           onclick={() => onFeatureClick(project.slug, f.id)}
           title={f.title}
         >
-          <span class="feature-dot implemented">●</span>
+          <StateIcon state="implemented" size={12} />
           <span class="feature-title">{f.title}</span>
         </button>
       {/each}
@@ -324,7 +325,7 @@
 
   .feature-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 6px;
     width: 100%;
     padding: 6px 14px;
@@ -356,26 +357,6 @@
 
   .completed:hover {
     opacity: 1;
-  }
-
-  .feature-dot {
-    flex-shrink: 0;
-    font-size: 11px;
-    line-height: 1;
-    margin-top: 2px;
-  }
-
-  .feature-dot.proposed {
-    color: var(--state-proposed);
-  }
-  .feature-dot.in-progress {
-    color: var(--state-in-progress);
-  }
-  .feature-dot.blocked {
-    color: var(--state-blocked);
-  }
-  .feature-dot.implemented {
-    color: var(--state-implemented);
   }
 
   .feature-title {

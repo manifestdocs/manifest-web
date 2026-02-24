@@ -25,17 +25,18 @@
   onclick={toggle}
 >
   {#if viewMode.value === 'portfolio'}
-    <!-- Sidebar + main pane: switch to project view -->
+    <!-- Three vertical lines: currently in portfolio (vertical swim lanes), switch to project -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="1" y="2" width="4" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
-      <rect x="7" y="2" width="6" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+      <line x1="3" y1="1" x2="3" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="11" y1="1" x2="11" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
   {:else}
-    <!-- Three columns: switch to portfolio view -->
+    <!-- Three horizontal lines: currently in project (horizontal rows), switch to portfolio -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="1" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
-      <rect x="5.5" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
-      <rect x="10" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+      <line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
   {/if}
 </button>
