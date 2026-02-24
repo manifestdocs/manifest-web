@@ -8,19 +8,16 @@
     onProjectClick: (slug: string) => void;
     onFeatureClick: (slug: string, featureId: string) => void;
     onBlockerClick: (slug: string) => void;
+    onClose?: (id: string) => void;
   }
 
-  let { project, onProjectClick, onFeatureClick, onBlockerClick }: Props = $props();
-
-  // Dot progress bar — up to 5 dots
-  const MAX_DOTS = 5;
-  const dotProgress = $derived(() => {
-    const v = project.next_version;
-    if (!v || v.feature_count === 0) return null;
-    const total = Math.min(v.feature_count, MAX_DOTS);
-    const filled = Math.round((v.implemented_count / v.feature_count) * total);
-    return { filled, empty: total - filled, complete: v.implemented_count >= v.feature_count };
-  });
+  let {
+    project,
+    onProjectClick,
+    onFeatureClick,
+    onBlockerClick,
+    onClose,
+  }: Props = $props();
 
   // Stalled: no activity in >14 days
   const STALLED_DAYS = 14;
@@ -32,42 +29,57 @@
   });
 
   const isStalled = $derived(stalledInfo() !== null);
-  const isVersionComplete = $derived(
-    !!project.next_version &&
-      project.next_version.implemented_count >= project.next_version.feature_count &&
-      project.next_version.feature_count > 0,
-  );
 
-  const overflowCount = $derived(project.in_progress_total - project.in_progress.length);
+  const overflowCount = $derived(
+    project.in_progress_total - project.in_progress.length,
+  );
 </script>
 
 <div class="lane" class:stalled={isStalled}>
   <!-- Lane header -->
   <div class="lane-header">
-    <button
-      class="project-name"
-      onclick={() => onProjectClick(project.slug)}
-      title="Open {project.name}"
-    >
-      {project.name}
-    </button>
+    <div class="header-top">
+      <button
+        class="project-name"
+        onclick={() => onProjectClick(project.slug)}
+        title="Open {project.name}"
+      >
+        {project.name}
+      </button>
+      {#if onClose}
+        <button
+          class="close-btn"
+          onclick={() => onClose!(project.id)}
+          title="Hide {project.name}"
+          aria-label="Hide {project.name}"
+        >
+          ×
+        </button>
+      {/if}
+    </div>
 
     {#if project.next_version}
       <div class="version-row">
         <span class="version-name">{project.next_version.name}</span>
-        {#if isVersionComplete}
-          <span class="version-complete">✓ complete</span>
-        {:else if dotProgress()}
-          <span class="dot-bar" aria-label="{project.next_version.implemented_count} of {project.next_version.feature_count} done">
-            {#each { length: dotProgress()!.filled } as _}
-              <span class="dot filled">●</span>
-            {/each}
-            {#each { length: dotProgress()!.empty } as _}
-              <span class="dot empty">○</span>
-            {/each}
-          </span>
+        {#if project.next_version.feature_count > 0}
+          <span class="version-count"
+            >{project.next_version.implemented_count}/{project.next_version
+              .feature_count}</span
+          >
         {/if}
       </div>
+      {#if project.next_version.feature_count > 0}
+        <div class="version-progress-bar">
+          <div
+            class="version-progress-fill"
+            class:complete={project.next_version.implemented_count ===
+              project.next_version.feature_count}
+            style="width: {(project.next_version.implemented_count /
+              project.next_version.feature_count) *
+              100}%"
+          ></div>
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -105,7 +117,11 @@
         </button>
       {/each}
       {#if overflowCount > 0}
-        <div class="overflow-label">+{overflowCount} more</div>
+        <button
+          class="overflow-label"
+          onclick={() => onProjectClick(project.slug)}
+          title="View all in {project.name}">+{overflowCount} more</button
+        >
       {/if}
     </div>
     <div class="rule"></div>
@@ -183,11 +199,17 @@
     z-index: 1;
   }
 
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   .project-name {
-    display: block;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     text-align: left;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--foreground);
     background: none;
@@ -204,6 +226,37 @@
     color: var(--accent-blue);
   }
 
+  .close-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--foreground-subtle);
+    background: none;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity 0.1s ease,
+      color 0.1s ease,
+      background 0.1s ease;
+  }
+
+  .lane-header:hover .close-btn {
+    opacity: 1;
+  }
+
+  .close-btn:hover {
+    color: var(--foreground);
+    background: var(--background-emphasis);
+  }
+
   .version-row {
     display: flex;
     align-items: center;
@@ -212,30 +265,34 @@
   }
 
   .version-name {
+    font-size: 12px;
+    color: var(--foreground-subtle);
+    font-family: var(--font-mono, monospace);
+  }
+
+  .version-count {
     font-size: 11px;
     color: var(--foreground-subtle);
     font-family: var(--font-mono, monospace);
   }
 
-  .dot-bar {
-    display: flex;
-    gap: 2px;
-    font-size: 10px;
-    line-height: 1;
+  .version-progress-bar {
+    height: 3px;
+    background: var(--border-default);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
   }
 
-  .dot.filled {
-    color: var(--state-implemented);
+  .version-progress-fill {
+    height: 100%;
+    background: var(--accent-blue);
+    border-radius: 2px;
+    transition: width 0.3s ease;
   }
 
-  .dot.empty {
-    color: var(--foreground-subtle);
-  }
-
-  .version-complete {
-    font-size: 11px;
-    color: var(--accent-green);
-    font-weight: 500;
+  .version-progress-fill.complete {
+    background: var(--state-implemented);
   }
 
   /* --- Sections --- */
@@ -246,7 +303,7 @@
 
   .section-label {
     padding: 0 14px 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -270,14 +327,16 @@
     align-items: baseline;
     gap: 6px;
     width: 100%;
-    padding: 4px 14px;
-    font-size: 12px;
+    padding: 6px 14px;
+    font-size: 13px;
     text-align: left;
     background: none;
     border: none;
     color: var(--foreground-muted);
     cursor: pointer;
-    transition: background 0.1s ease, color 0.1s ease;
+    transition:
+      background 0.1s ease,
+      color 0.1s ease;
     white-space: nowrap;
     overflow: hidden;
   }
@@ -301,15 +360,23 @@
 
   .feature-dot {
     flex-shrink: 0;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1;
-    margin-top: 1px;
+    margin-top: 2px;
   }
 
-  .feature-dot.proposed { color: var(--state-proposed); }
-  .feature-dot.in-progress { color: var(--state-in-progress); }
-  .feature-dot.blocked { color: var(--state-blocked); }
-  .feature-dot.implemented { color: var(--state-implemented); }
+  .feature-dot.proposed {
+    color: var(--state-proposed);
+  }
+  .feature-dot.in-progress {
+    color: var(--state-in-progress);
+  }
+  .feature-dot.blocked {
+    color: var(--state-blocked);
+  }
+  .feature-dot.implemented {
+    color: var(--state-implemented);
+  }
 
   .feature-title {
     flex: 1;
@@ -319,7 +386,7 @@
 
   .backlog-badge {
     flex-shrink: 0;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--foreground-subtle);
     background: var(--background-muted);
     border: 1px solid var(--border-default);
@@ -329,14 +396,25 @@
   }
 
   .overflow-label {
+    display: block;
+    width: 100%;
     padding: 2px 14px 4px;
-    font-size: 11px;
+    font-size: 12px;
+    text-align: left;
     color: var(--foreground-subtle);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.1s ease;
+  }
+
+  .overflow-label:hover {
+    color: var(--accent-blue);
   }
 
   .stalled-label {
     padding: 2px 14px 4px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--accent-orange);
   }
 

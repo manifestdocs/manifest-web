@@ -8,54 +8,39 @@
 
   let { onmode }: Props = $props();
 
-  function select(mode: ViewMode) {
+  function toggle() {
+    const next = viewMode.value === 'portfolio' ? 'project' : 'portfolio';
     if (onmode) {
-      onmode(mode);
+      onmode(next);
     } else {
-      viewMode.set(mode);
+      viewMode.set(next);
     }
   }
 </script>
 
-<div class="view-toggle" role="group" aria-label="View mode">
-  <button
-    class="toggle-btn"
-    class:active={viewMode.value === 'portfolio'}
-    aria-label="Portfolio view"
-    aria-pressed={viewMode.value === 'portfolio'}
-    title="Portfolio view (P)"
-    onclick={() => select('portfolio')}
-  >
-    <!-- Three horizontal lines: portfolio / all-projects view -->
+<button
+  class="toggle-btn"
+  aria-label={viewMode.value === 'portfolio' ? 'Switch to project view' : 'Switch to portfolio view'}
+  title={viewMode.value === 'portfolio' ? 'Project view (P)' : 'Portfolio view (P)'}
+  onclick={toggle}
+>
+  {#if viewMode.value === 'portfolio'}
+    <!-- Sidebar + main pane: switch to project view -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="1" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="1" y="2" width="4" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+      <rect x="7" y="2" width="6" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
     </svg>
-  </button>
-  <button
-    class="toggle-btn"
-    class:active={viewMode.value === 'project'}
-    aria-label="Project view"
-    aria-pressed={viewMode.value === 'project'}
-    title="Project view (P)"
-    onclick={() => select('project')}
-  >
-    <!-- Three vertical lines: project / focused view -->
+  {:else}
+    <!-- Three columns: switch to portfolio view -->
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <line x1="3" y1="1" x2="3" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="11" y1="1" x2="11" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="1" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+      <rect x="5.5" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+      <rect x="10" y="2" width="3" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
     </svg>
-  </button>
-</div>
+  {/if}
+</button>
 
 <style>
-  .view-toggle {
-    display: flex;
-    align-items: stretch;
-  }
-
   .toggle-btn {
     display: flex;
     align-items: center;
@@ -65,24 +50,19 @@
     background: var(--background);
     border: 1px solid var(--border-default);
     border-top: none;
+    border-left: none;
     border-radius: 0;
     color: var(--foreground-muted);
     cursor: pointer;
     transition: all 0.15s ease;
   }
 
-  .toggle-btn + .toggle-btn {
-    border-left: none;
-  }
-
   .toggle-btn:hover {
     background: var(--background-emphasis);
     color: var(--foreground);
     border-color: var(--foreground-subtle);
-  }
-
-  .toggle-btn.active {
-    color: var(--state-implemented);
-    background: var(--background-emphasis);
+    outline: 1px solid var(--foreground-subtle);
+    outline-offset: -1px;
+    z-index: 1;
   }
 </style>

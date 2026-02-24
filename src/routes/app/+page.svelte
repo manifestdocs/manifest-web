@@ -15,26 +15,42 @@
       (!projectsContext.isLoading && projectsContext.projects.length === 0),
   );
 
-  // Redirect to last project when in project mode
-  $effect(() => {
-    if (viewMode.value !== 'project') return;
-    if (debugEmptyState.value === 'no-projects') return;
-    if (!projectsContext.isLoading && projectsContext.projects.length > 0) {
-      const lastKey =
-        typeof localStorage !== 'undefined'
-          ? localStorage.getItem('manifest_last_project')
-          : null;
-      const lastProject = lastKey
-        ? projectsContext.projects.find((p) => p.slug === lastKey || p.id === lastKey)
-        : null;
-      const target = lastProject || projectsContext.projects[0];
-      goto(`/app/${target.slug}`, { replaceState: true });
-    }
-  });
 
   // Portfolio data
   let portfolio = $state<Portfolio | null>(null);
   let loadError = $state(false);
+
+  // Hidden projects (persisted in localStorage)
+  const HIDDEN_KEY = 'manifest_hidden_projects';
+  let hiddenProjectIds = $state<Set<string>>(
+    new Set(
+      typeof localStorage !== 'undefined'
+        ? JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
+        : [],
+    ),
+  );
+
+  function hideProject(id: string) {
+    hiddenProjectIds = new Set([...hiddenProjectIds, id]);
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenProjectIds]));
+  }
+
+  const visibleProjects = $derived(
+    portfolio ? portfolio.projects.filter((p) => !hiddenProjectIds.has(p.id)) : [],
+  );
+
+  const hiddenProjects = $derived(
+    portfolio ? portfolio.projects.filter((p) => hiddenProjectIds.has(p.id)) : [],
+  );
+
+  let showHiddenPanel = $state(false);
+
+  function unhideProject(id: string) {
+    const next = new Set(hiddenProjectIds);
+    next.delete(id);
+    hiddenProjectIds = next;
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenProjectIds]));
+  }
 
   async function loadPortfolio() {
     const { data, error } = await api.GET('/portfolio');
@@ -62,17 +78,14 @@
   });
 
   function handleProjectClick(slug: string) {
-    viewMode.set('project');
     goto(`/app/${slug}`);
   }
 
   function handleFeatureClick(slug: string, featureId: string) {
-    viewMode.set('project');
     goto(`/app/${slug}?feature=${featureId}`);
   }
 
   function handleBlockerClick(slug: string) {
-    viewMode.set('project');
     goto(`/app/${slug}?filter=blocked`);
   }
 </script>
@@ -84,18 +97,38 @@
     {#if portfolio.projects.length === 0}
       <WelcomeScreen />
     {:else}
-      <div class="lanes">
-        {#each portfolio.projects as project (project.id)}
-          <ProjectLane
-            {project}
-            onProjectClick={handleProjectClick}
-            onFeatureClick={handleFeatureClick}
-            onBlockerClick={handleBlockerClick}
-          />
-        {/each}
-        <div class="new-lane-placeholder">
-          <!-- New project affordance is in the header (+) button -->
+      <div class="portfolio-container">
+        <div class="lanes">
+          {#each visibleProjects as project (project.id)}
+            <ProjectLane
+              {project}
+              onProjectClick={handleProjectClick}
+              onFeatureClick={handleFeatureClick}
+              onBlockerClick={handleBlockerClick}
+              onClose={hideProject}
+            />
+          {/each}
+          <div class="new-lane-placeholder">
+            <!-- New project affordance is in the header (+) button -->
+          </div>
         </div>
+        {#if hiddenProjects.length > 0}
+          <div class="hidden-bar">
+            <button class="hidden-toggle" onclick={() => showHiddenPanel = !showHiddenPanel}>
+              {showHiddenPanel ? 'Hide' : 'Show'} hidden ({hiddenProjects.length})
+            </button>
+            {#if showHiddenPanel}
+              <div class="hidden-list">
+                {#each hiddenProjects as project (project.id)}
+                  <div class="hidden-item">
+                    <span class="hidden-name">{project.name}</span>
+                    <button class="unhide-btn" onclick={() => unhideProject(project.id)}>Unhide</button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   {:else if loadError}
@@ -118,13 +151,20 @@
 {/if}
 
 <style>
+  .portfolio-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--background);
+  }
+
   .lanes {
     display: grid;
     grid-auto-columns: 280px;
     grid-auto-flow: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow-x: auto;
-    background: var(--background);
   }
 
   .new-lane-placeholder {
@@ -183,5 +223,63 @@
 
   .load-error button:hover {
     border-color: var(--foreground-subtle);
+  }
+
+  /* --- Hidden projects bar --- */
+
+  .hidden-bar {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-default);
+    background: var(--background-subtle);
+    padding: 6px 14px;
+  }
+
+  .hidden-toggle {
+    font-size: 12px;
+    color: var(--foreground-subtle);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.1s ease;
+  }
+
+  .hidden-toggle:hover {
+    color: var(--foreground);
+  }
+
+  .hidden-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .hidden-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+  }
+
+  .hidden-name {
+    color: var(--foreground-muted);
+  }
+
+  .unhide-btn {
+    font-size: 11px;
+    color: var(--accent-blue);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .unhide-btn:hover {
+    text-decoration: underline;
   }
 </style>
