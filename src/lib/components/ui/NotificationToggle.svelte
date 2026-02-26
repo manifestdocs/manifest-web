@@ -30,7 +30,7 @@
   aria-label={label}
   disabled={isDenied || !isSupported}
 >
-  <BellIcon size={14} muted={!isActive} />
+  <BellIcon size={16} muted={!isActive} />
 </button>
 
 <style>
