@@ -61,7 +61,9 @@
   let previousDetails = $state<string | null>(null);
   let showHighlight = $state(false);
 
-  const hasPendingChanges = $derived(!!feature?.desired_details);
+  const hasPendingChanges = $derived(
+    !!feature?.desired_details && feature.desired_details !== feature.details,
+  );
 
   // Track which feature we're editing to detect navigation vs refresh
   let currentFeatureId = $state<string | null>(null);
@@ -80,7 +82,12 @@
       editDetails = incomingDetails;
       previousDetails = incomingDetails;
       showHighlight = false;
-      activeTab = 'view';
+      // Default to diff view for implemented features with pending changes
+      const hasChanges = !!feature.desired_details && feature.desired_details !== feature.details;
+      activeTab = hasChanges ? 'diff' : 'view';
+      if (hasChanges) {
+        loadDiff();
+      }
     } else {
       // Same feature refreshed (SSE update)
       // Highlight if: details changed AND not in edit mode AND not first load
@@ -155,9 +162,18 @@
         await onSave(feature.id, updates);
       }
 
-      if (feature.state === 'implemented' && updates.desired_details) {
-        await loadDiff();
-        activeTab = 'diff';
+      if (feature.state === 'implemented') {
+        // After save, check if desired still differs from implementation
+        // The save wrote to desired_details, so compare editDetails against current details
+        const stillHasChanges = updates.desired_details !== undefined
+          ? (editDetails || null) !== (feature.details ?? null)
+          : !!feature.desired_details && feature.desired_details !== feature.details;
+        if (stillHasChanges) {
+          await loadDiff();
+          activeTab = 'diff';
+        } else {
+          activeTab = 'view';
+        }
       } else {
         activeTab = 'view';
       }
@@ -182,7 +198,12 @@
       editTitle = feature.title;
       editDetails = feature.details ?? '';
     }
-    activeTab = 'view';
+    // Return to diff view if implemented feature has pending changes
+    if (feature && hasPendingChanges) {
+      activeTab = 'diff';
+    } else {
+      activeTab = 'view';
+    }
   }
 
   async function loadDiff() {
@@ -358,6 +379,4 @@
   .detail-content.editing :global(.markdown-editor) {
     border-left: none;
   }
-
-
 </style>

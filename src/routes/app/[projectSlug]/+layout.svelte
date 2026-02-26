@@ -166,11 +166,12 @@
     const unreleased = versions.filter((v) => !v.released_at);
     return unreleased.map((v) => {
       const assigned = leaves.filter((f) => f.target_version_id === v.id);
-      const implemented = assigned.filter((f) => f.state === 'implemented');
+      const active = assigned.filter((f) => f.state !== 'archived');
+      const implemented = active.filter((f) => f.state === 'implemented');
       return {
         id: v.id,
         name: v.name,
-        featureCount: assigned.length,
+        featureCount: active.length,
         implementedCount: implemented.length,
       };
     });
@@ -187,7 +188,9 @@
       (f) => f.target_version_id === nextVersion.id,
     );
     if (nextVersionFeatures.length === 0) return false;
-    return nextVersionFeatures.every((f) => f.state === 'implemented');
+    const active = nextVersionFeatures.filter((f) => f.state !== 'archived');
+    if (active.length === 0) return false;
+    return active.every((f) => f.state === 'implemented');
   });
 
   const unassignedFeatureCount = $derived.by(() => {

@@ -99,10 +99,12 @@
     return result;
   });
 
-  // Check if the "Next" version is feature complete
+  // Check if the "Next" version is feature complete (archived features don't block completion)
   let isNowFeatureComplete = $derived.by(() => {
     if (!nextVersion || nextVersionFeatures.length === 0) return false;
-    return nextVersionFeatures.every((f) => f.state === 'implemented');
+    const active = nextVersionFeatures.filter((f) => f.state !== 'archived');
+    if (active.length === 0) return false;
+    return active.every((f) => f.state === 'implemented');
   });
 
   // Handle completing the Next version
@@ -254,7 +256,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 16px;
+    padding: 0 16px;
+    height: 37px;
     background: var(--state-implemented);
     color: var(--background);
     font-size: 13px;
@@ -262,7 +265,6 @@
     flex-shrink: 0;
     border-bottom: 1px solid var(--border-default);
     border-left: 1px solid var(--border-subtle);
-    width: fit-content;
   }
 
   .feature-complete-bar svg {

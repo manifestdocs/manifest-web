@@ -558,9 +558,9 @@
     border-bottom: 1px solid var(--border-default);
   }
 
-  /* Matches feature-complete-bar height (button height + padding + border = 44px) */
+  /* Matches feature-complete-bar height in VersionMatrixView */
   .banner-spacer {
-    height: 44px;
+    height: 37px;
     flex-shrink: 0;
     border-bottom: 1px solid var(--border-default);
   }
