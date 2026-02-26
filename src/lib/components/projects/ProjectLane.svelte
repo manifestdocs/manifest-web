@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema.js';
   import { StateIcon } from '$lib/components/icons/index.js';
+  import { getTimeBucket } from '$lib/utils/index.js';
 
   type PortfolioProject = components['schemas']['PortfolioProject'];
 
@@ -161,6 +162,11 @@
         >
           <StateIcon state="implemented" size={12} />
           <span class="feature-title">{f.title}</span>
+          {#if f.completed_at}
+            <span class="timestamp"
+              >{getTimeBucket(new Date(f.completed_at))}</span
+            >
+          {/if}
         </button>
       {/each}
       {#if isStalled && project.recent_completions.length > 0}
@@ -363,6 +369,12 @@
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .timestamp {
+    font-size: 11px;
+    color: var(--foreground-subtle);
+    flex-shrink: 0;
   }
 
   .backlog-badge {
