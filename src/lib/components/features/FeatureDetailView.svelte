@@ -75,7 +75,7 @@
 {/if}
 
 {#if hasPendingChanges}
-  <InfoBanner variant="warning" class="content-banner">
+  <InfoBanner variant="changes" class="content-banner">
     This feature has pending changes that need to be implemented by an agent. <button
       class="banner-link"
       onclick={onViewDiff}
@@ -100,7 +100,7 @@
 
 <style>
   :global(.content-banner) {
-    margin: -20px -26px 24px;
+    margin: -20px -26px 28px;
   }
 
   :global(.content-banner .banner-content) {
@@ -110,6 +110,7 @@
   :global(.content-banner + .content-banner) {
     margin-top: -24px;
   }
+
 
   .banner-link {
     background: none;

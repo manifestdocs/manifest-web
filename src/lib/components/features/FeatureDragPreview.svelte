@@ -20,7 +20,11 @@
     {#if hasChildren}
       <GroupIcon size={14} />
     {:else}
-      <StateIcon state={feature.state} size={14} />
+      <StateIcon
+        state={feature.state}
+        size={14}
+        hasChanges={!!feature.desired_details && feature.desired_details !== feature.details}
+      />
     {/if}
     <span class="preview-title">{feature.title}</span>
   </span>

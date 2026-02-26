@@ -5,7 +5,7 @@
     children: Snippet;
     icon?: Snippet;
     spacerWidth?: string;
-    variant?: 'info' | 'warning' | 'error';
+    variant?: 'info' | 'warning' | 'error' | 'changes';
     class?: string;
   }
 
@@ -108,5 +108,14 @@
 
   .info-banner[data-variant='error'] .banner-icon {
     color: #f85149;
+  }
+
+  .info-banner[data-variant='changes'] .banner-content {
+    background: rgba(163, 113, 247, 0.15);
+    color: var(--foreground);
+  }
+
+  .info-banner[data-variant='changes'] .banner-icon {
+    color: var(--accent-purple);
   }
 </style>

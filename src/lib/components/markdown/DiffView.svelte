@@ -45,19 +45,29 @@
   .diff-marker {
     flex-shrink: 0;
     width: 24px;
-    padding: 0 8px;
+    padding: 4px 8px;
     text-align: center;
     color: var(--foreground-subtle);
     user-select: none;
   }
 
+  .diff-block:first-child .diff-marker {
+    padding-top: 10px;
+  }
+
+
   .diff-content {
     flex: 1;
     margin: 0;
-    padding: 2px 8px 2px 0;
+    padding: 4px 8px 4px 8px;
     white-space: pre-wrap;
     word-break: break-word;
   }
+
+  .diff-block:first-child .diff-content {
+    padding-top: 10px;
+  }
+
 
   .added {
     background: rgba(46, 160, 67, 0.15);

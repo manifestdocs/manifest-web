@@ -116,7 +116,11 @@
     <span class="set-icon"><GroupIcon size={18} /></span>
   {:else}
     <span class="toggle-spacer"></span>
-    <StateIcon state={feature.state} size={15} />
+    <StateIcon
+      state={feature.state}
+      size={15}
+      hasChanges={!!feature.desired_details && feature.desired_details !== feature.details}
+    />
   {/if}
 
   <span class="feature-title">{feature.title}</span>
@@ -133,8 +137,23 @@
       {#if hasBlocked}
         <span class="blocked-indicator" title="Has blocked features">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="5.5" stroke="var(--state-blocked)" stroke-width="1.5" fill="none" />
-            <line x1="4" y1="12" x2="12" y2="4" stroke="var(--state-blocked)" stroke-width="1.5" stroke-linecap="round" />
+            <circle
+              cx="8"
+              cy="8"
+              r="5.5"
+              stroke="var(--state-blocked)"
+              stroke-width="1.5"
+              fill="none"
+            />
+            <line
+              x1="4"
+              y1="12"
+              x2="12"
+              y2="4"
+              stroke="var(--state-blocked)"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
           </svg>
         </span>
       {/if}
@@ -155,10 +174,6 @@
     </span>
   {/if}
 
-  {#if feature.desired_details}
-    <span class="changes-badge" title="Has pending changes">changes</span>
-  {/if}
-
   {#if showTrack}
     <span class="track"></span>
   {/if}
@@ -177,7 +192,9 @@
     height: 28px;
     min-height: 28px;
     flex-shrink: 0;
-    padding-left: calc(var(--depth, 0) * var(--indent-size) + var(--base-padding));
+    padding-left: calc(
+      var(--depth, 0) * var(--indent-size) + var(--base-padding)
+    );
     display: flex;
     align-items: center;
     gap: 7px;
@@ -194,7 +211,9 @@
   }
 
   .feature-row.is-root {
-    padding-left: calc(var(--depth, 0) * var(--indent-size) + var(--root-padding));
+    padding-left: calc(
+      var(--depth, 0) * var(--indent-size) + var(--root-padding)
+    );
     background: var(--background-subtle);
     border-bottom: 1px solid var(--border-default);
   }
@@ -265,14 +284,6 @@
     white-space: nowrap;
     flex-shrink: 1;
     min-width: 0;
-  }
-
-  .changes-badge {
-    flex-shrink: 0;
-    font-size: 10px;
-    color: var(--state-proposed);
-    font-weight: 500;
-    opacity: 0.85;
   }
 
   .state-indicators {

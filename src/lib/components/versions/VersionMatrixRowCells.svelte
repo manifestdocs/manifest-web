@@ -33,6 +33,9 @@
   const isRoot = $derived(feature.is_root ?? false);
   const isLeaf = $derived(!hasChildren && !isRoot);
   const isBacklog = $derived(!feature.target_version_id);
+  const hasChanges = $derived(
+    !!feature.desired_details && feature.desired_details !== feature.details,
+  );
   const isBacklogDropZone = $derived(
     dragHover?.featureId === feature.id &&
       dragHover?.versionId === 'backlog' &&
@@ -70,13 +73,14 @@
         <DraggableDot
           featureId={feature.id}
           featureState={feature.state}
+          {hasChanges}
           onDrop={onDotDrop}
           onHover={onDotHover}
         />
       {/if}
       {#if isVersionDropZone}
         <span class="drop-indicator">
-          <StateIcon state={feature.state} size={14} />
+          <StateIcon state={feature.state} size={14} {hasChanges} />
         </span>
       {/if}
     </div>
@@ -94,13 +98,14 @@
     <DraggableDot
       featureId={feature.id}
       featureState={feature.state}
+      {hasChanges}
       onDrop={onDotDrop}
       onHover={onDotHover}
     />
   {/if}
   {#if isBacklogDropZone}
     <span class="drop-indicator">
-      <StateIcon state={feature.state} size={14} />
+      <StateIcon state={feature.state} size={14} {hasChanges} />
     </span>
   {/if}
 </div>

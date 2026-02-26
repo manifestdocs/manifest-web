@@ -89,7 +89,7 @@
             </div>
           {:else}
             <div class="state-badge" data-state={feature.state}>
-              <StateIcon state={feature.state} size={14} />
+              <StateIcon state={feature.state} size={14} hasChanges={hasPendingChanges} />
               <select
                 class="state-select"
                 value={feature.state}
@@ -103,9 +103,6 @@
                 {/each}
               </select>
             </div>
-          {/if}
-          {#if hasPendingChanges}
-            <span class="changes-badge">changes</span>
           {/if}
           <span class="meta-item">Updated {formatDate(feature.updated_at)}</span
           >
@@ -161,7 +158,7 @@
         {:else}
           <div class="header-actions">
             {#if hasPendingChanges}
-              <button class="btn btn-warning" onclick={onViewDiff} type="button"
+              <button class="btn btn-changes" onclick={onViewDiff} type="button"
                 >Review Changes</button
               >
             {/if}
@@ -205,7 +202,7 @@
             </div>
           {:else}
             <div class="state-badge" data-state={feature.state}>
-              <StateIcon state={feature.state} size={14} />
+              <StateIcon state={feature.state} size={14} hasChanges={hasPendingChanges} />
               <span
                 >{stateOptions.find((o) => o.value === feature.state)
                   ?.label}</span
@@ -405,18 +402,6 @@
     color: var(--border-default);
   }
 
-  .changes-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 500;
-    background: rgba(210, 153, 34, 0.15);
-    color: #d29922;
-    border: 1px solid rgba(210, 153, 34, 0.3);
-  }
-
   .diff-badge {
     display: inline-flex;
     align-items: center;
@@ -424,9 +409,9 @@
     border-radius: 12px;
     font-size: 10px;
     font-weight: 500;
-    background: rgba(210, 153, 34, 0.15);
-    color: #d29922;
-    border: 1px solid rgba(210, 153, 34, 0.3);
+    background: rgba(163, 113, 247, 0.15);
+    color: var(--accent-purple);
+    border: 1px solid rgba(163, 113, 247, 0.3);
   }
 
   .header-actions {

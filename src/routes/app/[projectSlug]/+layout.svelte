@@ -580,6 +580,14 @@
           <StateIcon state="implemented" size={12} />
           <span>Implemented</span>
         </div>
+        <div class="legend-item">
+          <StateIcon state="blocked" size={12} />
+          <span>Blocked</span>
+        </div>
+        <div class="legend-item">
+          <StateIcon state="implemented" size={12} hasChanges />
+          <span>Pending Changes</span>
+        </div>
       </div>
       <div class="footer-right">
         {#if import.meta.env.DEV}

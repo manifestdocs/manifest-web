@@ -7,6 +7,7 @@
   interface Props {
     featureId: string;
     featureState?: FeatureState;
+    hasChanges?: boolean;
     onDrop: (featureId: string, newVersionId: string | null) => void;
     onHover?: (featureId: string, versionId: string | null) => void;
   }
@@ -14,6 +15,7 @@
   let {
     featureId,
     featureState = 'implemented',
+    hasChanges = false,
     onDrop,
     onHover,
   }: Props = $props();
@@ -99,13 +101,13 @@
   onpointerup={handlePointerUp}
   onpointercancel={handlePointerUp}
 >
-  <StateIcon state={featureState} size={14} />
+  <StateIcon state={featureState} size={14} {hasChanges} />
 </span>
 
 <!-- Drag preview (follows cursor horizontally, locked to row) -->
 {#if isDragging}
   <span class="preview" style:left="{dragX}px" style:top="{rowY}px">
-    <StateIcon state={featureState} size={16} />
+    <StateIcon state={featureState} size={16} {hasChanges} />
   </span>
 {/if}
 
