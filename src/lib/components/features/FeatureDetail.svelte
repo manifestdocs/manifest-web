@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getAuthApiContext } from '$lib/api/auth-context.js';
   import type { components } from '$lib/api/schema.js';
+  import { getProjectDataContext } from '$lib/contexts/types.js';
   import FeatureDetailHeader from './FeatureDetailHeader.svelte';
   import FeatureDetailView from './FeatureDetailView.svelte';
   import FeatureDetailEdit from './FeatureDetailEdit.svelte';
@@ -9,6 +10,7 @@
 
   // Get authenticated API client from context
   const authApi = getAuthApiContext();
+  const projectCtx = getProjectDataContext();
 
   type Feature = components['schemas']['Feature'];
   type FeatureState = components['schemas']['FeatureState'];
@@ -316,6 +318,7 @@
           {isGroup}
           {hasPendingChanges}
           {showHighlight}
+          gitRemote={projectCtx.gitRemote}
           onViewDiff={handleViewDiff}
         />
       {:else if activeTab === 'edit'}
@@ -367,6 +370,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px 26px;
+    max-width: 900px;
   }
 
   .detail-content.editing {

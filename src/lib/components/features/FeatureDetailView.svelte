@@ -3,6 +3,7 @@
   import type { components } from '$lib/api/schema.js';
   import { MarkdownView } from '$lib/components/markdown/index.js';
   import { InfoBanner } from '$lib/components/ui/index.js';
+  import EvidencePanel from './EvidencePanel.svelte';
 
   const authApi = getAuthApiContext();
 
@@ -14,6 +15,7 @@
     isGroup: boolean;
     hasPendingChanges: boolean;
     showHighlight: boolean;
+    gitRemote?: string | null;
     onViewDiff: () => void;
   }
 
@@ -23,8 +25,11 @@
     isGroup,
     hasPendingChanges,
     showHighlight,
+    gitRemote,
     onViewDiff,
   }: Props = $props();
+
+  const isLeaf = $derived(!isRoot && !isGroup);
 
   // Blocked-by feature names (fetched when feature is blocked)
   let blockerNames = $state<string[]>([]);
@@ -97,6 +102,13 @@
     </p>
   {/if}
 </div>
+
+{#if isLeaf}
+  <EvidencePanel
+    featureId={feature.id}
+    {gitRemote}
+  />
+{/if}
 
 <style>
   :global(.content-banner) {

@@ -69,6 +69,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get server version */
+        get: operations["getVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/filesystem/browse": {
         parameters: {
             query?: never;
@@ -111,6 +128,27 @@ export interface paths {
          *     - Subject to the same path restrictions as browsing
          */
         post: operations["createDirectory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/codebase/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analyze a codebase directory
+         * @description Discovers project structure including language, frameworks, modules, and documentation.
+         *     Used by AI agents before planning features to understand what capabilities exist.
+         */
+        get: operations["analyzeProject"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -418,6 +456,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{id}/features/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get the next workable feature
+         * @description Returns the single highest-priority feature that is workable (proposed or in_progress).
+         *     Sort order: version > priority > created_at.
+         *     Features targeting the "next" version (first unreleased) come first,
+         *     then features with no version (backlog).
+         */
+        get: operations["getNextFeature"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Subscribe to feature change events (SSE)
+         * @description Server-sent event stream that fires whenever a feature in this project is modified.
+         *     Events include `change` (generic modification) and `feature_completed` (with JSON payload).
+         */
+        get: operations["subscribeProjectFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/directories/{id}": {
         parameters: {
             query?: never;
@@ -481,6 +569,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve a feature by UUID, display ID, or prefix
+         * @description Resolves a feature from a UUID, display ID (e.g. "MAN-42"), or UUID prefix.
+         *     Returns the matching feature if exactly one match is found.
+         */
+        get: operations["resolveFeature"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/features/{id}": {
         parameters: {
             query?: never;
@@ -526,6 +635,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/{id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a feature with hierarchical context
+         * @description Returns the feature with navigation context: parent, siblings, children, and
+         *     breadcrumb trail from root. Used by AI agents to understand where a feature
+         *     sits in the tree.
+         */
+        get: operations["getFeatureWithContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/features/{id}/history": {
         parameters: {
             query?: never;
@@ -548,6 +682,55 @@ export interface paths {
          *     and optionally links to git commits. Use this when completing work on a feature.
          */
         post: operations["addFeatureHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get verification context
+         * @description Assembles the feature spec + breadcrumb context and optionally filters a provided diff.
+         *     Returns structured context for an AI agent to analyze — no LLM call server-side.
+         */
+        post: operations["getVerifyContext"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record verification results
+         * @description Stores agent-generated verification comments on the feature record.
+         *     Overwrites any previous verification result. Pass an empty comments array
+         *     if the implementation fully satisfies the spec.
+         */
+        put: operations["recordFeatureVerification"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -596,6 +779,226 @@ export interface paths {
         get: operations["getFeatureBlockers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/blocked-ancestor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Find blocked ancestor in parent chain
+         * @description Walks up the parent chain to find the first blocked ancestor feature set.
+         *     Returns null if no blocked ancestor is found.
+         */
+        get: operations["findBlockedAncestor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Atomically claim a feature
+         * @description Atomically transitions a feature to in_progress and sets claim fields
+         *     (agent_type, claimed_at, claim_metadata) in a single transaction.
+         *
+         *     Uses BEGIN IMMEDIATE on SQLite to prevent race conditions when two agents
+         *     try to claim the same feature simultaneously. Exactly one succeeds; the
+         *     other receives a 409 Conflict with details about the existing claim.
+         */
+        put: operations["claimFeature"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a feature
+         * @description Records a history entry with the work summary and commit references,
+         *     transitions the feature to 'implemented', and clears any active claims.
+         */
+        post: operations["completeFeature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{id}/proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List proofs for a feature
+         * @description Returns all proofs for a feature, ordered by most recent first.
+         */
+        get: operations["listProofsForFeature"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proofs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Proof ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get a proof by ID */
+        get: operations["getProof"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Search or list project memories */
+        get: operations["listMemories"];
+        put?: never;
+        /** Create a project memory */
+        post: operations["createMemory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/memories/{memory_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+                /** @description Memory UUID */
+                memory_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a project memory */
+        delete: operations["deleteMemory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get server settings */
+        get: operations["getSettings"];
+        /**
+         * Update server settings
+         * @description Updates server configuration. If the database path changes, triggers a server restart.
+         */
+        put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/mcp-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check MCP configuration status
+         * @description Checks if the default agent has an MCP server configured.
+         */
+        get: operations["checkMcpStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/configure-mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auto-configure MCP for the default agent */
+        post: operations["configureMcp"];
         delete?: never;
         options?: never;
         head?: never;
@@ -657,6 +1060,12 @@ export interface components {
              * @enum {string}
              */
             ac_format: "checkbox" | "gherkin";
+            /**
+             * @description Testing policy for the project (none, advisory, or tdd).
+             * @default advisory
+             * @enum {string}
+             */
+            testing_policy: "none" | "advisory" | "tdd";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -719,6 +1128,11 @@ export interface components {
              * @enum {string}
              */
             ac_format?: "checkbox" | "gherkin";
+            /**
+             * @description Testing policy for the project (none, advisory, or tdd).
+             * @enum {string}
+             */
+            testing_policy?: "none" | "advisory" | "tdd";
         };
         ProjectDirectory: {
             /** Format: uuid */
@@ -786,6 +1200,12 @@ export interface components {
              * @enum {string}
              */
             ac_format: "checkbox" | "gherkin";
+            /**
+             * @description Testing policy for the project (none, advisory, or tdd).
+             * @default advisory
+             * @enum {string}
+             */
+            testing_policy: "none" | "advisory" | "tdd";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1191,6 +1611,259 @@ export interface components {
         Portfolio: {
             projects: components["schemas"]["PortfolioProject"][];
         };
+        ClaimFeatureInput: {
+            /**
+             * @description Agent type claiming this feature (e.g. 'claude', 'gemini', 'codex', 'copilot').
+             * @example claude
+             */
+            agent_type: string;
+            /**
+             * @description Optional JSON metadata about the agent's execution context.
+             * @example {"branch":"feature/auth"}
+             */
+            metadata?: string | null;
+            /**
+             * @description Force claim even if another agent holds it.
+             * @default false
+             */
+            force: boolean;
+        };
+        /** @description Returned when a feature is already claimed by another agent. */
+        ClaimConflictError: {
+            /** @enum {string} */
+            error: "claim_conflict";
+            /** @example Feature already claimed by 'claude' */
+            message: string;
+            conflict: {
+                /**
+                 * @description The agent type that currently owns the claim.
+                 * @example claude
+                 */
+                agent_type: string;
+                /**
+                 * Format: uuid
+                 * @description The feature ID that is already claimed.
+                 */
+                feature_id: string;
+                /**
+                 * Format: date-time
+                 * @description When the existing claim was established.
+                 */
+                claimed_at: string;
+                /** @description Optional metadata from the existing claim. */
+                claim_metadata?: string | null;
+            };
+        };
+        CompleteFeatureInput: {
+            /** @description Summary of work done. */
+            summary: string;
+            /** @default [] */
+            commits: {
+                sha: string;
+                message: string;
+                author?: string | null;
+            }[];
+        };
+        CompleteFeatureResponse: {
+            feature: components["schemas"]["Feature"];
+            history: components["schemas"]["FeatureHistory"];
+        };
+        /** @description A feature with its hierarchical navigation context. */
+        FeatureWithContext: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            project_id: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            title: string;
+            details?: string | null;
+            desired_details?: string | null;
+            details_summary?: string | null;
+            state: components["schemas"]["FeatureState"];
+            priority: number;
+            feature_number?: number | null;
+            /** Format: uuid */
+            target_version_id?: string | null;
+            parent?: components["schemas"]["FeatureSummaryContext"];
+            siblings: components["schemas"]["FeatureSummaryContext"][];
+            children: components["schemas"]["FeatureSummaryContext"][];
+            breadcrumb: components["schemas"]["BreadcrumbItem"][];
+            /** @description Most recent proof (test evidence) for this feature. */
+            latest_proof?: components["schemas"]["Proof"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Test evidence record for a feature. */
+        Proof: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            feature_id: string;
+            /**
+             * Format: uuid
+             * @description Optional link to a feature_history entry.
+             */
+            history_id?: string | null;
+            /** @description The test command that was run (e.g., "cargo test auth_spec"). */
+            command: string;
+            /** @description Process exit code (0 = all tests passed). */
+            exit_code: number;
+            /** @description Raw stdout/stderr output, capped at 10K characters. */
+            output?: string | null;
+            /** @description Structured test results for consistent rendering. */
+            tests?: components["schemas"]["TestResult"][] | null;
+            /** @description Evidence file paths linked to this proof. */
+            evidence?: components["schemas"]["Evidence"][];
+            /** @description Git commit SHA at the time of proving. */
+            commit_sha?: string | null;
+            /** @description Agent that produced the proof (e.g., "claude", "human"). */
+            agent_type?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /** @description A single test result within a proof. */
+        TestResult: {
+            /** @description Name of the test. */
+            name: string;
+            /** @description Test suite or module name. */
+            suite?: string | null;
+            /**
+             * @description Result state.
+             * @enum {string}
+             */
+            state: "passed" | "failed" | "errored" | "skipped";
+            /** @description Source file path (relative to project root). */
+            file?: string | null;
+            /** @description Line number in the source file. */
+            line?: number | null;
+            /** @description Duration in milliseconds. */
+            duration_ms?: number | null;
+            /** @description Failure or error message. */
+            message?: string | null;
+        };
+        /** @description A file path linked as evidence for a proof. */
+        Evidence: {
+            /** @description File path (relative to project root). */
+            path: string;
+            /** @description Optional note about why this file is evidence. */
+            note?: string | null;
+        };
+        /** @description Lightweight feature summary for context (parent, siblings, children). */
+        FeatureSummaryContext: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            state: components["schemas"]["FeatureState"];
+        };
+        /** @description Breadcrumb item for navigation path (root to feature). */
+        BreadcrumbItem: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @description Contextual details from this ancestor. */
+            details?: string | null;
+        };
+        /** @description Assembled context for feature verification. */
+        VerifyFeatureContextResponse: {
+            /** @description Feature specification + breadcrumb context formatted as markdown. */
+            spec: string;
+            /** @description Filtered implementation diff. */
+            diff?: string | null;
+            /** @description True if the diff was truncated due to size limit. */
+            diff_truncated: boolean;
+            /** @description Instruction text for the calling agent. */
+            instructions: string;
+        };
+        /** @description A single comment from implementation verification. */
+        VerificationComment: {
+            /**
+             * @description critical: core requirement missing. major: significant gap. minor: style drift.
+             * @enum {string}
+             */
+            severity: "critical" | "major" | "minor";
+            /** @description One-line summary of the gap. */
+            title: string;
+            /** @description Actionable explanation with suggested fix. */
+            body: string;
+            /** @description Affected file path if the gap is localized. */
+            file?: string | null;
+        };
+        /** @description A project memory entry for AI agent recall. */
+        ProjectMemory: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            project_id: string;
+            /** @description Plain text or markdown content. */
+            content: string;
+            /** @description Tags for categorisation. */
+            tags: string[];
+            /**
+             * Format: uuid
+             * @description Feature this memory originated from.
+             */
+            source_feature_id?: string | null;
+            /** @description Who created this: 'agent' or 'human'. */
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateMemoryInput: {
+            /** @description Plain text or markdown content to remember. */
+            content: string;
+            /**
+             * @description Tags for categorisation.
+             * @default []
+             */
+            tags: string[];
+            /**
+             * Format: uuid
+             * @description Feature this memory is associated with.
+             */
+            source_feature_id?: string | null;
+            /**
+             * @description Who created this: 'agent' or 'human'.
+             * @default agent
+             */
+            created_by: string;
+        };
+        /** @description Analysis results for a codebase directory. */
+        ProjectAnalysis: {
+            /** @description Detected project name. */
+            name?: string | null;
+            /** @description Detected project description. */
+            description?: string | null;
+            project_type?: {
+                language?: string;
+                frameworks?: string[];
+                build_tool?: string | null;
+            };
+            git_remote?: string | null;
+            directories?: {
+                path?: string;
+                kind?: string;
+                file_count?: number;
+            }[];
+            modules?: {
+                name?: string;
+                path?: string;
+                is_major?: boolean;
+            }[];
+            documentation?: {
+                readme?: string | null;
+                claude_md?: string | null;
+            } | null;
+            hints?: {
+                title?: string;
+                reason?: string;
+                paths?: string[];
+            }[];
+        };
     };
     responses: {
         /** @description Resource not found */
@@ -1295,6 +1968,31 @@ export interface operations {
             };
         };
     };
+    getVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server version information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1.0.0 */
+                        version: string;
+                        /** @example https://api.github.com/repos/manifestdocs/manifest/releases/latest */
+                        releases_url: string;
+                    };
+                };
+            };
+        };
+    };
     browseFilesystem: {
         parameters: {
             query?: {
@@ -1387,6 +2085,54 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
+            };
+        };
+    };
+    analyzeProject: {
+        parameters: {
+            query: {
+                /** @description Absolute path to the directory to analyze. */
+                path: string;
+                /** @description Include documentation content (README, CLAUDE.md). */
+                include_docs?: boolean;
+                /** @description Maximum directory depth to scan. */
+                max_depth?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project analysis results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectAnalysis"];
+                };
+            };
+            /** @description Invalid path */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Directory not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1853,6 +2599,8 @@ export interface operations {
     listProjectFeatures: {
         parameters: {
             query?: {
+                /** @description Filter features by target version assignment. */
+                version_id?: string;
                 /** @description Maximum number of items to return. */
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of items to skip for pagination. */
@@ -1981,6 +2729,55 @@ export interface operations {
             };
         };
     };
+    getNextFeature: {
+        parameters: {
+            query?: {
+                /** @description Optional version ID to filter features. */
+                version_id?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next workable feature with context, or null if none found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureWithContext"];
+                };
+            };
+        };
+    };
+    subscribeProjectFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE stream of feature change events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
     removeProjectDirectory: {
         parameters: {
             query?: never;
@@ -2006,6 +2803,8 @@ export interface operations {
     listFeatures: {
         parameters: {
             query?: {
+                /** @description Filter features by target version assignment. */
+                version_id?: string;
                 /** @description Maximum number of items to return. */
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of items to skip for pagination. */
@@ -2052,6 +2851,38 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FeatureSummary"][];
                 };
+            };
+        };
+    };
+    resolveFeature: {
+        parameters: {
+            query: {
+                /** @description ID to resolve: UUID, display ID like "MAN-42", or UUID prefix. */
+                prefix: string;
+                /** @description Optional project UUID to scope the search to. */
+                project_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The resolved feature */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+            /** @description No feature found matching the prefix */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2152,6 +2983,30 @@ export interface operations {
             };
         };
     };
+    getFeatureWithContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Feature with hierarchical context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureWithContext"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     getFeatureHistory: {
         parameters: {
             query?: never;
@@ -2205,6 +3060,67 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    getVerifyContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Optional git diff to include in the verification context. */
+                    diff?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Assembled verification context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyFeatureContextResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    recordFeatureVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    comments: components["schemas"]["VerificationComment"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Feature with updated verification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     getFeatureDiff: {
         parameters: {
             query?: never;
@@ -2251,6 +3167,343 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    findBlockedAncestor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Blocked ancestor if found, or null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        title?: string;
+                    } | null;
+                };
+            };
+        };
+    };
+    claimFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimFeatureInput"];
+            };
+        };
+        responses: {
+            /** @description Feature claimed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example true */
+                        ok?: boolean;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Feature already claimed by another agent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimConflictError"];
+                };
+            };
+        };
+    };
+    completeFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteFeatureInput"];
+            };
+        };
+        responses: {
+            /** @description Feature completed with history entry */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteFeatureResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listProofsForFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of proofs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proof"][];
+                };
+            };
+        };
+    };
+    getProof: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Proof ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The proof */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proof"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMemories: {
+        parameters: {
+            query?: {
+                /** @description Search query (full-text on SQLite, LIKE fallback on PostgreSQL). Omit to list all. */
+                q?: string;
+                /** @description Maximum results to return. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of project memories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMemory"][];
+                };
+            };
+        };
+    };
+    createMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMemoryInput"];
+            };
+        };
+        responses: {
+            /** @description Memory created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMemory"];
+                };
+            };
+        };
+    };
+    deleteMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+                /** @description Memory UUID */
+                memory_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Memory deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current server configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        database_path?: string | null;
+                        database_path_resolved?: string;
+                        config_file?: string;
+                        /** @example claude */
+                        default_agent?: string;
+                    };
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Path to the SQLite database file. Null resets to default. */
+                    database_path?: string | null;
+                    /** @description Default agent type. Allowed: claude, gemini, copilot, codex. */
+                    default_agent?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Settings updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        database_path?: string | null;
+                        database_path_resolved?: string;
+                        config_file?: string;
+                        default_agent?: string;
+                        restart_required?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    checkMcpStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description MCP configuration status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        agent?: string;
+                        configured?: boolean;
+                        config_file?: string;
+                        setup_hint?: string;
+                    };
+                };
+            };
+        };
+    };
+    configureMcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description MCP configured successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        config_file?: string;
+                    };
+                };
+            };
+            /** @description Agent not supported for auto-configuration */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }
