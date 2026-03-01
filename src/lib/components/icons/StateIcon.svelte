@@ -79,24 +79,24 @@
   <!-- Split square diff (implemented with pending changes) -->
   <svg
     width={size}
-    height={size + 2}
-    viewBox="0 0 16 18"
+    height={size}
+    viewBox="0 0 16 16"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     class={className}
     aria-label="Implemented with pending changes"
   >
     <!-- Bottom half filled -->
-    <rect x="1" y="9" width="14" height="8" fill="var(--accent-purple)" />
+    <rect x="1" y="8" width="14" height="7" fill="var(--accent-purple)" />
     <!-- Full border -->
-    <rect x="1" y="1" width="14" height="16" stroke="var(--accent-purple)" stroke-width="1.5" />
+    <rect x="1" y="1" width="14" height="14" stroke="var(--accent-purple)" stroke-width="1.5" />
     <!-- Divider line -->
-    <line x1="1" y1="9" x2="15" y2="9" stroke="var(--accent-purple)" stroke-width="1.5" />
+    <line x1="1" y1="8" x2="15" y2="8" stroke="var(--accent-purple)" stroke-width="1.5" />
     <!-- Minus in top half -->
-    <line x1="5" y1="5" x2="11" y2="5" stroke="var(--accent-purple)" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="5" y1="4.5" x2="11" y2="4.5" stroke="var(--accent-purple)" stroke-width="1.5" stroke-linecap="round" />
     <!-- Plus in bottom half -->
-    <line x1="8" y1="10.5" x2="8" y2="15.5" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
-    <line x1="5.5" y1="13" x2="10.5" y2="13" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="8" y1="9.5" x2="8" y2="13.5" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="5.5" y1="11.5" x2="10.5" y2="11.5" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
   </svg>
 {:else if state === 'implemented'}
   <!-- Filled circle with checkmark -->

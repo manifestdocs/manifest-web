@@ -265,7 +265,7 @@
   .detail-header {
     box-sizing: border-box;
     min-height: 91px;
-    padding: 20px 21px 0 26px;
+    padding: 20px 26px 0 26px;
     border-bottom: 1px solid var(--border-default);
   }
 
@@ -274,6 +274,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 24px;
+    max-width: calc(900px - 26px - 26px);
   }
 
   .header-left {
