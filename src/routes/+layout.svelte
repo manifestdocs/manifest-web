@@ -7,6 +7,7 @@
 </script>
 
 <svelte:head>
+  <link rel="icon" href="/favicon.svg" />
   <link rel="icon" href={favicon} media="(prefers-color-scheme: light)" />
   <link rel="icon" href={faviconDark} media="(prefers-color-scheme: dark)" />
   <title>Manifest</title>
