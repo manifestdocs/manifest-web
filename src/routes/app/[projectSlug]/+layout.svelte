@@ -39,6 +39,7 @@
     fetchVersions,
     fetchDirectories,
   } from '$lib/features/loader.js';
+  import { isDisplayId, toDisplayId } from '$lib/features/display-id.js';
 
   const authApi = getAuthApiContext();
 
@@ -86,10 +87,58 @@
     projectsContext.projects.find((p) => p.slug === projectSlug),
   );
   const projectId = $derived(project?.id);
-  const selectedFeatureId = $derived(page.url.searchParams.get('feature'));
+  const featureParam = $derived(page.url.searchParams.get('feature'));
   const acFormat = $derived(
     (project as any)?.ac_format as 'checkbox' | 'gherkin' | undefined,
   );
+
+  // --- Display ID ↔ UUID maps (built from feature tree + project prefix) ---
+  const displayIdToUuid = $derived.by(() => {
+    const prefix = project?.key_prefix;
+    if (!prefix) return new Map<string, string>();
+    const map = new Map<string, string>();
+    function walk(nodes: FeatureTreeNode[]) {
+      for (const node of nodes) {
+        if (node.feature_number != null) {
+          map.set(`${prefix}-${node.feature_number}`, node.id);
+        }
+        walk(node.children);
+      }
+    }
+    walk(featureTree);
+    return map;
+  });
+
+  const uuidToDisplayId = $derived.by(() => {
+    const prefix = project?.key_prefix;
+    if (!prefix) return new Map<string, string>();
+    const map = new Map<string, string>();
+    function walk(nodes: FeatureTreeNode[]) {
+      for (const node of nodes) {
+        if (node.feature_number != null) {
+          map.set(node.id, `${prefix}-${node.feature_number}`);
+        }
+        walk(node.children);
+      }
+    }
+    walk(featureTree);
+    return map;
+  });
+
+  function getDisplayId(uuid: string): string {
+    return uuidToDisplayId.get(uuid) ?? uuid;
+  }
+
+  // Resolve URL param (display ID or UUID) to a UUID
+  const selectedFeatureId = $derived.by(() => {
+    if (!featureParam) return null;
+    // If it's a display ID, resolve via map
+    if (isDisplayId(featureParam)) {
+      return displayIdToUuid.get(featureParam.toUpperCase()) ?? displayIdToUuid.get(featureParam) ?? null;
+    }
+    // Otherwise treat as UUID
+    return featureParam;
+  });
 
   // Derive whether we're on the versions (plan) route
   const isVersionView = $derived(page.url.pathname.endsWith('/versions'));
@@ -275,8 +324,22 @@
   $effect(() => {
     if (selectedFeatureId && authApi.isReady()) {
       loadFeature(selectedFeatureId);
-    } else if (!selectedFeatureId) {
+    } else if (!selectedFeatureId && !featureParam) {
       selectedFeature = null;
+    }
+  });
+
+  // Rewrite UUID URLs to display IDs when the tree loads
+  $effect(() => {
+    if (!featureParam || !selectedFeatureId) return;
+    // If URL has a UUID but we know the display ID, silently rewrite
+    if (!isDisplayId(featureParam)) {
+      const displayId = uuidToDisplayId.get(featureParam);
+      if (displayId) {
+        const url = new URL(page.url);
+        url.searchParams.set('feature', displayId);
+        goto(url.pathname + url.search, { replaceState: true });
+      }
     }
   });
 
@@ -309,9 +372,14 @@
         notifications.processTreeUpdate(pid, projectSlug, result.data);
       }
 
-      if (!selectedFeatureId && result.data.length > 0) {
+      if (!featureParam && result.data.length > 0) {
+        const firstFeature = result.data[0];
+        const prefix = project?.key_prefix;
+        const displayId = prefix && firstFeature.feature_number != null
+          ? `${prefix}-${firstFeature.feature_number}`
+          : firstFeature.id;
         const url = new URL(page.url);
-        url.searchParams.set('feature', result.data[0].id);
+        url.searchParams.set('feature', displayId);
         goto(url.pathname + url.search, {
           replaceState: true,
         });
@@ -403,7 +471,8 @@
 
   function handleSelectFeature(id: string) {
     const currentPath = page.url.pathname;
-    goto(`${currentPath}?feature=${id}`);
+    const displayId = getDisplayId(id);
+    goto(`${currentPath}?feature=${displayId}`);
   }
 
   function handleResize(deltaX: number) {
@@ -509,6 +578,7 @@
       state: import('$lib/stores/featureFilter.svelte.js').FilterableState,
     ) => featureTreeRef?.toggleFilter(state),
     sendPlanPrompt,
+    getDisplayId,
   });
 </script>
 

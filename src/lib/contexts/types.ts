@@ -88,6 +88,8 @@ export interface ProjectDataContext {
   handleCollapseAll: () => void;
   handleToggleFilter: (state: FilterableState) => void;
   sendPlanPrompt: () => void;
+  /** Get display ID (e.g., "MANIF-42") for a feature UUID, or the UUID if unavailable */
+  getDisplayId: (uuid: string) => string;
 }
 
 // --- Context helpers ---

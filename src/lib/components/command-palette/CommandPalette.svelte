@@ -14,6 +14,7 @@
     projectId: string;
     projectSlug: string;
     featureTree?: FeatureTreeNode[];
+    getDisplayId?: (uuid: string) => string;
   }
 
   let {
@@ -22,6 +23,7 @@
     projectId,
     projectSlug,
     featureTree = [],
+    getDisplayId = (uuid: string) => uuid,
   }: Props = $props();
 
   let query = $state('');
@@ -123,7 +125,7 @@
   });
 
   function navigateToFeature(featureId: string) {
-    goto(`/app/${projectSlug}?feature=${featureId}`);
+    goto(`/app/${projectSlug}?feature=${getDisplayId(featureId)}`);
     onOpenChange(false);
   }
 

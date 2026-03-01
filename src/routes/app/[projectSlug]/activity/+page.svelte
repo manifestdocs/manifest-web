@@ -75,7 +75,7 @@
   }
 
   function handleFeatureClick(featureId: string) {
-    goto(`/app/${ctx.projectSlug}?feature=${featureId}`);
+    goto(`/app/${ctx.projectSlug}?feature=${ctx.getDisplayId(featureId)}`);
   }
 </script>
 
