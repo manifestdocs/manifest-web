@@ -373,7 +373,7 @@
   /* When evidence is present: two-column grid, full height */
   .feature-detail.has-evidence {
     display: grid;
-    grid-template-columns: minmax(0, 900px) minmax(240px, 1fr);
+    grid-template-columns: 2fr 1fr;
   }
 
   .detail-main {
@@ -423,13 +423,6 @@
     padding: 20px;
     overflow-y: auto;
     border-left: 1px solid var(--border-default);
-  }
-
-  /* Narrower: proportional split */
-  @container feature-detail (max-width: 900px) {
-    .feature-detail.has-evidence {
-      grid-template-columns: 2fr 1fr;
-    }
   }
 
   /* Very narrow: stack vertically */
