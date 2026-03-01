@@ -32,6 +32,7 @@
   let defaultFeatureDestination = $state<'backlog' | 'now'>('backlog');
   let detailLevel = $state<'concise' | 'standard' | 'thorough'>('standard');
   let acFormat = $state<'checkbox' | 'gherkin'>('checkbox');
+  let testingPolicy = $state<'none' | 'advisory' | 'tdd'>('advisory');
   let isSaving = $state(false);
   let error = $state<string | null>(null);
 
@@ -63,6 +64,8 @@
         (project.detail_level as 'concise' | 'standard' | 'thorough') ?? 'standard';
       acFormat =
         (project.ac_format as 'checkbox' | 'gherkin') ?? 'checkbox';
+      testingPolicy =
+        (project.testing_policy as 'none' | 'advisory' | 'tdd') ?? 'advisory';
       error = null;
       deleteConfirmText = '';
       deleteError = null;
@@ -147,6 +150,7 @@
           detail_level: detailLevel,
           ac_level: detailLevel,
           ac_format: acFormat,
+          testing_policy: testingPolicy,
         },
       });
 
@@ -459,6 +463,37 @@
                 <label class="segment" class:active={acFormat === 'gherkin'}>
                   <input type="radio" name="ac-format" value="gherkin" bind:group={acFormat} disabled={isSaving} />
                   Gherkin
+                </label>
+              </div>
+            </div>
+
+            <hr class="section-divider" />
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="form-label">Testing policy</span>
+                <span class="form-hint">
+                  {#if testingPolicy === 'none'}
+                    Agents are not prompted to write tests.
+                  {:else if testingPolicy === 'advisory'}
+                    Agents are prompted to write tests before implementing.
+                  {:else}
+                    Agents must record passing tests before completing a feature.
+                  {/if}
+                </span>
+              </div>
+              <div class="segmented-control" role="radiogroup" aria-label="Testing policy">
+                <label class="segment" class:active={testingPolicy === 'none'}>
+                  <input type="radio" name="testing-policy" value="none" bind:group={testingPolicy} disabled={isSaving} />
+                  Off
+                </label>
+                <label class="segment" class:active={testingPolicy === 'advisory'}>
+                  <input type="radio" name="testing-policy" value="advisory" bind:group={testingPolicy} disabled={isSaving} />
+                  Advisory
+                </label>
+                <label class="segment" class:active={testingPolicy === 'tdd'}>
+                  <input type="radio" name="testing-policy" value="tdd" bind:group={testingPolicy} disabled={isSaving} />
+                  TDD
                 </label>
               </div>
             </div>
