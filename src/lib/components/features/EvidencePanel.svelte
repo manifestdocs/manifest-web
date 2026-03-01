@@ -13,7 +13,6 @@
 
   let { featureId, gitRemote }: Props = $props();
 
-  let expanded = $state(true);
   let showOutput = $state(false);
   let proof = $state<Proof | null>(null);
   let allProofs = $state<Proof[]>([]);
@@ -82,7 +81,6 @@
 
   function githubPermalink(path: string, line?: number | null): string | null {
     if (!gitRemote || !proof?.commit_sha) return null;
-    // Convert git remote to GitHub URL
     let base = gitRemote
       .replace(/\.git$/, '')
       .replace(/^git@github\.com:/, 'https://github.com/')
@@ -114,191 +112,169 @@
   }
 </script>
 
-<div class="evidence-panel" class:collapsed={!expanded}>
-  <button
-    class="panel-header"
-    onclick={() => (expanded = !expanded)}
-    type="button"
-    aria-expanded={expanded}
-  >
-    <svg class="chevron" class:open={expanded} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-    <span class="panel-title">Evidence</span>
+<section class="evidence-panel" aria-label="Evidence">
+  <header class="panel-header">
+    <h2 class="panel-title">Evidence</h2>
     {#if proof}
       {@const s = stats()}
-      {#if s}
-        <span class="stats">
-          {#if s.passed > 0}<span class="stat passed">{'\u2713'} {s.passed}</span>{/if}
-          {#if s.failed > 0}<span class="stat failed">{'\u2717'} {s.failed}</span>{/if}
-          {#if s.errored > 0}<span class="stat errored">! {s.errored}</span>{/if}
-          {#if s.skipped > 0}<span class="stat skipped">{'\u2298'} {s.skipped}</span>{/if}
-        </span>
-      {:else}
-        <span class="stats">
+      <div class="header-meta">
+        {#if s}
+          <span class="stats">
+            {#if s.passed > 0}<span class="stat passed">{'\u2713'} {s.passed}</span>{/if}
+            {#if s.failed > 0}<span class="stat failed">{'\u2717'} {s.failed}</span>{/if}
+            {#if s.errored > 0}<span class="stat errored">! {s.errored}</span>{/if}
+            {#if s.skipped > 0}<span class="stat skipped">{'\u2298'} {s.skipped}</span>{/if}
+          </span>
+        {:else}
           <span class="stat {proof.exit_code === 0 ? 'passed' : 'failed'}">
             {proof.exit_code === 0 ? '\u2713' : '\u2717'} exit {proof.exit_code}
           </span>
-        </span>
-      {/if}
-      {#if proof.commit_sha}
-        <span class="commit-ref">{proof.commit_sha.slice(0, 7)}</span>
-      {/if}
-      <span class="time-ago">{formatTimeAgo(proof.created_at)}</span>
-    {:else}
-      <span class="empty-label">No proof recorded</span>
+        {/if}
+        {#if proof.commit_sha}
+          <span class="commit-ref">{proof.commit_sha.slice(0, 7)}</span>
+        {/if}
+        <span class="time-ago">{formatTimeAgo(proof.created_at)}</span>
+      </div>
     {/if}
-  </button>
+  </header>
 
-  {#if expanded}
-    <div class="panel-body">
-      {#if !proof}
-        <div class="empty-state">
-          No test evidence recorded for this feature.
-        </div>
-      {:else}
-        <!-- Test results (structured) -->
-        {#if proof.tests && proof.tests.length > 0}
-          <div class="test-results">
-            {#each proof.tests as test}
-              <div class="test-row" data-state={test.state}>
-                <span class="test-icon">{stateIcon(test.state)}</span>
-                <span class="test-name">{test.name}</span>
-                {#if test.suite}
-                  <span class="test-suite">{test.suite}</span>
-                {/if}
-                <span class="test-duration">{formatDuration(test.duration_ms)}</span>
-                {#if test.file}
-                  {@const link = githubPermalink(test.file, test.line)}
-                  {#if link}
-                    <a class="test-file" href={link} target="_blank" rel="noopener">
-                      {test.file}{test.line ? `:${test.line}` : ''}
-                    </a>
-                  {:else}
-                    <span class="test-file">{test.file}{test.line ? `:${test.line}` : ''}</span>
-                  {/if}
-                {/if}
-              </div>
-              {#if test.state === 'failed' && test.message}
-                <div class="test-message">{test.message}</div>
+  <div class="panel-body">
+    {#if !proof}
+      <p class="empty-state">No test evidence recorded for this feature.</p>
+    {:else}
+      <!-- Test results (structured) -->
+      {#if proof.tests && proof.tests.length > 0}
+        <div class="test-results">
+          {#each proof.tests as test}
+            <div class="test-row" data-state={test.state}>
+              <span class="test-icon" aria-hidden="true">{stateIcon(test.state)}</span>
+              <span class="test-name">{test.name}</span>
+              {#if test.suite}
+                <span class="test-suite">{test.suite}</span>
               {/if}
-            {/each}
-          </div>
-        {/if}
-
-        <!-- Command -->
-        <div class="command-row">
-          <code>$ {proof.command}</code>
-        </div>
-
-        <!-- Raw output (collapsible) -->
-        {#if proof.output}
-          <button class="toggle-output" onclick={() => (showOutput = !showOutput)} type="button">
-            {showOutput ? '\u25be Hide' : '\u25b8 Show'} raw output
-          </button>
-          {#if showOutput}
-            <pre class="raw-output">{proof.output}</pre>
-          {/if}
-        {/if}
-
-        <!-- Evidence files -->
-        {#if proof.evidence && proof.evidence.length > 0}
-          <div class="evidence-files">
-            <div class="evidence-label">Evidence:</div>
-            {#each proof.evidence as ev}
-              {@const link = githubPermalink(ev.path)}
-              <div class="evidence-item">
+              <span class="test-duration">{formatDuration(test.duration_ms)}</span>
+              {#if test.file}
+                {@const link = githubPermalink(test.file, test.line)}
                 {#if link}
-                  <a href={link} target="_blank" rel="noopener">{ev.path} &#8599;</a>
+                  <a class="test-file" href={link} target="_blank" rel="noopener">
+                    {test.file}{test.line ? `:${test.line}` : ''}
+                  </a>
                 {:else}
-                  <span>{ev.path}</span>
+                  <span class="test-file">{test.file}{test.line ? `:${test.line}` : ''}</span>
                 {/if}
-                {#if ev.note}
-                  <span class="evidence-note">&mdash; {ev.note}</span>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {/if}
+              {/if}
+            </div>
+            {#if test.state === 'failed' && test.message}
+              <div class="test-message">{test.message}</div>
+            {/if}
+          {/each}
+        </div>
+      {/if}
 
-        <!-- Proof history toggle -->
-        <button class="toggle-history" onclick={loadHistory} type="button">
-          {#if loadingHistory}
-            Loading...
-          {:else}
-            {showHistory ? '\u25be Hide' : '\u25b8 Show'} proof history
-          {/if}
+      <!-- Command -->
+      <div class="command-row">
+        <code>$ {proof.command}</code>
+      </div>
+
+      <!-- Raw output (collapsible) -->
+      {#if proof.output}
+        <button class="toggle-btn" onclick={() => (showOutput = !showOutput)} type="button">
+          {showOutput ? '\u25be Hide' : '\u25b8 Show'} raw output
         </button>
-        {#if showHistory && allProofs.length > 1}
-          <div class="proof-history">
-            {#each allProofs.slice(1) as oldProof}
-              <div class="history-entry">
-                <span class="history-time">{formatTimeAgo(oldProof.created_at)}</span>
-                {#if oldProof.tests}
-                  {@const p = oldProof.tests.filter(t => t.state === 'passed').length}
-                  {@const f = oldProof.tests.filter(t => t.state === 'failed').length}
-                  <span class="history-stats">
-                    {#if p > 0}<span class="stat passed">{'\u2713'} {p}</span>{/if}
-                    {#if f > 0}<span class="stat failed">{'\u2717'} {f}</span>{/if}
-                  </span>
-                {:else}
-                  <span class="history-stats">
-                    <span class="stat {oldProof.exit_code === 0 ? 'passed' : 'failed'}">
-                      exit {oldProof.exit_code}
-                    </span>
-                  </span>
-                {/if}
-                {#if oldProof.commit_sha}
-                  <span class="commit-ref">{oldProof.commit_sha.slice(0, 7)}</span>
-                {/if}
-                <code class="history-cmd">$ {oldProof.command}</code>
-              </div>
-            {/each}
-          </div>
+        {#if showOutput}
+          <pre class="raw-output">{proof.output}</pre>
         {/if}
       {/if}
-    </div>
-  {/if}
-</div>
+
+      <!-- Evidence files -->
+      {#if proof.evidence && proof.evidence.length > 0}
+        <div class="evidence-files">
+          <div class="evidence-label">Evidence</div>
+          {#each proof.evidence as ev}
+            {@const link = githubPermalink(ev.path)}
+            <div class="evidence-item">
+              {#if link}
+                <a href={link} target="_blank" rel="noopener">{ev.path} &#8599;</a>
+              {:else}
+                <span>{ev.path}</span>
+              {/if}
+              {#if ev.note}
+                <span class="evidence-note">&mdash; {ev.note}</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Proof history toggle -->
+      <button class="toggle-btn" onclick={loadHistory} type="button">
+        {#if loadingHistory}
+          Loading...
+        {:else}
+          {showHistory ? '\u25be Hide' : '\u25b8 Show'} proof history
+        {/if}
+      </button>
+      {#if showHistory && allProofs.length > 1}
+        <div class="proof-history">
+          {#each allProofs.slice(1) as oldProof}
+            <div class="history-entry">
+              <span class="history-time">{formatTimeAgo(oldProof.created_at)}</span>
+              {#if oldProof.tests}
+                {@const p = oldProof.tests.filter(t => t.state === 'passed').length}
+                {@const f = oldProof.tests.filter(t => t.state === 'failed').length}
+                <span class="history-stats">
+                  {#if p > 0}<span class="stat passed">{'\u2713'} {p}</span>{/if}
+                  {#if f > 0}<span class="stat failed">{'\u2717'} {f}</span>{/if}
+                </span>
+              {:else}
+                <span class="history-stats">
+                  <span class="stat {oldProof.exit_code === 0 ? 'passed' : 'failed'}">
+                    exit {oldProof.exit_code}
+                  </span>
+                </span>
+              {/if}
+              {#if oldProof.commit_sha}
+                <span class="commit-ref">{oldProof.commit_sha.slice(0, 7)}</span>
+              {/if}
+              <code class="history-cmd">$ {oldProof.command}</code>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    {/if}
+  </div>
+</section>
 
 <style>
-  .evidence-panel {
-    border: 1px solid var(--border-default);
-    border-radius: 8px;
-    overflow: hidden;
-  }
+  /* ── Section header ─────────────────────────────────── */
 
   .panel-header {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--background-muted);
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--foreground);
-    text-align: left;
-  }
-
-  .panel-header:hover {
-    background: var(--background-subtle);
-  }
-
-  .chevron {
-    flex-shrink: 0;
-    transition: transform 0.15s ease;
-  }
-
-  .chevron.open {
-    transform: rotate(90deg);
+    align-items: baseline;
+    gap: 10px;
+    padding: 0 0 8px 20px;
+    border-bottom: 1px solid var(--border-muted);
   }
 
   .panel-title {
+    font-size: 11px;
     font-weight: 600;
-    margin-right: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foreground-subtle);
+    margin: 0;
+    flex-shrink: 0;
   }
+
+  .header-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  /* ── Stats ──────────────────────────────────────────── */
 
   .stats {
     display: flex;
@@ -308,42 +284,41 @@
   .stat {
     font-size: 12px;
     font-weight: 500;
+    white-space: nowrap;
   }
 
-  .stat.passed { color: var(--accent-green, #3fb950); }
-  .stat.failed, .stat.errored { color: var(--accent-red, #f85149); }
+  .stat.passed { color: var(--accent-green); }
+  .stat.failed, .stat.errored { color: var(--accent-red); }
   .stat.skipped { color: var(--foreground-muted); }
 
   .commit-ref {
     font-family: var(--font-mono, monospace);
     font-size: 11px;
     color: var(--foreground-muted);
-    margin-left: auto;
+    white-space: nowrap;
   }
 
   .time-ago {
     font-size: 11px;
     color: var(--foreground-subtle);
+    white-space: nowrap;
   }
 
-  .empty-label {
-    font-size: 12px;
-    color: var(--foreground-subtle);
-    font-style: italic;
-  }
+  /* ── Body ───────────────────────────────────────────── */
 
   .panel-body {
-    padding: 12px 14px;
-    border-top: 1px solid var(--border-default);
+    padding: 12px 0 0 20px;
   }
 
   .empty-state {
     font-size: 13px;
     color: var(--foreground-muted);
-    padding: 8px 0;
+    margin: 0;
+    padding: 4px 0;
   }
 
-  /* Test results */
+  /* ── Test results ───────────────────────────────────── */
+
   .test-results {
     margin-bottom: 12px;
   }
@@ -352,7 +327,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 0;
+    padding: 3px 0;
     font-size: 13px;
   }
 
@@ -363,9 +338,9 @@
     flex-shrink: 0;
   }
 
-  .test-row[data-state='passed'] .test-icon { color: var(--accent-green, #3fb950); }
+  .test-row[data-state='passed'] .test-icon { color: var(--accent-green); }
   .test-row[data-state='failed'] .test-icon,
-  .test-row[data-state='errored'] .test-icon { color: var(--accent-red, #f85149); }
+  .test-row[data-state='errored'] .test-icon { color: var(--accent-red); }
   .test-row[data-state='skipped'] .test-icon { color: var(--foreground-muted); }
 
   .test-name {
@@ -405,12 +380,13 @@
   .test-message {
     padding: 4px 0 4px 24px;
     font-size: 12px;
-    color: var(--accent-red, #f85149);
+    color: var(--accent-red);
     font-family: var(--font-mono, monospace);
     white-space: pre-wrap;
   }
 
-  /* Command */
+  /* ── Command ────────────────────────────────────────── */
+
   .command-row {
     padding: 8px 0;
     border-top: 1px solid var(--border-muted);
@@ -422,8 +398,9 @@
     font-family: var(--font-mono, monospace);
   }
 
-  /* Raw output toggle */
-  .toggle-output, .toggle-history {
+  /* ── Toggle buttons ─────────────────────────────────── */
+
+  .toggle-btn {
     display: block;
     background: none;
     border: none;
@@ -433,15 +410,21 @@
     cursor: pointer;
   }
 
-  .toggle-output:hover, .toggle-history:hover {
+  .toggle-btn:hover {
     color: var(--accent-blue);
   }
+
+  .toggle-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+  }
+
+  /* ── Raw output ─────────────────────────────────────── */
 
   .raw-output {
     margin: 0 0 8px;
     padding: 10px 12px;
     background: var(--background-subtle);
-    border-radius: 4px;
     font-size: 11px;
     line-height: 1.5;
     color: var(--foreground-muted);
@@ -452,21 +435,24 @@
     word-break: break-all;
   }
 
-  /* Evidence files */
+  /* ── Evidence files ─────────────────────────────────── */
+
   .evidence-files {
     padding: 8px 0;
     border-top: 1px solid var(--border-muted);
   }
 
   .evidence-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--foreground-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foreground-subtle);
     margin-bottom: 4px;
   }
 
   .evidence-item {
-    padding: 2px 0 2px 12px;
+    padding: 2px 0 2px 0;
     font-size: 12px;
   }
 
@@ -485,7 +471,8 @@
     font-style: italic;
   }
 
-  /* Proof history */
+  /* ── Proof history ──────────────────────────────────── */
+
   .proof-history {
     padding: 4px 0;
   }
