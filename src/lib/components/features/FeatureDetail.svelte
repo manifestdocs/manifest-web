@@ -6,6 +6,7 @@
   import FeatureDetailView from './FeatureDetailView.svelte';
   import FeatureDetailEdit from './FeatureDetailEdit.svelte';
   import FeatureDetailDiff from './FeatureDetailDiff.svelte';
+  import EvidencePanel from './EvidencePanel.svelte';
   import DeleteFeatureDialog from './DeleteFeatureDialog.svelte';
 
   // Get authenticated API client from context
@@ -51,6 +52,7 @@
   }: Props = $props();
 
   const isRoot = $derived(feature?.is_root ?? false);
+  const isLeaf = $derived(!isRoot && !isGroup);
   const isArchived = $derived(feature?.state === 'archived');
 
   let isSaving = $state(false);
@@ -310,26 +312,36 @@
       onDiscardChanges={handleDiscardChanges}
     />
 
-    <div class="detail-content" class:editing={activeTab === 'edit'}>
-      {#if activeTab === 'view'}
-        <FeatureDetailView
-          {feature}
-          {isRoot}
-          {isGroup}
-          {hasPendingChanges}
-          {showHighlight}
-          gitRemote={projectCtx.gitRemote}
-          onViewDiff={handleViewDiff}
-        />
-      {:else if activeTab === 'edit'}
-        <FeatureDetailEdit
-          {isRoot}
-          {isGroup}
-          {editDetails}
-          onDetailsChange={handleDetailsChange}
-        />
-      {:else}
-        <FeatureDetailDiff {diffData} {isLoadingDiff} />
+    <div class="detail-body" class:has-evidence={activeTab === 'view' && isLeaf}>
+      <div class="detail-content" class:editing={activeTab === 'edit'}>
+        {#if activeTab === 'view'}
+          <FeatureDetailView
+            {feature}
+            {isRoot}
+            {isGroup}
+            {hasPendingChanges}
+            {showHighlight}
+            onViewDiff={handleViewDiff}
+          />
+        {:else if activeTab === 'edit'}
+          <FeatureDetailEdit
+            {isRoot}
+            {isGroup}
+            {editDetails}
+            onDetailsChange={handleDetailsChange}
+          />
+        {:else}
+          <FeatureDetailDiff {diffData} {isLoadingDiff} />
+        {/if}
+      </div>
+
+      {#if activeTab === 'view' && isLeaf}
+        <aside class="evidence-sidebar">
+          <EvidencePanel
+            featureId={feature.id}
+            gitRemote={projectCtx.gitRemote}
+          />
+        </aside>
       {/if}
     </div>
   {/if}
@@ -350,6 +362,8 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    container-type: inline-size;
+    container-name: feature-detail;
   }
 
   .empty-state {
@@ -366,11 +380,26 @@
     opacity: 0.5;
   }
 
-  .detail-content {
+  .detail-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+  }
+
+  .detail-body.has-evidence {
+    display: grid;
+    grid-template-columns: minmax(0, 900px) minmax(240px, 1fr);
+    gap: 0;
+  }
+
+  .detail-content {
     padding: 20px 26px;
+    overflow-y: auto;
     max-width: 900px;
+  }
+
+  .detail-body.has-evidence > .detail-content {
+    max-width: none;
   }
 
   .detail-content.editing {
@@ -382,5 +411,31 @@
 
   .detail-content.editing :global(.markdown-editor) {
     border-left: none;
+  }
+
+  .evidence-sidebar {
+    padding: 20px 20px 20px 0;
+    overflow-y: auto;
+    border-left: 1px solid var(--border-default);
+  }
+
+  /* Narrower: proportional split */
+  @container feature-detail (max-width: 900px) {
+    .detail-body.has-evidence {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  /* Very narrow: stack vertically */
+  @container feature-detail (max-width: 540px) {
+    .detail-body.has-evidence {
+      grid-template-columns: 1fr;
+    }
+
+    .evidence-sidebar {
+      border-left: none;
+      border-top: 1px solid var(--border-default);
+      padding: 20px 26px;
+    }
   }
 </style>

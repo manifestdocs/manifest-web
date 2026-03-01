@@ -263,7 +263,6 @@
 
 <style>
   .evidence-panel {
-    margin-top: 24px;
     border: 1px solid var(--border-default);
     border-radius: 8px;
     overflow: hidden;
