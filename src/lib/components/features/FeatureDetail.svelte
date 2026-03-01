@@ -266,53 +266,53 @@
   }
 </script>
 
-<div class="feature-detail">
-  {#if !feature}
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg
-          width="48"
-          height="48"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <path
-            d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+<div class="feature-detail" class:has-evidence={!!feature && activeTab === 'view' && isLeaf}>
+  <div class="detail-main">
+    {#if !feature}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path
+              d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <p>Select a feature to view details</p>
       </div>
-      <p>Select a feature to view details</p>
-    </div>
-  {:else}
-    <FeatureDetailHeader
-      {feature}
-      {isRoot}
-      {isGroup}
-      {activeTab}
-      {isSaving}
-      {isLocked}
-      {isArchived}
-      {hasPendingChanges}
-      {currentVersion}
-      {editTitle}
-      {stateOptions}
-      onEditTitleChange={handleEditTitleChange}
-      onStateChange={handleStateChange}
-      {onRestore}
-      onDeleteRequest={handleDeleteRequest}
-      {onArchive}
-      onViewDiff={handleViewDiff}
-      onEdit={handleEdit}
-      onCancel={handleCancel}
-      onSave={handleSave}
-      onDiscardChanges={handleDiscardChanges}
-    />
+    {:else}
+      <FeatureDetailHeader
+        {feature}
+        {isRoot}
+        {isGroup}
+        {activeTab}
+        {isSaving}
+        {isLocked}
+        {isArchived}
+        {hasPendingChanges}
+        {currentVersion}
+        {editTitle}
+        {stateOptions}
+        onEditTitleChange={handleEditTitleChange}
+        onStateChange={handleStateChange}
+        {onRestore}
+        onDeleteRequest={handleDeleteRequest}
+        {onArchive}
+        onViewDiff={handleViewDiff}
+        onEdit={handleEdit}
+        onCancel={handleCancel}
+        onSave={handleSave}
+        onDiscardChanges={handleDiscardChanges}
+      />
 
-    <div class="detail-body" class:has-evidence={activeTab === 'view' && isLeaf}>
       <div class="detail-content" class:editing={activeTab === 'edit'}>
         {#if activeTab === 'view'}
           <FeatureDetailView
@@ -334,16 +334,16 @@
           <FeatureDetailDiff {diffData} {isLoadingDiff} />
         {/if}
       </div>
+    {/if}
+  </div>
 
-      {#if activeTab === 'view' && isLeaf}
-        <aside class="evidence-sidebar">
-          <EvidencePanel
-            featureId={feature.id}
-            gitRemote={projectCtx.gitRemote}
-          />
-        </aside>
-      {/if}
-    </div>
+  {#if feature && activeTab === 'view' && isLeaf}
+    <aside class="evidence-sidebar">
+      <EvidencePanel
+        featureId={feature.id}
+        gitRemote={projectCtx.gitRemote}
+      />
+    </aside>
   {/if}
 
   {#if feature && onDelete}
@@ -358,12 +358,29 @@
 
 <style>
   .feature-detail {
-    display: flex;
-    flex-direction: column;
     height: 100%;
     overflow: hidden;
     container-type: inline-size;
     container-name: feature-detail;
+  }
+
+  /* Default: single column */
+  .feature-detail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* When evidence is present: two-column grid, full height */
+  .feature-detail.has-evidence {
+    display: grid;
+    grid-template-columns: minmax(0, 900px) minmax(240px, 1fr);
+  }
+
+  .detail-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .empty-state {
@@ -380,25 +397,14 @@
     opacity: 0.5;
   }
 
-  .detail-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  .detail-body.has-evidence {
-    display: grid;
-    grid-template-columns: minmax(0, 900px) minmax(240px, 1fr);
-    gap: 0;
-  }
-
   .detail-content {
+    flex: 1;
     padding: 20px 26px;
     overflow-y: auto;
     max-width: 900px;
   }
 
-  .detail-body.has-evidence > .detail-content {
+  .feature-detail.has-evidence .detail-content {
     max-width: none;
   }
 
@@ -414,28 +420,30 @@
   }
 
   .evidence-sidebar {
-    padding: 20px 20px 20px 0;
+    padding: 20px;
     overflow-y: auto;
     border-left: 1px solid var(--border-default);
   }
 
   /* Narrower: proportional split */
   @container feature-detail (max-width: 900px) {
-    .detail-body.has-evidence {
+    .feature-detail.has-evidence {
       grid-template-columns: 2fr 1fr;
     }
   }
 
   /* Very narrow: stack vertically */
   @container feature-detail (max-width: 540px) {
-    .detail-body.has-evidence {
+    .feature-detail.has-evidence {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
     }
 
     .evidence-sidebar {
       border-left: none;
       border-top: 1px solid var(--border-default);
       padding: 20px 26px;
+      max-height: 300px;
     }
   }
 </style>
