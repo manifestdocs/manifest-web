@@ -420,7 +420,6 @@
   }
 
   .evidence-sidebar {
-    padding: 20px;
     overflow-y: auto;
     border-left: 1px solid var(--border-default);
   }
@@ -435,7 +434,6 @@
     .evidence-sidebar {
       border-left: none;
       border-top: 1px solid var(--border-default);
-      padding: 20px 26px;
       max-height: 300px;
     }
   }
