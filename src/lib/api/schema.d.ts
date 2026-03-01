@@ -877,7 +877,11 @@ export interface paths {
          */
         get: operations["listProofsForFeature"];
         put?: never;
-        post?: never;
+        /**
+         * Create a proof for a feature
+         * @description Record test evidence for a feature. Can be called multiple times (TDD red/green cycle).
+         */
+        post: operations["createProofForFeature"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1066,6 +1070,8 @@ export interface components {
              * @enum {string}
              */
             testing_policy: "none" | "advisory" | "tdd";
+            /** @description Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection from command. */
+            test_adapter?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1133,6 +1139,8 @@ export interface components {
              * @enum {string}
              */
             testing_policy?: "none" | "advisory" | "tdd";
+            /** @description Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection. */
+            test_adapter?: string | null;
         };
         ProjectDirectory: {
             /** Format: uuid */
@@ -1206,6 +1214,8 @@ export interface components {
              * @enum {string}
              */
             testing_policy: "none" | "advisory" | "tdd";
+            /** @description Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection from command. */
+            test_adapter?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1713,8 +1723,8 @@ export interface components {
             exit_code: number;
             /** @description Raw stdout/stderr output, capped at 10K characters. */
             output?: string | null;
-            /** @description Structured test results for consistent rendering. */
-            tests?: components["schemas"]["TestResult"][] | null;
+            /** @description Structured test results grouped by suite. */
+            test_suites?: components["schemas"]["TestSuite"][] | null;
             /** @description Evidence file paths linked to this proof. */
             evidence?: components["schemas"]["Evidence"][];
             /** @description Git commit SHA at the time of proving. */
@@ -1724,18 +1734,25 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
-        /** @description A single test result within a proof. */
+        /** @description A group of test results from a single suite or module. */
+        TestSuite: {
+            /** @description Suite or module name (e.g., "db_spec", "auth::tests"). */
+            name: string;
+            /** @description Source file path shared by all tests in the suite. */
+            file?: string | null;
+            /** @description Individual test results within this suite. */
+            tests: components["schemas"]["TestResult"][];
+        };
+        /** @description A single test result within a suite. */
         TestResult: {
             /** @description Name of the test. */
             name: string;
-            /** @description Test suite or module name. */
-            suite?: string | null;
             /**
              * @description Result state.
              * @enum {string}
              */
             state: "passed" | "failed" | "errored" | "skipped";
-            /** @description Source file path (relative to project root). */
+            /** @description Per-test file override (rare — most tests inherit from suite). */
             file?: string | null;
             /** @description Line number in the source file. */
             line?: number | null;
@@ -1750,6 +1767,23 @@ export interface components {
             path: string;
             /** @description Optional note about why this file is evidence. */
             note?: string | null;
+        };
+        /** @description Input for creating a new proof record. */
+        CreateProofInput: {
+            /** @description The test command that was run (e.g., "cargo test auth_spec"). */
+            command: string;
+            /** @description Process exit code (0 = all tests passed). */
+            exit_code: number;
+            /** @description Raw stdout/stderr output (truncated to 10K chars). */
+            output?: string | null;
+            /** @description Structured test results grouped by suite. */
+            test_suites?: components["schemas"]["TestSuite"][] | null;
+            /** @description Evidence file paths linked to this proof. */
+            evidence?: components["schemas"]["Evidence"][];
+            /** @description Git commit SHA at the time of proving. */
+            commit_sha?: string | null;
+            /** @description Agent that produced the proof (e.g., "claude", "human"). */
+            agent_type?: string | null;
         };
         /** @description Lightweight feature summary for context (parent, siblings, children). */
         FeatureSummaryContext: {
@@ -3283,6 +3317,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Proof"][];
+                };
+            };
+        };
+    };
+    createProofForFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Feature UUID */
+                id: components["parameters"]["FeatureId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProofInput"];
+            };
+        };
+        responses: {
+            /** @description The created proof */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proof"];
                 };
             };
         };

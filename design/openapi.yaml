@@ -1252,6 +1252,24 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Proof'
+    post:
+      tags: [Proofs]
+      summary: Create a proof for a feature
+      description: Record test evidence for a feature. Can be called multiple times (TDD red/green cycle).
+      operationId: createProofForFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProofInput'
+      responses:
+        '200':
+          description: The created proof
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proof'
 
   /proofs/{id}:
     parameters:
@@ -1592,6 +1610,10 @@ components:
           enum: [none, advisory, tdd]
           default: advisory
           description: Testing policy for the project (none, advisory, or tdd).
+        test_adapter:
+          type: string
+          nullable: true
+          description: Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection from command.
         created_at:
           type: string
           format: date-time
@@ -1669,6 +1691,10 @@ components:
           type: string
           enum: [none, advisory, tdd]
           description: Testing policy for the project (none, advisory, or tdd).
+        test_adapter:
+          type: string
+          nullable: true
+          description: Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection.
 
     ProjectDirectory:
       type: object
@@ -1766,6 +1792,10 @@ components:
           enum: [none, advisory, tdd]
           default: advisory
           description: Testing policy for the project (none, advisory, or tdd).
+        test_adapter:
+          type: string
+          nullable: true
+          description: Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection from command.
         created_at:
           type: string
           format: date-time
@@ -2560,12 +2590,12 @@ components:
           type: string
           nullable: true
           description: Raw stdout/stderr output, capped at 10K characters.
-        tests:
+        test_suites:
           type: array
           nullable: true
-          description: Structured test results for consistent rendering.
+          description: Structured test results grouped by suite.
           items:
-            $ref: '#/components/schemas/TestResult'
+            $ref: '#/components/schemas/TestSuite'
         evidence:
           type: array
           description: Evidence file paths linked to this proof.
@@ -2583,18 +2613,32 @@ components:
           type: string
           format: date-time
 
+    TestSuite:
+      type: object
+      required: [name, tests]
+      description: A group of test results from a single suite or module.
+      properties:
+        name:
+          type: string
+          description: Suite or module name (e.g., "db_spec", "auth::tests").
+        file:
+          type: string
+          nullable: true
+          description: Source file path shared by all tests in the suite.
+        tests:
+          type: array
+          description: Individual test results within this suite.
+          items:
+            $ref: '#/components/schemas/TestResult'
+
     TestResult:
       type: object
       required: [name, state]
-      description: A single test result within a proof.
+      description: A single test result within a suite.
       properties:
         name:
           type: string
           description: Name of the test.
-        suite:
-          type: string
-          nullable: true
-          description: Test suite or module name.
         state:
           type: string
           enum: [passed, failed, errored, skipped]
@@ -2602,7 +2646,7 @@ components:
         file:
           type: string
           nullable: true
-          description: Source file path (relative to project root).
+          description: Per-test file override (rare — most tests inherit from suite).
         line:
           type: integer
           nullable: true
@@ -2628,6 +2672,41 @@ components:
           type: string
           nullable: true
           description: Optional note about why this file is evidence.
+
+    CreateProofInput:
+      type: object
+      required: [command, exit_code]
+      description: Input for creating a new proof record.
+      properties:
+        command:
+          type: string
+          description: The test command that was run (e.g., "cargo test auth_spec").
+        exit_code:
+          type: integer
+          description: Process exit code (0 = all tests passed).
+        output:
+          type: string
+          nullable: true
+          description: Raw stdout/stderr output (truncated to 10K chars).
+        test_suites:
+          type: array
+          nullable: true
+          description: Structured test results grouped by suite.
+          items:
+            $ref: '#/components/schemas/TestSuite'
+        evidence:
+          type: array
+          description: Evidence file paths linked to this proof.
+          items:
+            $ref: '#/components/schemas/Evidence'
+        commit_sha:
+          type: string
+          nullable: true
+          description: Git commit SHA at the time of proving.
+        agent_type:
+          type: string
+          nullable: true
+          description: Agent that produced the proof (e.g., "claude", "human").
 
     FeatureSummaryContext:
       type: object

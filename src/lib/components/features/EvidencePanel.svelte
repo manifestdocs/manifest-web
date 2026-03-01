@@ -15,9 +15,6 @@
 
   let showOutput = $state(false);
   let proof = $state<Proof | null>(null);
-  let allProofs = $state<Proof[]>([]);
-  let showHistory = $state(false);
-  let loadingHistory = $state(false);
 
   // Load latest proof when featureId changes
   $effect(() => {
@@ -40,18 +37,22 @@
     }
   }
 
-  const stats = $derived(() => {
-    if (!proof?.tests) return null;
-    const tests = proof.tests;
+  function computeStats(p: Proof | null) {
+    if (!p?.test_suites) return null;
     let passed = 0, failed = 0, errored = 0, skipped = 0;
-    for (const t of tests) {
-      if (t.state === 'passed') passed++;
-      else if (t.state === 'failed') failed++;
-      else if (t.state === 'errored') errored++;
-      else if (t.state === 'skipped') skipped++;
+    for (const suite of p.test_suites) {
+      for (const t of suite.tests) {
+        if (t.state === 'passed') passed++;
+        else if (t.state === 'failed') failed++;
+        else if (t.state === 'errored') errored++;
+        else if (t.state === 'skipped') skipped++;
+      }
     }
-    return { passed, failed, errored, skipped, total: tests.length };
-  });
+    const total = passed + failed + errored + skipped;
+    return { passed, failed, errored, skipped, total };
+  }
+
+  const stats = $derived(() => computeStats(proof));
 
   function stateIcon(state: string): string {
     switch (state) {
@@ -89,32 +90,11 @@
     return line ? `${url}#L${line}` : url;
   }
 
-  async function loadHistory() {
-    if (loadingHistory || allProofs.length > 0) {
-      showHistory = !showHistory;
-      return;
-    }
-    loadingHistory = true;
-    try {
-      const api = await authApi.getClient();
-      const { data } = await api.GET('/features/{id}/proofs', {
-        params: { path: { id: featureId } },
-      });
-      if (data) {
-        allProofs = data;
-      }
-    } catch {
-      allProofs = [];
-    } finally {
-      loadingHistory = false;
-      showHistory = true;
-    }
-  }
 </script>
 
-<section class="evidence-panel" aria-label="Evidence">
+<section class="evidence-panel" aria-label="Specs and Verification">
   <header class="panel-header">
-    <h2 class="panel-title">Evidence</h2>
+    <h2 class="panel-title">Specs & Verification</h2>
     {#if proof}
       {@const s = stats()}
       <div class="header-meta">
@@ -140,33 +120,36 @@
 
   <div class="panel-body">
     {#if !proof}
-      <p class="empty-state">No test evidence recorded for this feature.</p>
+      <p class="empty-state">No verification recorded for this feature.</p>
     {:else}
-      <!-- Test results (structured) -->
-      {#if proof.tests && proof.tests.length > 0}
+      <!-- Test results (grouped by suite) -->
+      {#if proof.test_suites && proof.test_suites.length > 0}
         <div class="test-results">
-          {#each proof.tests as test}
-            <div class="test-row" data-state={test.state}>
-              <span class="test-icon" aria-hidden="true">{stateIcon(test.state)}</span>
-              <span class="test-name">{test.name}</span>
-              {#if test.suite}
-                <span class="test-suite">{test.suite}</span>
-              {/if}
-              <span class="test-duration">{formatDuration(test.duration_ms)}</span>
-              {#if test.file}
-                {@const link = githubPermalink(test.file, test.line)}
-                {#if link}
-                  <a class="test-file" href={link} target="_blank" rel="noopener">
-                    {test.file}{test.line ? `:${test.line}` : ''}
-                  </a>
-                {:else}
-                  <span class="test-file">{test.file}{test.line ? `:${test.line}` : ''}</span>
+          {#each proof.test_suites as suite}
+            <div class="suite-header">{suite.file ?? suite.name}</div>
+            {#each suite.tests as test}
+              {@const file = test.file && test.file !== suite.file ? test.file : null}
+              <div class="test-row" data-state={test.state}>
+                <span class="test-icon" aria-hidden="true">{stateIcon(test.state)}</span>
+                <span class="test-name">{test.name}</span>
+                {#if test.duration_ms != null}
+                  <span class="test-duration">{formatDuration(test.duration_ms)}</span>
                 {/if}
+                {#if file}
+                  {@const link = githubPermalink(file, test.line)}
+                  {#if link}
+                    <a class="test-file" href={link} target="_blank" rel="noopener">
+                      {file}{test.line ? `:${test.line}` : ''}
+                    </a>
+                  {:else}
+                    <span class="test-file">{file}{test.line ? `:${test.line}` : ''}</span>
+                  {/if}
+                {/if}
+              </div>
+              {#if test.state === 'failed' && test.message}
+                <div class="test-message">{test.message}</div>
               {/if}
-            </div>
-            {#if test.state === 'failed' && test.message}
-              <div class="test-message">{test.message}</div>
-            {/if}
+            {/each}
           {/each}
         </div>
       {/if}
@@ -189,7 +172,7 @@
       <!-- Evidence files -->
       {#if proof.evidence && proof.evidence.length > 0}
         <div class="evidence-files">
-          <div class="evidence-label">Evidence</div>
+          <div class="evidence-label">Files</div>
           {#each proof.evidence as ev}
             {@const link = githubPermalink(ev.path)}
             <div class="evidence-item">
@@ -206,41 +189,6 @@
         </div>
       {/if}
 
-      <!-- Proof history toggle -->
-      <button class="toggle-btn" onclick={loadHistory} type="button">
-        {#if loadingHistory}
-          Loading...
-        {:else}
-          {showHistory ? '\u25be Hide' : '\u25b8 Show'} proof history
-        {/if}
-      </button>
-      {#if showHistory && allProofs.length > 1}
-        <div class="proof-history">
-          {#each allProofs.slice(1) as oldProof}
-            <div class="history-entry">
-              <span class="history-time">{formatTimeAgo(oldProof.created_at)}</span>
-              {#if oldProof.tests}
-                {@const p = oldProof.tests.filter(t => t.state === 'passed').length}
-                {@const f = oldProof.tests.filter(t => t.state === 'failed').length}
-                <span class="history-stats">
-                  {#if p > 0}<span class="stat passed">{'\u2713'} {p}</span>{/if}
-                  {#if f > 0}<span class="stat failed">{'\u2717'} {f}</span>{/if}
-                </span>
-              {:else}
-                <span class="history-stats">
-                  <span class="stat {oldProof.exit_code === 0 ? 'passed' : 'failed'}">
-                    exit {oldProof.exit_code}
-                  </span>
-                </span>
-              {/if}
-              {#if oldProof.commit_sha}
-                <span class="commit-ref">{oldProof.commit_sha.slice(0, 7)}</span>
-              {/if}
-              <code class="history-cmd">$ {oldProof.command}</code>
-            </div>
-          {/each}
-        </div>
-      {/if}
     {/if}
   </div>
 </section>
@@ -326,6 +274,20 @@
     margin-bottom: 12px;
   }
 
+  .suite-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--foreground-muted);
+    padding: 6px 0 2px;
+    border-top: 1px solid var(--border-muted);
+  }
+
+  .suite-header:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
   .test-row {
     display: flex;
     align-items: center;
@@ -353,11 +315,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--foreground);
-  }
-
-  .test-suite {
-    font-size: 11px;
-    color: var(--foreground-muted);
   }
 
   .test-duration {
@@ -474,43 +431,4 @@
     font-style: italic;
   }
 
-  /* ── Proof history ──────────────────────────────────── */
-
-  .proof-history {
-    padding: 4px 0;
-  }
-
-  .history-entry {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-    font-size: 12px;
-    color: var(--foreground-muted);
-    border-bottom: 1px solid var(--border-muted);
-  }
-
-  .history-entry:last-child {
-    border-bottom: none;
-  }
-
-  .history-time {
-    min-width: 60px;
-    font-size: 11px;
-    color: var(--foreground-subtle);
-  }
-
-  .history-stats {
-    display: flex;
-    gap: 6px;
-  }
-
-  .history-cmd {
-    font-size: 11px;
-    font-family: var(--font-mono, monospace);
-    color: var(--foreground-subtle);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 </style>
