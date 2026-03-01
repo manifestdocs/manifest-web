@@ -250,25 +250,28 @@
 
   .panel-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 10px;
-    padding: 0 0 8px 20px;
-    border-bottom: 1px solid var(--border-muted);
+    height: 36px;
+    padding: 0 14px;
+    background: var(--background-subtle);
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
   }
 
   .panel-title {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    color: var(--foreground-subtle);
+    color: var(--foreground-muted);
     margin: 0;
     flex-shrink: 0;
   }
 
   .header-meta {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
     min-width: 0;
     margin-left: auto;
@@ -307,7 +310,7 @@
   /* ── Body ───────────────────────────────────────────── */
 
   .panel-body {
-    padding: 12px 0 0 20px;
+    padding: 12px 14px 0;
   }
 
   .empty-state {
