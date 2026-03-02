@@ -31,7 +31,14 @@
   let isLoading = $state(false);
   let selectedIndex = $state(0);
   let inputRef = $state<HTMLInputElement | null>(null);
-  let proposedOnly = $state(false);
+  type StateFilter = 'proposed' | 'in_progress' | 'blocked' | null;
+  const STATE_FILTERS: { value: StateFilter; label: string }[] = [
+    { value: 'proposed', label: 'Proposed' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'blocked', label: 'Blocked' },
+  ];
+
+  let stateFilter = $state<StateFilter>('proposed');
 
   // Build a map of feature ID to parent path (breadcrumbs) and whether it's a group
   const featureMetaMap = $derived.by(() => {
@@ -56,7 +63,7 @@
   };
   const resultsWithMeta = $derived<ResultWithMeta[]>(
     results
-      .filter((result) => !proposedOnly || result.state === 'proposed')
+      .filter((result) => !stateFilter || result.state === stateFilter)
       .map((result) => {
         const meta = featureMetaMap.get(result.id);
         return {
@@ -112,7 +119,7 @@
       query = '';
       results = [];
       selectedIndex = 0;
-      proposedOnly = false;
+      stateFilter = 'proposed';
       // Focus input after dialog animation
       setTimeout(() => inputRef?.focus(), 50);
     }
@@ -120,7 +127,7 @@
 
   // Reset selection when filter changes
   $effect(() => {
-    proposedOnly;
+    stateFilter;
     selectedIndex = 0;
   });
 
@@ -172,33 +179,20 @@
           bind:value={query}
           aria-label="Search features"
         />
-        <button
-          type="button"
-          class="filter-btn"
-          class:active={proposedOnly}
-          onclick={() => (proposedOnly = !proposedOnly)}
-          title={proposedOnly ? 'Show all features' : 'Show proposed only'}
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-            {#if proposedOnly}
-              <path
-                d="M8 2L14 8L8 14L2 8L8 2Z"
-                fill="currentColor"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-              />
-            {:else}
-              <path
-                d="M8 2L14 8L8 14L2 8L8 2Z"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-              />
-            {/if}
-          </svg>
-          <span class="filter-label">Proposed only</span>
-        </button>
+        <div class="filter-chips">
+          {#each STATE_FILTERS as { value, label } (value)}
+            <button
+              type="button"
+              class="filter-chip"
+              class:active={stateFilter === value}
+              onclick={() => (stateFilter = stateFilter === value ? null : value)}
+              title={stateFilter === value ? 'Show all' : `Show ${label.toLowerCase()} only`}
+            >
+              <StateIcon state={value ?? 'proposed'} size={10} />
+              <span>{label}</span>
+            </button>
+          {/each}
+        </div>
       </div>
 
       <div class="palette-results">
@@ -291,12 +285,19 @@
     color: var(--foreground-subtle);
   }
 
-  .filter-btn {
+  .filter-chips {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .filter-chip {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--foreground-muted);
     background: transparent;
     border: 1px solid var(--border-default);
@@ -306,19 +307,15 @@
     white-space: nowrap;
   }
 
-  .filter-btn:hover {
+  .filter-chip:hover {
     color: var(--foreground);
     border-color: var(--foreground-subtle);
   }
 
-  .filter-btn.active {
-    color: var(--state-proposed);
-    border-color: var(--state-proposed);
-    background: rgba(136, 136, 136, 0.1);
-  }
-
-  .filter-label {
-    font-weight: 500;
+  .filter-chip.active {
+    color: var(--foreground);
+    border-color: var(--foreground-subtle);
+    background: var(--background-muted);
   }
 
   .palette-results {
