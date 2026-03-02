@@ -20,7 +20,8 @@
     onDeleted?: () => Promise<void>;
   }
 
-  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted }: Props = $props();
+  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted }: Props =
+    $props();
 
   // Tab state
   let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
@@ -30,15 +31,20 @@
   // Form state
   let name = $state('');
   let defaultFeatureDestination = $state<'backlog' | 'now'>('backlog');
-  let detailLevel = $state<'concise' | 'standard' | 'thorough'>('standard');
-  let acFormat = $state<'checkbox' | 'gherkin'>('checkbox');
-  let testingPolicy = $state<'none' | 'advisory' | 'tdd'>('advisory');
   let isSaving = $state(false);
   let error = $state<string | null>(null);
 
   // Directories state
   let directories = $state<ProjectDirectory[]>([]);
   let isLoadingDirectories = $state(false);
+
+  // Template state (single template per project)
+  let isLoadingTemplate = $state(false);
+  let templateContent = $state('');
+  let templateName = $state('');
+  let templateDescription = $state('');
+  let isSavingTemplate = $state(false);
+  let templateError = $state<string | null>(null);
 
   // Delete project state
   let deleteConfirmText = $state('');
@@ -60,17 +66,18 @@
       name = project.name;
       defaultFeatureDestination =
         (project.default_feature_destination as 'backlog' | 'now') ?? 'backlog';
-      detailLevel =
-        (project.detail_level as 'concise' | 'standard' | 'thorough') ?? 'standard';
-      acFormat =
-        (project.ac_format as 'checkbox' | 'gherkin') ?? 'checkbox';
-      testingPolicy =
-        (project.testing_policy as 'none' | 'advisory' | 'tdd') ?? 'advisory';
       error = null;
       deleteConfirmText = '';
       deleteError = null;
       activeTab = initialTab ?? 'project';
       loadDirectories();
+    }
+  });
+
+  // Load template when features tab is selected
+  $effect(() => {
+    if (open && activeTab === 'features') {
+      loadTemplate();
     }
   });
 
@@ -147,16 +154,15 @@
         params: { path: { id: project.id } },
         body: {
           default_feature_destination: defaultFeatureDestination,
-          detail_level: detailLevel,
-          ac_level: detailLevel,
-          ac_format: acFormat,
-          testing_policy: testingPolicy,
         },
       });
 
       if (updateError) {
         throw new Error('Failed to update project defaults');
       }
+
+      // Also save template if content was modified
+      await handleSaveTemplate();
 
       if (onUpdated) {
         await onUpdated();
@@ -201,9 +207,62 @@
     await loadDirectories();
   }
 
-  const canDelete = $derived(
-    deleteConfirmText === project.name && !isDeleting,
-  );
+  async function loadTemplate() {
+    isLoadingTemplate = true;
+    templateError = null;
+    try {
+      const api = await authApi.getClient();
+      const { data, error: fetchError } = await api.GET(
+        '/projects/{id}/template',
+        {
+          params: { path: { id: project.id } },
+        },
+      );
+      if (fetchError) {
+        console.error('Failed to load template:', fetchError);
+        return;
+      }
+      if (data) {
+        templateName = data.name;
+        templateDescription = data.description ?? '';
+        templateContent = data.content;
+      }
+    } finally {
+      isLoadingTemplate = false;
+    }
+  }
+
+  async function handleSaveTemplate() {
+    if (!templateContent.trim()) return;
+
+    isSavingTemplate = true;
+    templateError = null;
+    try {
+      const api = await authApi.getClient();
+      const { error: updateError } = await api.PUT(
+        '/projects/{id}/template',
+        {
+          params: { path: { id: project.id } },
+          body: {
+            name: templateName.trim() || 'Default',
+            description: templateDescription.trim() || null,
+            content: templateContent,
+          },
+        },
+      );
+
+      if (updateError) {
+        throw new Error('Failed to update template');
+      }
+    } catch (err) {
+      templateError =
+        err instanceof Error ? err.message : 'Failed to save template';
+    } finally {
+      isSavingTemplate = false;
+    }
+  }
+
+  const canDelete = $derived(deleteConfirmText === project.name && !isDeleting);
 
   async function handleDeleteProject() {
     if (!canDelete) return;
@@ -282,17 +341,23 @@
   const anySaving = $derived(isSaving || isSavingServer);
 
   const saveDisabled = $derived(
-    activeTab === 'project' ? (isSaving || !name.trim()) :
-    activeTab === 'features' ? isSaving :
-    activeTab === 'system' ? isSavingServer :
-    true
+    activeTab === 'project'
+      ? isSaving || !name.trim()
+      : activeTab === 'features'
+        ? isSaving
+        : activeTab === 'system'
+          ? isSavingServer
+          : true,
   );
 
   function handleSave() {
     switch (activeTab) {
-      case 'project': return handleSaveGeneral();
-      case 'features': return handleSaveDefaults();
-      case 'system': return handleSaveSystem();
+      case 'project':
+        return handleSaveGeneral();
+      case 'features':
+        return handleSaveDefaults();
+      case 'system':
+        return handleSaveSystem();
     }
   }
 </script>
@@ -407,93 +472,43 @@
                 <span class="form-label">New feature destination</span>
                 <span class="form-hint">
                   {#if defaultFeatureDestination !== 'now'}
-                    New features start unscheduled until manually assigned to a version.
+                    New features start unscheduled until manually assigned to a
+                    version.
                   {:else}
                     New features go directly into the next version.
                   {/if}
                 </span>
               </div>
-              <div class="segmented-control" role="radiogroup" aria-label="Feature destination">
-                <label class="segment" class:active={defaultFeatureDestination === 'backlog'}>
-                  <input type="radio" name="feature-destination" value="backlog" bind:group={defaultFeatureDestination} disabled={isSaving} />
+              <div
+                class="segmented-control"
+                role="radiogroup"
+                aria-label="Feature destination"
+              >
+                <label
+                  class="segment"
+                  class:active={defaultFeatureDestination === 'backlog'}
+                >
+                  <input
+                    type="radio"
+                    name="feature-destination"
+                    value="backlog"
+                    bind:group={defaultFeatureDestination}
+                    disabled={isSaving}
+                  />
                   Backlog
                 </label>
-                <label class="segment" class:active={defaultFeatureDestination === 'now'}>
-                  <input type="radio" name="feature-destination" value="now" bind:group={defaultFeatureDestination} disabled={isSaving} />
+                <label
+                  class="segment"
+                  class:active={defaultFeatureDestination === 'now'}
+                >
+                  <input
+                    type="radio"
+                    name="feature-destination"
+                    value="now"
+                    bind:group={defaultFeatureDestination}
+                    disabled={isSaving}
+                  />
                   Next
-                </label>
-              </div>
-            </div>
-
-            <hr class="section-divider" />
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="form-label">Detail depth</span>
-                <span class="form-hint">How much detail agents write for features and specifications.</span>
-              </div>
-              <div class="segmented-control" role="radiogroup" aria-label="Detail level">
-                <label class="segment" class:active={detailLevel === 'concise'}>
-                  <input type="radio" name="detail-level" value="concise" bind:group={detailLevel} disabled={isSaving} />
-                  Concise
-                </label>
-                <label class="segment" class:active={detailLevel === 'standard'}>
-                  <input type="radio" name="detail-level" value="standard" bind:group={detailLevel} disabled={isSaving} />
-                  Standard
-                </label>
-                <label class="segment" class:active={detailLevel === 'thorough'}>
-                  <input type="radio" name="detail-level" value="thorough" bind:group={detailLevel} disabled={isSaving} />
-                  Thorough
-                </label>
-              </div>
-            </div>
-
-            <hr class="section-divider" />
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="form-label">Acceptance criteria</span>
-                <span class="form-hint">Format used for acceptance criteria in specs.</span>
-              </div>
-              <div class="segmented-control" role="radiogroup" aria-label="AC format">
-                <label class="segment" class:active={acFormat === 'checkbox'}>
-                  <input type="radio" name="ac-format" value="checkbox" bind:group={acFormat} disabled={isSaving} />
-                  Checkbox
-                </label>
-                <label class="segment" class:active={acFormat === 'gherkin'}>
-                  <input type="radio" name="ac-format" value="gherkin" bind:group={acFormat} disabled={isSaving} />
-                  Gherkin
-                </label>
-              </div>
-            </div>
-
-            <hr class="section-divider" />
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="form-label">Testing policy</span>
-                <span class="form-hint">
-                  {#if testingPolicy === 'none'}
-                    Agents are not prompted to write tests.
-                  {:else if testingPolicy === 'advisory'}
-                    Agents are prompted to write tests before implementing.
-                  {:else}
-                    Agents must record passing tests before completing a feature.
-                  {/if}
-                </span>
-              </div>
-              <div class="segmented-control" role="radiogroup" aria-label="Testing policy">
-                <label class="segment" class:active={testingPolicy === 'none'}>
-                  <input type="radio" name="testing-policy" value="none" bind:group={testingPolicy} disabled={isSaving} />
-                  Off
-                </label>
-                <label class="segment" class:active={testingPolicy === 'advisory'}>
-                  <input type="radio" name="testing-policy" value="advisory" bind:group={testingPolicy} disabled={isSaving} />
-                  Advisory
-                </label>
-                <label class="segment" class:active={testingPolicy === 'tdd'}>
-                  <input type="radio" name="testing-policy" value="tdd" bind:group={testingPolicy} disabled={isSaving} />
-                  TDD
                 </label>
               </div>
             </div>
@@ -501,6 +516,38 @@
             {#if error}
               <div class="form-error">{error}</div>
             {/if}
+
+            <hr class="section-divider" />
+
+            <div class="template-section">
+              <div class="setting-info">
+                <span class="form-label">Spec Template</span>
+                <span class="form-hint">
+                  This template guides AI agents when writing feature specs.
+                  Agents see it as a starting point when a feature has no
+                  specification yet.
+                </span>
+              </div>
+
+              {#if templateError}
+                <div class="form-error">{templateError}</div>
+              {/if}
+
+              {#if isLoadingTemplate}
+                <div class="loading-state">Loading template...</div>
+              {:else}
+                <div class="form-field">
+                  <textarea
+                    id="template-content"
+                    class="form-input template-content-input"
+                    bind:value={templateContent}
+                    placeholder="Markdown template..."
+                    rows="8"
+                    disabled={isSavingTemplate}
+                  ></textarea>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
 
@@ -514,19 +561,44 @@
                 <div class="setting-row">
                   <div class="setting-info">
                     <span class="form-label">CLI Agent</span>
-                    <span class="form-hint">AI agent used for chat sessions.</span>
+                    <span class="form-hint"
+                      >AI agent used for chat sessions.</span
+                    >
                   </div>
-                  <div class="segmented-control" role="radiogroup" aria-label="CLI Agent">
-                    <label class="segment" class:active={defaultAgent === 'claude'}>
-                      <input type="radio" name="default-agent" value="claude" bind:group={defaultAgent} disabled={isSavingServer} />
+                  <div
+                    class="segmented-control"
+                    role="radiogroup"
+                    aria-label="CLI Agent"
+                  >
+                    <label
+                      class="segment"
+                      class:active={defaultAgent === 'claude'}
+                    >
+                      <input
+                        type="radio"
+                        name="default-agent"
+                        value="claude"
+                        bind:group={defaultAgent}
+                        disabled={isSavingServer}
+                      />
                       Claude
                     </label>
                     <label class="segment segment-disabled">
-                      <input type="radio" name="default-agent" value="gemini" disabled />
+                      <input
+                        type="radio"
+                        name="default-agent"
+                        value="gemini"
+                        disabled
+                      />
                       Gemini
                     </label>
                     <label class="segment segment-disabled">
-                      <input type="radio" name="default-agent" value="copilot" disabled />
+                      <input
+                        type="radio"
+                        name="default-agent"
+                        value="copilot"
+                        disabled
+                      />
                       Copilot
                     </label>
                   </div>
@@ -579,8 +651,8 @@
           <div class="delete-section">
             <div class="danger-zone">
               <p class="danger-zone-description">
-                Permanently delete <strong>{project.name}</strong> and all its
-                features, history, and versions. This action cannot be undone.
+                Permanently delete <strong>{project.name}</strong> and all its features,
+                history, and versions. This action cannot be undone.
               </p>
               <div class="confirm-field">
                 <label class="confirm-label" for="confirm-delete-project">
@@ -621,14 +693,28 @@
   /* Styles handled by globally imported dialog.css */
 
   :global(.settings-content) {
+    top: 200px;
+    transform: translateX(-50%);
     width: 640px;
     min-width: 480px;
     max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 80px);
-    overflow: hidden;
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     border-radius: 12px;
+    animation: settingsSlideIn 0.15s ease;
+  }
+
+  @keyframes settingsSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%);
+    }
   }
 
   .dialog-header {
@@ -693,20 +779,16 @@
   }
 
   .tab-content {
-    display: grid;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .tab-panel {
-    grid-row: 1;
-    grid-column: 1;
-    visibility: hidden;
-    pointer-events: none;
+    display: none;
   }
 
   .tab-panel.active {
-    visibility: visible;
-    pointer-events: auto;
+    display: block;
   }
 
   .general-form {
@@ -779,7 +861,7 @@
   }
 
   .directories-section {
-    min-height: 200px;
+    min-height: 0;
   }
 
   .loading-state {
@@ -880,5 +962,18 @@
     line-height: 1.4;
   }
 
+  /* Spec template */
 
+  .template-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .template-content-input {
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    resize: vertical;
+    min-height: 120px;
+  }
 </style>
