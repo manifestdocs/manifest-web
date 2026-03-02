@@ -758,7 +758,6 @@
     );
   }
 
-  /* Panel header (right panel) */
   /* Hide feature tree scrollbar in plan view — VersionColumns provides the scrollbar */
   .project-layout.plan-view :global(.tree-content) {
     scrollbar-width: none;
@@ -767,6 +766,13 @@
 
   .project-layout.plan-view :global(.tree-content::-webkit-scrollbar) {
     display: none;
+  }
+
+  /* Disable elastic overscroll on both synced scroll containers so they
+     don't bounce independently when reaching the top/bottom edge. */
+  .project-layout.plan-view :global(.tree-content),
+  .project-layout.plan-view :global(.version-columns-scroll) {
+    overscroll-behavior-y: none;
   }
 
   .left-panel {
