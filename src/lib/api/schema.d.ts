@@ -314,6 +314,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{id}/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Get the project's spec template */
+        get: operations["getProjectTemplate"];
+        /** Update the project's spec template */
+        put: operations["updateProjectTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{id}/versions": {
         parameters: {
             query?: never;
@@ -1047,24 +1068,6 @@ export interface components {
              */
             default_feature_destination: "backlog" | "now";
             /**
-             * @description How detailed guidance should be for feature sets and project context.
-             * @default standard
-             * @enum {string}
-             */
-            detail_level: "concise" | "standard" | "thorough";
-            /**
-             * @description How detailed guidance should be for leaf feature specifications.
-             * @default standard
-             * @enum {string}
-             */
-            ac_level: "concise" | "standard" | "thorough";
-            /**
-             * @description Output format for acceptance criteria.
-             * @default checkbox
-             * @enum {string}
-             */
-            ac_format: "checkbox" | "gherkin";
-            /**
              * @description Testing policy for the project (none, advisory, or tdd).
              * @default advisory
              * @enum {string}
@@ -1120,27 +1123,35 @@ export interface components {
              */
             default_feature_destination?: "backlog" | "now";
             /**
-             * @description How detailed guidance should be for feature sets and project context.
-             * @enum {string}
-             */
-            detail_level?: "concise" | "standard" | "thorough";
-            /**
-             * @description How detailed guidance should be for leaf feature specifications.
-             * @enum {string}
-             */
-            ac_level?: "concise" | "standard" | "thorough";
-            /**
-             * @description Output format for acceptance criteria.
-             * @enum {string}
-             */
-            ac_format?: "checkbox" | "gherkin";
-            /**
              * @description Testing policy for the project (none, advisory, or tdd).
              * @enum {string}
              */
             testing_policy?: "none" | "advisory" | "tdd";
             /** @description Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection. */
             test_adapter?: string | null;
+        };
+        SpecTemplate: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            project_id: string;
+            /** @example Default */
+            name: string;
+            /** @example General-purpose feature specification template */
+            description?: string | null;
+            /** @description Markdown template content */
+            content: string;
+            /** @default false */
+            is_default: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UpdateTemplateInput: {
+            name?: string;
+            description?: string | null;
+            content?: string;
         };
         ProjectDirectory: {
             /** Format: uuid */
@@ -1190,24 +1201,6 @@ export interface components {
              * @enum {string}
              */
             default_feature_destination: "backlog" | "now";
-            /**
-             * @description How detailed guidance should be for feature sets and project context.
-             * @default standard
-             * @enum {string}
-             */
-            detail_level: "concise" | "standard" | "thorough";
-            /**
-             * @description How detailed guidance should be for leaf feature specifications.
-             * @default standard
-             * @enum {string}
-             */
-            ac_level: "concise" | "standard" | "thorough";
-            /**
-             * @description Output format for acceptance criteria.
-             * @default checkbox
-             * @enum {string}
-             */
-            ac_format: "checkbox" | "gherkin";
             /**
              * @description Testing policy for the project (none, advisory, or tdd).
              * @default advisory
@@ -2502,6 +2495,57 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+        };
+    };
+    getProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project's spec template (null if none) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecTemplate"];
+                };
+            };
+        };
+    };
+    updateProjectTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                id: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description Template updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecTemplate"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     listProjectVersions: {

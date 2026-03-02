@@ -537,6 +537,41 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /projects/{id}/template:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Templates]
+      summary: Get the project's spec template
+      operationId: getProjectTemplate
+      responses:
+        '200':
+          description: The project's spec template (null if none)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecTemplate'
+                nullable: true
+    put:
+      tags: [Templates]
+      summary: Update the project's spec template
+      operationId: updateProjectTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateInput'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecTemplate'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /projects/{id}/versions:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -1590,21 +1625,6 @@ components:
           enum: [backlog, now]
           default: backlog
           description: Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
-        detail_level:
-          type: string
-          enum: [concise, standard, thorough]
-          default: standard
-          description: How detailed guidance should be for feature sets and project context.
-        ac_level:
-          type: string
-          enum: [concise, standard, thorough]
-          default: standard
-          description: How detailed guidance should be for leaf feature specifications.
-        ac_format:
-          type: string
-          enum: [checkbox, gherkin]
-          default: checkbox
-          description: Output format for acceptance criteria.
         testing_policy:
           type: string
           enum: [none, advisory, tdd]
@@ -1675,18 +1695,6 @@ components:
           type: string
           enum: [backlog, now]
           description: Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
-        detail_level:
-          type: string
-          enum: [concise, standard, thorough]
-          description: How detailed guidance should be for feature sets and project context.
-        ac_level:
-          type: string
-          enum: [concise, standard, thorough]
-          description: How detailed guidance should be for leaf feature specifications.
-        ac_format:
-          type: string
-          enum: [checkbox, gherkin]
-          description: Output format for acceptance criteria.
         testing_policy:
           type: string
           enum: [none, advisory, tdd]
@@ -1695,6 +1703,47 @@ components:
           type: string
           nullable: true
           description: Test output adapter name (e.g., "cargo-test", "pytest"). Overrides auto-detection.
+
+    SpecTemplate:
+      type: object
+      required: [id, project_id, name, content, is_default, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: 'Default'
+        description:
+          type: string
+          nullable: true
+          example: 'General-purpose feature specification template'
+        content:
+          type: string
+          description: Markdown template content
+        is_default:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateTemplateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
 
     ProjectDirectory:
       type: object
@@ -1772,21 +1821,6 @@ components:
           enum: [backlog, now]
           default: backlog
           description: Where new features go by default. "backlog" leaves them unassigned, "now" assigns to the current version.
-        detail_level:
-          type: string
-          enum: [concise, standard, thorough]
-          default: standard
-          description: How detailed guidance should be for feature sets and project context.
-        ac_level:
-          type: string
-          enum: [concise, standard, thorough]
-          default: standard
-          description: How detailed guidance should be for leaf feature specifications.
-        ac_format:
-          type: string
-          enum: [checkbox, gherkin]
-          default: checkbox
-          description: Output format for acceptance criteria.
         testing_policy:
           type: string
           enum: [none, advisory, tdd]

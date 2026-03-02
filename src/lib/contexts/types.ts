@@ -42,7 +42,6 @@ export interface ProjectDataContext {
   readonly isLoadingFeature: boolean;
   readonly isProjectEmpty: boolean;
   readonly hasInstructionsToBreakDown: boolean;
-  readonly acFormat: 'checkbox' | 'gherkin' | undefined;
   readonly treeScrollTop: number;
   readonly expandedIds: Set<string>;
   readonly activeFilters: Set<FilterableState>;

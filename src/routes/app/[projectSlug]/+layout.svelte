@@ -88,10 +88,6 @@
   );
   const projectId = $derived(project?.id);
   const featureParam = $derived(page.url.searchParams.get('feature'));
-  const acFormat = $derived(
-    (project as any)?.ac_format as 'checkbox' | 'gherkin' | undefined,
-  );
-
   // --- Display ID ↔ UUID maps (built from feature tree + project prefix) ---
   const displayIdToUuid = $derived.by(() => {
     const prefix = project?.key_prefix;
@@ -517,9 +513,6 @@
     },
     get hasInstructionsToBreakDown() {
       return hasInstructionsToBreakDown;
-    },
-    get acFormat() {
-      return acFormat;
     },
     get treeScrollTop() {
       return treeScrollTop;

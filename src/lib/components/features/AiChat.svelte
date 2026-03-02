@@ -45,8 +45,6 @@
     unassignedFeatureCount?: number;
     /** Whether we're in the version/plan view */
     isVersionView?: boolean;
-    /** Format for acceptance criteria: 'checkbox' (default) or 'gherkin' */
-    acFormat?: 'checkbox' | 'gherkin';
   }
 
   let {
@@ -61,7 +59,6 @@
     nextVersionName,
     unassignedFeatureCount,
     isVersionView = false,
-    acFormat,
   }: Props = $props();
 
   // Chat state
@@ -109,7 +106,6 @@
     nextVersionName,
     unassignedFeatureCount,
     isVersionView,
-    acFormat,
   });
 
   let commandMatches = $derived.by(() => {
