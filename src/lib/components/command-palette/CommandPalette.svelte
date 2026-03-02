@@ -31,14 +31,19 @@
   let isLoading = $state(false);
   let selectedIndex = $state(0);
   let inputRef = $state<HTMLInputElement | null>(null);
-  type StateFilter = 'proposed' | 'in_progress' | 'blocked' | null;
-  const STATE_FILTERS: { value: StateFilter; label: string }[] = [
-    { value: 'proposed', label: 'Proposed' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'blocked', label: 'Blocked' },
-  ];
+  type FilterableState = 'proposed' | 'in_progress' | 'blocked';
 
-  let stateFilter = $state<StateFilter>('proposed');
+  let activeFilters = $state<Set<FilterableState>>(new Set(['proposed']));
+
+  function toggleFilter(state: FilterableState) {
+    const next = new Set(activeFilters);
+    if (next.has(state)) {
+      next.delete(state);
+    } else {
+      next.add(state);
+    }
+    activeFilters = next;
+  }
 
   // Build a map of feature ID to parent path (breadcrumbs) and whether it's a group
   const featureMetaMap = $derived.by(() => {
@@ -63,7 +68,7 @@
   };
   const resultsWithMeta = $derived<ResultWithMeta[]>(
     results
-      .filter((result) => !stateFilter || result.state === stateFilter)
+      .filter((result) => activeFilters.size === 0 || activeFilters.has(result.state as FilterableState))
       .map((result) => {
         const meta = featureMetaMap.get(result.id);
         return {
@@ -119,7 +124,7 @@
       query = '';
       results = [];
       selectedIndex = 0;
-      stateFilter = 'proposed';
+      activeFilters = new Set(['proposed']);
       // Focus input after dialog animation
       setTimeout(() => inputRef?.focus(), 50);
     }
@@ -127,7 +132,7 @@
 
   // Reset selection when filter changes
   $effect(() => {
-    stateFilter;
+    activeFilters;
     selectedIndex = 0;
   });
 
@@ -179,19 +184,60 @@
           bind:value={query}
           aria-label="Search features"
         />
-        <div class="filter-chips">
-          {#each STATE_FILTERS as { value, label } (value)}
-            <button
-              type="button"
-              class="filter-chip"
-              class:active={stateFilter === value}
-              onclick={() => (stateFilter = stateFilter === value ? null : value)}
-              title={stateFilter === value ? 'Show all' : `Show ${label.toLowerCase()} only`}
-            >
-              <StateIcon state={value ?? 'proposed'} size={10} />
-              <span>{label}</span>
-            </button>
-          {/each}
+        <div class="filter-icons">
+          <button
+            type="button"
+            class="filter-icon proposed"
+            class:active={activeFilters.has('proposed')}
+            onclick={() => toggleFilter('proposed')}
+            title={activeFilters.has('proposed') ? 'Hide proposed' : 'Show proposed'}
+          >
+            {#if activeFilters.has('proposed')}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L14 8L8 14L2 8L8 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+            {:else}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L14 8L8 14L2 8L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+            {/if}
+          </button>
+          <button
+            type="button"
+            class="filter-icon in-progress"
+            class:active={activeFilters.has('in_progress')}
+            onclick={() => toggleFilter('in_progress')}
+            title={activeFilters.has('in_progress') ? 'Hide in progress' : 'Show in progress'}
+          >
+            {#if activeFilters.has('in_progress')}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" fill="currentColor" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+            {:else}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+            {/if}
+          </button>
+          <button
+            type="button"
+            class="filter-icon blocked"
+            class:active={activeFilters.has('blocked')}
+            onclick={() => toggleFilter('blocked')}
+            title={activeFilters.has('blocked') ? 'Hide blocked' : 'Show blocked'}
+          >
+            {#if activeFilters.has('blocked')}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="5.5" fill="currentColor" stroke="currentColor" stroke-width="1.5" />
+                <line x1="4" y1="12" x2="12" y2="4" stroke="var(--background)" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            {:else}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                <line x1="4" y1="12" x2="12" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            {/if}
+          </button>
         </div>
       </div>
 
@@ -241,7 +287,7 @@
 <style>
   :global(.palette-content) {
     position: fixed;
-    top: 20%;
+    top: 200px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 51;
@@ -285,37 +331,41 @@
     color: var(--foreground-subtle);
   }
 
-  .filter-chips {
+  .filter-icons {
     display: flex;
-    gap: 4px;
+    gap: 1px;
     flex-shrink: 0;
   }
 
-  .filter-chip {
+  .filter-icon {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--foreground-muted);
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
     background: transparent;
-    border: 1px solid var(--border-default);
-    border-radius: 4px;
+    color: var(--foreground-muted);
     cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
+    border-radius: 4px;
+    transition: all 0.1s ease;
   }
 
-  .filter-chip:hover {
+  .filter-icon:hover {
     color: var(--foreground);
-    border-color: var(--foreground-subtle);
   }
 
-  .filter-chip.active {
-    color: var(--foreground);
-    border-color: var(--foreground-subtle);
-    background: var(--background-muted);
+  .filter-icon.proposed.active {
+    color: var(--state-proposed);
+  }
+
+  .filter-icon.in-progress.active {
+    color: var(--state-in-progress);
+  }
+
+  .filter-icon.blocked.active {
+    color: var(--state-blocked);
   }
 
   .palette-results {

@@ -563,6 +563,7 @@
     top: 0;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 2;
     display: flex;
     align-items: center;
     gap: 8px;

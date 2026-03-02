@@ -40,6 +40,10 @@
     margin: 0.25em 0;
   }
 
+  .markdown-view :global(li:has(> input[type='checkbox'])) {
+    list-style: none;
+  }
+
   .markdown-view :global(li > ul),
   .markdown-view :global(li > ol) {
     margin: 0.25em 0;

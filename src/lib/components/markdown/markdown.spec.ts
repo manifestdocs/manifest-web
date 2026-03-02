@@ -94,7 +94,9 @@ describe('renderMarkdown', () => {
   describe('with GFM features', () => {
     it('renders task lists (GFM checkbox)', () => {
       const result = renderMarkdown('- [ ] todo\n- [x] done');
-      expect(result).toContain('<li>');
+      expect(result).toContain('<input');
+      expect(result).toContain('type="checkbox"');
+      expect(result).toContain('checked');
     });
 
     it('renders line breaks within paragraphs (breaks: true)', () => {

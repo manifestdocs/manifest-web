@@ -317,9 +317,39 @@ pre,
 }
 
 /* Task list styling */
+.prose li:has(> input[type='checkbox']) {
+  list-style: none;
+  margin-left: -1.5em;
+}
+
 .prose input[type='checkbox'] {
-  margin-right: 8px;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--background-subtle);
   vertical-align: middle;
+  margin-right: 8px;
+  position: relative;
+  cursor: default;
+}
+
+.prose input[type='checkbox']:checked {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.prose input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--background);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Reduced motion: disable animations for users who prefer it */
