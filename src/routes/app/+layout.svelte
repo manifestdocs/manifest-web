@@ -14,6 +14,7 @@
   import {
     SettingsIcon,
     PlusIcon,
+    SearchIcon,
   } from '$lib/components/icons/index.js';
   import { CommandPalette } from '$lib/components/command-palette/index.js';
   import UpdateBanner from '$lib/components/ui/UpdateBanner.svelte';
@@ -230,6 +231,16 @@
     {:else}
       <!-- Project mode: full header -->
       <div class="header-toolbar">
+        <button
+          class="search-btn"
+          onclick={() => (commandPaletteOpen = true)}
+          title="Search features (T)"
+          aria-label="Search features"
+        >
+          <SearchIcon size={14} />
+          <span class="search-label">Search</span>
+          <kbd class="search-kbd">T</kbd>
+        </button>
         <div class="header-left"></div>
         <div class="toolbar-fill"></div>
         <div class="project-controls">
@@ -369,6 +380,7 @@
     display: flex;
     align-items: center;
     padding: 0 0 4px 16px;
+    position: relative;
   }
 
   .portfolio-toolbar {
@@ -544,6 +556,47 @@
     outline: 1px solid var(--foreground-subtle);
     outline-offset: -1px;
     z-index: 1;
+  }
+
+  .search-btn {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 72px;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-radius: 0;
+    color: var(--foreground-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .search-btn:hover {
+    background: var(--background-emphasis);
+    color: var(--foreground);
+    border-color: var(--foreground-subtle);
+  }
+
+  .search-label {
+    font-weight: 400;
+  }
+
+  .search-kbd {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 5px;
+    background: var(--background-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: 3px;
+    color: var(--foreground-muted);
+    line-height: 1;
   }
 
   .app-main {
