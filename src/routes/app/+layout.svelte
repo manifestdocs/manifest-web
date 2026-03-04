@@ -492,8 +492,8 @@
   .logo-icon {
     height: 50px;
     width: auto;
-    margin-right: 12px;
-    margin-top: -6px;
+    margin-right: 10px;
+    margin-top: -7px;
     border-radius: 4px;
   }
 
