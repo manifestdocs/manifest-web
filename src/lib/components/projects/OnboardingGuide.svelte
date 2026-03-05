@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { base } from '$app/paths';
   import { getContext } from 'svelte';
 
   type Scenario = 'no-projects' | 'no-directory';
@@ -87,7 +86,7 @@
       </div>
     </div>
 
-    <a href="{base}/docs/getting-started" class="docs-link">
+    <a href="https://manifestdocs.ai/docs/cli/initialize" target="_blank" rel="noopener noreferrer" class="docs-link">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
         <path
           d="M6 3H3C2.44772 3 2 3.44772 2 4V13C2 13.5523 2.44772 14 3 14H12C12.5523 14 13 13.5523 13 13V10"
@@ -174,7 +173,7 @@
         automatically.
       </p>
 
-      <a href="{base}/docs/getting-started" class="docs-link">
+      <a href="https://manifestdocs.ai/docs/cli/initialize" target="_blank" rel="noopener noreferrer" class="docs-link">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <path
             d="M6 3H3C2.44772 3 2 3.44772 2 4V13C2 13.5523 2.44772 14 3 14H12C12.5523 14 13 13.5523 13 13V10"
