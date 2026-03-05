@@ -4,8 +4,9 @@
   import { API_BASE_URL } from '$lib/api/client.js';
   import type { components } from '$lib/api/schema.js';
   import DirectoryList from './DirectoryList.svelte';
+  import MarkdownEditor from '$lib/components/markdown/MarkdownEditor.svelte';
+  import { DEFAULT_TEMPLATE } from '$lib/constants/template.js';
 
-  // Get authenticated API client from context
   const authApi = getAuthApiContext();
 
   type Project = components['schemas']['Project'];
@@ -15,18 +16,14 @@
     open: boolean;
     onOpenChange: (open: boolean) => void;
     project: Project;
-    initialTab?: 'project' | 'features' | 'system' | 'delete';
     onUpdated?: () => Promise<void>;
     onDeleted?: () => Promise<void>;
   }
 
-  let { open, onOpenChange, project, initialTab, onUpdated, onDeleted }: Props =
-    $props();
+  let { open, onOpenChange, project, onUpdated, onDeleted }: Props = $props();
 
   // Tab state
-  let activeTab = $state<'project' | 'features' | 'system' | 'delete'>(
-    'project',
-  );
+  let activeTab = $state<'settings' | 'template'>('settings');
 
   // Form state
   let name = $state('');
@@ -38,12 +35,9 @@
   let directories = $state<ProjectDirectory[]>([]);
   let isLoadingDirectories = $state(false);
 
-  // Template state (single template per project)
-  let isLoadingTemplate = $state(false);
+  // Template state
   let templateContent = $state('');
-  let templateName = $state('');
-  let templateDescription = $state('');
-  let isSavingTemplate = $state(false);
+  let isLoadingTemplate = $state(false);
   let templateError = $state<string | null>(null);
 
   // Delete project state
@@ -56,34 +50,22 @@
   let resolvedPath = $state('');
   let configFile = $state('');
   let defaultAgent = $state('claude');
-  let isSavingServer = $state(false);
   let isLoadingServer = $state(false);
   let serverError = $state<string | null>(null);
 
-  // Reset form when dialog opens or project changes
+  // Reset form when dialog opens
   $effect(() => {
     if (open) {
       name = project.name;
       defaultFeatureDestination =
         (project.default_feature_destination as 'backlog' | 'now') ?? 'backlog';
       error = null;
+      templateError = null;
       deleteConfirmText = '';
       deleteError = null;
-      activeTab = initialTab ?? 'project';
+      activeTab = 'settings';
       loadDirectories();
-    }
-  });
-
-  // Load template when features tab is selected
-  $effect(() => {
-    if (open && activeTab === 'features') {
       loadTemplate();
-    }
-  });
-
-  // Load server settings when tab is selected
-  $effect(() => {
-    if (open && activeTab === 'system') {
       loadServerSettings();
     }
   });
@@ -94,9 +76,7 @@
       const api = await authApi.getClient();
       const { data, error: fetchError } = await api.GET(
         '/projects/{id}/directories',
-        {
-          params: { path: { id: project.id } },
-        },
+        { params: { path: { id: project.id } } },
       );
       if (fetchError) {
         console.error('Failed to load directories:', fetchError);
@@ -106,73 +86,6 @@
       directories = data;
     } finally {
       isLoadingDirectories = false;
-    }
-  }
-
-  async function handleSaveGeneral() {
-    if (!name.trim()) {
-      error = 'Project name is required';
-      return;
-    }
-
-    isSaving = true;
-    error = null;
-
-    try {
-      const api = await authApi.getClient();
-      // Only update the name (syncs to root feature title on server)
-      const { error: updateError } = await api.PUT('/projects/{id}', {
-        params: { path: { id: project.id } },
-        body: {
-          name: name.trim(),
-        },
-      });
-
-      if (updateError) {
-        throw new Error('Failed to update project');
-      }
-
-      if (onUpdated) {
-        await onUpdated();
-      }
-
-      onOpenChange(false);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to save changes';
-    } finally {
-      isSaving = false;
-    }
-  }
-
-  async function handleSaveDefaults() {
-    isSaving = true;
-    error = null;
-
-    try {
-      const api = await authApi.getClient();
-      const { error: updateError } = await api.PUT('/projects/{id}', {
-        params: { path: { id: project.id } },
-        body: {
-          default_feature_destination: defaultFeatureDestination,
-        },
-      });
-
-      if (updateError) {
-        throw new Error('Failed to update project defaults');
-      }
-
-      // Also save template if content was modified
-      await handleSaveTemplate();
-
-      if (onUpdated) {
-        await onUpdated();
-      }
-
-      onOpenChange(false);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to save changes';
-    } finally {
-      isSaving = false;
     }
   }
 
@@ -186,11 +99,7 @@
         is_primary: directories.length === 0,
       },
     });
-
-    if (addError) {
-      throw new Error('Failed to add directory');
-    }
-
+    if (addError) throw new Error('Failed to add directory');
     await loadDirectories();
   }
 
@@ -199,11 +108,7 @@
     const { error: removeError } = await api.DELETE('/directories/{id}', {
       params: { path: { id: directoryId } },
     });
-
-    if (removeError) {
-      throw new Error('Failed to remove directory');
-    }
-
+    if (removeError) throw new Error('Failed to remove directory');
     await loadDirectories();
   }
 
@@ -214,76 +119,42 @@
       const api = await authApi.getClient();
       const { data, error: fetchError } = await api.GET(
         '/projects/{id}/template',
-        {
-          params: { path: { id: project.id } },
-        },
+        { params: { path: { id: project.id } } },
       );
       if (fetchError) {
         console.error('Failed to load template:', fetchError);
         return;
       }
-      if (data) {
-        templateName = data.name;
-        templateDescription = data.description ?? '';
-        templateContent = data.content;
-      }
+      templateContent = data ? data.content : DEFAULT_TEMPLATE;
     } finally {
       isLoadingTemplate = false;
     }
   }
 
-  async function handleSaveTemplate() {
-    if (!templateContent.trim()) return;
-
-    isSavingTemplate = true;
-    templateError = null;
-    try {
-      const api = await authApi.getClient();
-      const { error: updateError } = await api.PUT(
-        '/projects/{id}/template',
-        {
-          params: { path: { id: project.id } },
-          body: {
-            name: templateName.trim() || 'Default',
-            description: templateDescription.trim() || null,
-            content: templateContent,
-          },
-        },
-      );
-
-      if (updateError) {
-        throw new Error('Failed to update template');
-      }
-    } catch (err) {
-      templateError =
-        err instanceof Error ? err.message : 'Failed to save template';
-    } finally {
-      isSavingTemplate = false;
-    }
+  function handleResetTemplate() {
+    if (
+      !confirm(
+        'Reset to the default template? Your current content will be replaced.',
+      )
+    )
+      return;
+    templateContent = DEFAULT_TEMPLATE;
   }
 
   const canDelete = $derived(deleteConfirmText === project.name && !isDeleting);
 
   async function handleDeleteProject() {
     if (!canDelete) return;
-
     isDeleting = true;
     deleteError = null;
-
     try {
       const api = await authApi.getClient();
       const { error: deleteErr } = await api.DELETE('/projects/{id}', {
         params: { path: { id: project.id } },
       });
-
-      if (deleteErr) {
-        throw new Error('Failed to delete project');
-      }
-
+      if (deleteErr) throw new Error('Failed to delete project');
       onOpenChange(false);
-      if (onDeleted) {
-        await onDeleted();
-      }
+      if (onDeleted) await onDeleted();
     } catch (err) {
       deleteError =
         err instanceof Error ? err.message : 'Failed to delete project';
@@ -297,9 +168,7 @@
     serverError = null;
     try {
       const res = await fetch(`${API_BASE_URL}/settings`);
-      if (!res.ok) {
-        throw new Error('Failed to load settings');
-      }
+      if (!res.ok) throw new Error('Failed to load settings');
       const data = await res.json();
       databasePath = data.database_path ?? '';
       resolvedPath = data.database_path_resolved;
@@ -312,10 +181,44 @@
     }
   }
 
-  async function handleSaveSystem() {
-    isSavingServer = true;
+  const saveDisabled = $derived(isSaving || !name.trim());
+
+  async function handleSave() {
+    if (!name.trim()) {
+      error = 'Project name is required';
+      return;
+    }
+
+    isSaving = true;
+    error = null;
     serverError = null;
+
     try {
+      const api = await authApi.getClient();
+
+      // Save project settings
+      const { error: projectError } = await api.PUT('/projects/{id}', {
+        params: { path: { id: project.id } },
+        body: {
+          name: name.trim(),
+          default_feature_destination: defaultFeatureDestination,
+        },
+      });
+      if (projectError) throw new Error('Failed to update project');
+
+      // Save template
+      if (templateContent.trim()) {
+        const { error: templateErr } = await api.PUT(
+          '/projects/{id}/template',
+          {
+            params: { path: { id: project.id } },
+            body: { name: 'Default', description: null, content: templateContent },
+          },
+        );
+        if (templateErr) throw new Error('Failed to save template');
+      }
+
+      // Save system settings
       const res = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -324,40 +227,17 @@
           database_path: databasePath.trim() || null,
         }),
       });
-      if (!res.ok) {
-        throw new Error('Failed to save settings');
-      }
-      const data = await res.json();
-      defaultAgent = data.default_agent ?? 'claude';
-      resolvedPath = data.database_path_resolved;
+      if (!res.ok) throw new Error('Failed to save system settings');
+      const sysData = await res.json();
+      defaultAgent = sysData.default_agent ?? 'claude';
+      resolvedPath = sysData.database_path_resolved;
+
+      if (onUpdated) await onUpdated();
       onOpenChange(false);
-    } catch (e) {
-      serverError = e instanceof Error ? e.message : 'Failed to save settings';
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to save changes';
     } finally {
-      isSavingServer = false;
-    }
-  }
-
-  const anySaving = $derived(isSaving || isSavingServer);
-
-  const saveDisabled = $derived(
-    activeTab === 'project'
-      ? isSaving || !name.trim()
-      : activeTab === 'features'
-        ? isSaving
-        : activeTab === 'system'
-          ? isSavingServer
-          : true,
-  );
-
-  function handleSave() {
-    switch (activeTab) {
-      case 'project':
-        return handleSaveGeneral();
-      case 'features':
-        return handleSaveDefaults();
-      case 'system':
-        return handleSaveSystem();
+      isSaving = false;
     }
   }
 </script>
@@ -373,191 +253,142 @@
             Configure {project.name}
           </Dialog.Description>
         </div>
-        {#if activeTab !== 'delete'}
-          <div class="header-actions">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              onclick={() => onOpenChange(false)}
-              disabled={anySaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              onclick={handleSave}
-              disabled={saveDisabled}
-            >
-              {anySaving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        {/if}
+        <div class="header-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => onOpenChange(false)}
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick={handleSave}
+            disabled={saveDisabled}
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
 
       <div class="tabs">
         <button
           type="button"
           class="tab"
-          class:active={activeTab === 'project'}
-          onclick={() => (activeTab = 'project')}
+          class:active={activeTab === 'settings'}
+          onclick={() => (activeTab = 'settings')}
         >
-          Project
+          Settings
         </button>
         <button
           type="button"
           class="tab"
-          class:active={activeTab === 'features'}
-          onclick={() => (activeTab = 'features')}
+          class:active={activeTab === 'template'}
+          onclick={() => (activeTab = 'template')}
         >
-          Features
-        </button>
-        <button
-          type="button"
-          class="tab"
-          class:active={activeTab === 'system'}
-          onclick={() => (activeTab = 'system')}
-        >
-          System
-        </button>
-        <button
-          type="button"
-          class="tab tab-danger"
-          class:active={activeTab === 'delete'}
-          onclick={() => (activeTab = 'delete')}
-        >
-          Delete Project
+          Spec Template
         </button>
       </div>
 
       <div class="tab-content">
-        <div class="tab-panel" class:active={activeTab === 'project'}>
-          <div class="general-form">
-            <div class="form-field">
-              <label for="project-name" class="form-label">Name</label>
-              <input
-                id="project-name"
-                type="text"
-                class="form-input"
-                bind:value={name}
-                disabled={isSaving}
-              />
-            </div>
+        <!-- SETTINGS TAB -->
+        <div class="tab-panel" class:active={activeTab === 'settings'}>
+          <div class="settings-body">
+            <!-- GENERAL -->
+            <div class="settings-section">
+              <span class="section-label">General</span>
 
-            {#if error}
-              <div class="form-error">{error}</div>
-            {/if}
-
-            <hr class="section-divider" />
-
-            <span class="form-label">Working Directories</span>
-            <div class="directories-section">
-              {#if isLoadingDirectories}
-                <div class="loading-state">Loading directories...</div>
-              {:else}
-                <DirectoryList
-                  {directories}
-                  onAdd={handleAddDirectory}
-                  onRemove={handleRemoveDirectory}
+              <div class="form-field">
+                <label for="project-name" class="form-label">Name</label>
+                <input
+                  id="project-name"
+                  type="text"
+                  class="form-input"
+                  bind:value={name}
+                  disabled={isSaving}
                 />
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="form-label">New feature destination</span>
+                  <span class="form-hint">
+                    {#if defaultFeatureDestination !== 'now'}
+                      New features start unscheduled until manually assigned to
+                      a version.
+                    {:else}
+                      New features go directly into the next version.
+                    {/if}
+                  </span>
+                </div>
+                <div
+                  class="segmented-control"
+                  role="radiogroup"
+                  aria-label="Feature destination"
+                >
+                  <label
+                    class="segment"
+                    class:active={defaultFeatureDestination === 'backlog'}
+                  >
+                    <input
+                      type="radio"
+                      name="feature-destination"
+                      value="backlog"
+                      bind:group={defaultFeatureDestination}
+                      disabled={isSaving}
+                    />
+                    Backlog
+                  </label>
+                  <label
+                    class="segment"
+                    class:active={defaultFeatureDestination === 'now'}
+                  >
+                    <input
+                      type="radio"
+                      name="feature-destination"
+                      value="now"
+                      bind:group={defaultFeatureDestination}
+                      disabled={isSaving}
+                    />
+                    Next
+                  </label>
+                </div>
+              </div>
+
+              {#if error}
+                <div class="form-error">{error}</div>
               {/if}
             </div>
-          </div>
-        </div>
-
-        <div class="tab-panel" class:active={activeTab === 'features'}>
-          <div class="general-form">
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="form-label">New feature destination</span>
-                <span class="form-hint">
-                  {#if defaultFeatureDestination !== 'now'}
-                    New features start unscheduled until manually assigned to a
-                    version.
-                  {:else}
-                    New features go directly into the next version.
-                  {/if}
-                </span>
-              </div>
-              <div
-                class="segmented-control"
-                role="radiogroup"
-                aria-label="Feature destination"
-              >
-                <label
-                  class="segment"
-                  class:active={defaultFeatureDestination === 'backlog'}
-                >
-                  <input
-                    type="radio"
-                    name="feature-destination"
-                    value="backlog"
-                    bind:group={defaultFeatureDestination}
-                    disabled={isSaving}
-                  />
-                  Backlog
-                </label>
-                <label
-                  class="segment"
-                  class:active={defaultFeatureDestination === 'now'}
-                >
-                  <input
-                    type="radio"
-                    name="feature-destination"
-                    value="now"
-                    bind:group={defaultFeatureDestination}
-                    disabled={isSaving}
-                  />
-                  Next
-                </label>
-              </div>
-            </div>
-
-            {#if error}
-              <div class="form-error">{error}</div>
-            {/if}
 
             <hr class="section-divider" />
 
-            <div class="template-section">
-              <div class="setting-info">
-                <span class="form-label">Spec Template</span>
-                <span class="form-hint">
-                  This template guides AI agents when writing feature specs.
-                  Agents see it as a starting point when a feature has no
-                  specification yet.
-                </span>
+            <!-- WORKING DIRECTORIES -->
+            <div class="settings-section">
+              <span class="section-label">Working Directories</span>
+              <div class="directories-section">
+                {#if isLoadingDirectories}
+                  <div class="loading-state">Loading directories...</div>
+                {:else}
+                  <DirectoryList
+                    {directories}
+                    onAdd={handleAddDirectory}
+                    onRemove={handleRemoveDirectory}
+                  />
+                {/if}
               </div>
-
-              {#if templateError}
-                <div class="form-error">{templateError}</div>
-              {/if}
-
-              {#if isLoadingTemplate}
-                <div class="loading-state">Loading template...</div>
-              {:else}
-                <div class="form-field">
-                  <textarea
-                    id="template-content"
-                    class="form-input template-content-input"
-                    bind:value={templateContent}
-                    placeholder="Markdown template..."
-                    rows="8"
-                    disabled={isSavingTemplate}
-                  ></textarea>
-                </div>
-              {/if}
             </div>
-          </div>
-        </div>
 
-        <div class="tab-panel" class:active={activeTab === 'system'}>
-          {#if isLoadingServer}
-            <div class="loading-state">Loading settings...</div>
-          {:else}
-            <div class="server-sections">
-              <!-- Agent selection -->
-              <div class="server-section">
+            <hr class="section-divider" />
+
+            <!-- SYSTEM -->
+            <div class="settings-section">
+              <span class="section-label">System</span>
+
+              {#if isLoadingServer}
+                <div class="loading-state">Loading settings...</div>
+              {:else}
                 <div class="setting-row">
                   <div class="setting-info">
                     <span class="form-label">CLI Agent</span>
@@ -579,7 +410,7 @@
                         name="default-agent"
                         value="claude"
                         bind:group={defaultAgent}
-                        disabled={isSavingServer}
+                        disabled={isSaving}
                       />
                       Claude
                     </label>
@@ -604,15 +435,6 @@
                   </div>
                 </div>
 
-                {#if serverError}
-                  <div class="form-error">{serverError}</div>
-                {/if}
-              </div>
-
-              <hr class="section-divider" />
-
-              <!-- Database path -->
-              <div class="server-section">
                 <div class="form-field">
                   <label for="db-path" class="form-label">Database Path</label>
                   <input
@@ -621,7 +443,7 @@
                     class="form-input"
                     bind:value={databasePath}
                     placeholder={resolvedPath}
-                    disabled={isSavingServer}
+                    disabled={isSaving}
                   />
                   <span class="form-hint">
                     Leave empty to use the default location.
@@ -642,47 +464,84 @@
                 {#if serverError}
                   <div class="form-error">{serverError}</div>
                 {/if}
-              </div>
-            </div>
-          {/if}
-        </div>
-
-        <div class="tab-panel" class:active={activeTab === 'delete'}>
-          <div class="delete-section">
-            <div class="danger-zone">
-              <p class="danger-zone-description">
-                Permanently delete <strong>{project.name}</strong> and all its features,
-                history, and versions. This action cannot be undone.
-              </p>
-              <div class="confirm-field">
-                <label class="confirm-label" for="confirm-delete-project">
-                  Type <strong>{project.name}</strong> to confirm:
-                </label>
-                <input
-                  id="confirm-delete-project"
-                  type="text"
-                  class="form-input"
-                  bind:value={deleteConfirmText}
-                  placeholder={project.name}
-                  disabled={isDeleting}
-                  autocomplete="off"
-                />
-              </div>
-
-              {#if deleteError}
-                <div class="form-error">{deleteError}</div>
               {/if}
+            </div>
 
-              <button
-                type="button"
-                class="btn btn-danger"
-                onclick={handleDeleteProject}
-                disabled={!canDelete}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Project'}
-              </button>
+            <hr class="section-divider" />
+
+            <!-- DANGER ZONE -->
+            <div class="settings-section">
+              <span class="section-label">Danger Zone</span>
+              <div class="danger-zone">
+                <p class="danger-zone-description">
+                  Permanently delete <strong>{project.name}</strong> and all its
+                  features, history, and versions. This action cannot be undone.
+                </p>
+                <div class="confirm-field">
+                  <label class="confirm-label" for="confirm-delete-project">
+                    Type <strong>{project.name}</strong> to confirm:
+                  </label>
+                  <input
+                    id="confirm-delete-project"
+                    type="text"
+                    class="form-input"
+                    bind:value={deleteConfirmText}
+                    placeholder={project.name}
+                    disabled={isDeleting}
+                    autocomplete="off"
+                  />
+                </div>
+
+                {#if deleteError}
+                  <div class="form-error">{deleteError}</div>
+                {/if}
+
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  onclick={handleDeleteProject}
+                  disabled={!canDelete}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Project'}
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- SPEC TEMPLATE TAB -->
+        <div class="tab-panel template-panel" class:active={activeTab === 'template'}>
+          <div class="template-header">
+            <span class="form-hint">
+              This template guides AI agents when writing feature specs.
+              Agents see it as a starting point when a feature has no
+              specification yet.
+            </span>
+            <button
+              type="button"
+              class="btn-text"
+              onclick={handleResetTemplate}
+              disabled={isSaving}
+            >
+              Reset to Default
+            </button>
+          </div>
+
+          {#if templateError}
+            <div class="form-error">{templateError}</div>
+          {/if}
+
+          {#if isLoadingTemplate}
+            <div class="loading-state">Loading template...</div>
+          {:else}
+            <div class="template-editor-container">
+              <MarkdownEditor
+                bind:value={templateContent}
+                placeholder="Write your spec template in Markdown..."
+                rows={16}
+              />
+            </div>
+          {/if}
         </div>
       </div>
     </Dialog.Content>
@@ -690,15 +549,13 @@
 </Dialog.Root>
 
 <style>
-  /* Styles handled by globally imported dialog.css */
-
   :global(.settings-content) {
-    top: 200px;
+    top: 120px;
     transform: translateX(-50%);
-    width: 640px;
+    width: 800px;
     min-width: 480px;
     max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 240px);
+    max-height: calc(100vh - 160px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -729,7 +586,7 @@
   }
 
   .dialog-header :global(.dialog-description) {
-    margin: 0 0 0;
+    margin: 0;
   }
 
   .header-actions {
@@ -737,6 +594,8 @@
     gap: 8px;
     flex-shrink: 0;
   }
+
+  /* --- Tabs --- */
 
   .tabs {
     display: flex;
@@ -769,15 +628,6 @@
     border-bottom-color: var(--accent-blue);
   }
 
-  .tab-danger {
-    margin-left: auto;
-  }
-
-  .tab-danger.active {
-    color: #f85149;
-    border-bottom-color: #f85149;
-  }
-
   .tab-content {
     min-height: 0;
     overflow-y: auto;
@@ -791,11 +641,26 @@
     display: block;
   }
 
-  .general-form {
+  /* --- Settings tab --- */
+
+  .settings-body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    height: 100%;
+  }
+
+  .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--foreground-subtle);
   }
 
   .setting-row {
@@ -892,27 +757,10 @@
     word-break: break-all;
   }
 
-  .server-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    height: 100%;
-  }
-
-  .server-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
   .section-divider {
     border: none;
     border-top: 1px solid var(--border-default);
     margin: 4px 0;
-  }
-
-  .delete-section {
-    max-width: 480px;
   }
 
   .danger-zone {
@@ -962,18 +810,50 @@
     line-height: 1.4;
   }
 
-  /* Spec template */
+  /* --- Template tab --- */
 
-  .template-section {
-    display: flex;
+  .template-panel {
+    display: none;
     flex-direction: column;
     gap: 12px;
   }
 
-  .template-content-input {
-    font-family: var(--font-mono, monospace);
+  .template-panel.active {
+    display: flex;
+  }
+
+  .template-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .btn-text {
+    background: none;
+    border: none;
     font-size: 12px;
-    resize: vertical;
-    min-height: 120px;
+    font-weight: 500;
+    color: var(--foreground-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .btn-text:hover {
+    color: var(--foreground);
+    background: var(--background-emphasis);
+  }
+
+  .btn-text:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .template-editor-container :global(.markdown-editor) {
+    border-radius: 6px;
   }
 </style>

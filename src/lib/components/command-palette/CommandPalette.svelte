@@ -33,7 +33,7 @@
   let inputRef = $state<HTMLInputElement | null>(null);
   type FilterableState = 'proposed' | 'in_progress' | 'blocked';
 
-  let activeFilters = $state<Set<FilterableState>>(new Set(['proposed']));
+  let activeFilters = $state<Set<FilterableState>>(new Set());
 
   function toggleFilter(state: FilterableState) {
     const next = new Set(activeFilters);
@@ -124,7 +124,7 @@
       query = '';
       results = [];
       selectedIndex = 0;
-      activeFilters = new Set(['proposed']);
+      activeFilters = new Set();
       // Focus input after dialog animation
       setTimeout(() => inputRef?.focus(), 50);
     }

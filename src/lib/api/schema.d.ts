@@ -929,49 +929,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{id}/memories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        /** Search or list project memories */
-        get: operations["listMemories"];
-        put?: never;
-        /** Create a project memory */
-        post: operations["createMemory"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{id}/memories/{memory_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-                /** @description Memory UUID */
-                memory_id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a project memory */
-        delete: operations["deleteMemory"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/settings": {
         parameters: {
             query?: never;
@@ -1817,47 +1774,6 @@ export interface components {
             body: string;
             /** @description Affected file path if the gap is localized. */
             file?: string | null;
-        };
-        /** @description A project memory entry for AI agent recall. */
-        ProjectMemory: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            project_id: string;
-            /** @description Plain text or markdown content. */
-            content: string;
-            /** @description Tags for categorisation. */
-            tags: string[];
-            /**
-             * Format: uuid
-             * @description Feature this memory originated from.
-             */
-            source_feature_id?: string | null;
-            /** @description Who created this: 'agent' or 'human'. */
-            created_by: string;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        CreateMemoryInput: {
-            /** @description Plain text or markdown content to remember. */
-            content: string;
-            /**
-             * @description Tags for categorisation.
-             * @default []
-             */
-            tags: string[];
-            /**
-             * Format: uuid
-             * @description Feature this memory is associated with.
-             */
-            source_feature_id?: string | null;
-            /**
-             * @description Who created this: 'agent' or 'human'.
-             * @default agent
-             */
-            created_by: string;
         };
         /** @description Analysis results for a codebase directory. */
         ProjectAnalysis: {
@@ -3412,85 +3328,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Proof"];
                 };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    listMemories: {
-        parameters: {
-            query?: {
-                /** @description Search query (full-text on SQLite, LIKE fallback on PostgreSQL). Omit to list all. */
-                q?: string;
-                /** @description Maximum results to return. */
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of project memories */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectMemory"][];
-                };
-            };
-        };
-    };
-    createMemory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateMemoryInput"];
-            };
-        };
-        responses: {
-            /** @description Memory created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectMemory"];
-                };
-            };
-        };
-    };
-    deleteMemory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Project UUID */
-                id: components["parameters"]["ProjectId"];
-                /** @description Memory UUID */
-                memory_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Memory deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             404: components["responses"]["NotFound"];
         };
