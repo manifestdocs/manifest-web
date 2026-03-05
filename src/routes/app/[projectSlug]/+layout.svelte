@@ -15,6 +15,7 @@
     WelcomeScreen,
   } from '$lib/components/projects/index.js';
   import ResizeDivider from '$lib/components/ui/ResizeDivider.svelte';
+  import TutorialOverlay from '$lib/components/ui/TutorialOverlay.svelte';
   import InfoBanner from '$lib/components/ui/InfoBanner.svelte';
   import { StateIcon } from '$lib/components/icons/index.js';
   import type { VersionSummary } from '@manifest/svelte/commands';
@@ -23,6 +24,7 @@
     debugEmptyState,
     serverConnection,
     notifications,
+    tutorial,
     type DebugEmptyState,
   } from '$lib/stores/index.js';
   import { page } from '$app/state';
@@ -557,7 +559,6 @@
       const ver = versions.find((v) => v.id === versionId);
       const name = ver ? ver.name : 'Backlog';
       activeVersionFilter = { versionId, versionName: name };
-      featureTreeRef?.expandForVersion(versionId);
     },
     handleExpandAll: () => {
       activeVersionFilter = null;
@@ -604,6 +605,7 @@
             projectId={projectId!}
             featureColumnWidth={sidebarWidth.value}
             showBannerSpacer={isVersionView && isNowFeatureComplete}
+            activeVersionId={activeVersionFilter?.versionId}
             onSelect={handleSelectFeature}
             onAddFeature={mutations.handleOpenCreateDialog}
             onReparent={mutations.handleReparentFeature}
@@ -716,6 +718,10 @@
     featureTitle={mutations.wrapTarget.title}
     onCreate={mutations.handleWrapInGroup}
   />
+{/if}
+
+{#if !tutorial.projectCompleted && !isProjectEmpty && !needsOnboarding}
+  <TutorialOverlay mode="project" onComplete={() => tutorial.completeProject()} />
 {/if}
 
 <style>

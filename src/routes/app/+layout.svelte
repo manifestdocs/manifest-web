@@ -22,7 +22,8 @@
   import McpConfigBanner from '$lib/components/ui/McpConfigBanner.svelte';
   import ViewModeToggle from '$lib/components/ui/ViewModeToggle.svelte';
   import NotificationToggle from '$lib/components/ui/NotificationToggle.svelte';
-  import { sidebarWidth, viewMode, type ViewMode } from '$lib/stores/index.js';
+  import TutorialOverlay from '$lib/components/ui/TutorialOverlay.svelte';
+  import { sidebarWidth, viewMode, tutorial, type ViewMode } from '$lib/stores/index.js';
   import {
     setRightPanelContext,
     setProjectsContext,
@@ -44,9 +45,9 @@
   // Dialog state
   let newProjectWizardOpen = $state(false);
   let settingsDialogOpen = $state(false);
-  let settingsInitialTab = $state<'project' | 'features' | 'system' | undefined>(undefined);
 
   let commandPaletteOpen = $state(false);
+  let helpMenuOpen = $state(false);
 
   let defaultAgent = $state('claude');
 
@@ -186,6 +187,27 @@
     },
   });
 
+  // First-run redirect: if on /app with no slug, no localStorage entry, and projects exist → go to first project
+  let firstRunChecked = false;
+  $effect(() => {
+    if (firstRunChecked || isLoadingProjects || selectedProjectSlug) return;
+    const lastSlug = typeof localStorage !== 'undefined' ? localStorage.getItem('manifest_last_project') : null;
+    if (lastSlug) { firstRunChecked = true; return; } // returning user on portfolio — don't redirect
+    if (projects.length > 0) {
+      firstRunChecked = true;
+      goto(`/app/${projects[0].slug}`, { replaceState: true });
+    }
+  });
+
+  // Stale slug redirect: if slug doesn't match any loaded project → redirect to first project
+  $effect(() => {
+    if (isLoadingProjects || !selectedProjectSlug || projects.length === 0) return;
+    if (!projects.find((p) => p.slug === selectedProjectSlug)) {
+      localStorage.setItem('manifest_last_project', projects[0].slug);
+      goto(`/app/${projects[0].slug}`, { replaceState: true });
+    }
+  });
+
   const isPortfolioMode = $derived(viewMode.value === 'portfolio' && !selectedProjectSlug);
 
   // Sync viewMode with the URL after each navigation so the toggle icon is always correct
@@ -221,6 +243,51 @@
             <PlusIcon size={16} />
           </button>
           <NotificationToggle />
+          <div class="help-menu-anchor">
+            <button
+              class="icon-btn"
+              onclick={() => (helpMenuOpen = !helpMenuOpen)}
+              title="Help"
+              aria-label="Help"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.5"/>
+                <text x="8" y="11.5" text-anchor="middle" fill="currentColor" font-size="10" font-weight="600" font-family="system-ui">?</text>
+              </svg>
+            </button>
+            {#if helpMenuOpen}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="help-menu-backdrop" onclick={() => (helpMenuOpen = false)}></div>
+              <div class="help-menu">
+                <a
+                  href="https://manifestdocs.ai/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="help-menu-item"
+                  onclick={() => (helpMenuOpen = false)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2.5 1.5h8l3 3v10h-11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    <line x1="5" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="5" y1="9.5" x2="11" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                  <span>Documentation</span>
+                </a>
+                <button
+                  class="help-menu-item"
+                  onclick={() => { helpMenuOpen = false; if (isPortfolioMode) { tutorial.resetPortfolio(); } else { tutorial.resetProject(); } }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M5.5 6.5a2.5 2.5 0 0 1 4.5 1c0 1.5-2.5 1.5-2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="7.5" cy="12" r="0.75" fill="currentColor"/>
+                  </svg>
+                  <span>Show Tutorial</span>
+                </button>
+              </div>
+            {/if}
+          </div>
           <ViewModeToggle onmode={navigateToMode} />
         </div>
       </div>
@@ -278,6 +345,51 @@
             <PlusIcon size={16} />
           </button>
           <NotificationToggle />
+          <div class="help-menu-anchor">
+            <button
+              class="icon-btn"
+              onclick={() => (helpMenuOpen = !helpMenuOpen)}
+              title="Help"
+              aria-label="Help"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.5"/>
+                <text x="8" y="11.5" text-anchor="middle" fill="currentColor" font-size="10" font-weight="600" font-family="system-ui">?</text>
+              </svg>
+            </button>
+            {#if helpMenuOpen}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="help-menu-backdrop" onclick={() => (helpMenuOpen = false)}></div>
+              <div class="help-menu">
+                <a
+                  href="https://manifestdocs.ai/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="help-menu-item"
+                  onclick={() => (helpMenuOpen = false)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2.5 1.5h8l3 3v10h-11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    <line x1="5" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="5" y1="9.5" x2="11" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                  <span>Documentation</span>
+                </a>
+                <button
+                  class="help-menu-item"
+                  onclick={() => { helpMenuOpen = false; if (isPortfolioMode) { tutorial.resetPortfolio(); } else { tutorial.resetProject(); } }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M5.5 6.5a2.5 2.5 0 0 1 4.5 1c0 1.5-2.5 1.5-2.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="7.5" cy="12" r="0.75" fill="currentColor"/>
+                  </svg>
+                  <span>Show Tutorial</span>
+                </button>
+              </div>
+            {/if}
+          </div>
           <ViewModeToggle onmode={navigateToMode} />
         </div>
       </div>
@@ -335,8 +447,7 @@
 {#if selectedProject}
   <ProjectSettingsDialog
     open={settingsDialogOpen}
-    initialTab={settingsInitialTab}
-    onOpenChange={(open) => { settingsDialogOpen = open; if (!open) settingsInitialTab = undefined; }}
+    onOpenChange={(open) => { settingsDialogOpen = open; }}
     project={selectedProject}
     onUpdated={loadProjects}
     onDeleted={async () => {
@@ -354,6 +465,10 @@
     projectId={selectedProject.id}
     projectSlug={selectedProjectSlug || ''}
   />
+{/if}
+
+{#if isPortfolioMode && !tutorial.portfolioCompleted && projects.length > 0}
+  <TutorialOverlay mode="portfolio" onComplete={() => tutorial.completePortfolio()} />
 {/if}
 
 <style>
@@ -556,6 +671,51 @@
     outline: 1px solid var(--foreground-subtle);
     outline-offset: -1px;
     z-index: 1;
+  }
+
+  .help-menu-anchor {
+    position: relative;
+  }
+
+  .help-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+  }
+
+  .help-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+    margin-top: 4px;
+    min-width: 180px;
+    padding: 4px;
+    background: var(--background);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .help-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--foreground-muted);
+    background: none;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .help-menu-item:hover {
+    background: var(--background-muted);
+    color: var(--foreground);
   }
 
   .search-btn {
