@@ -274,7 +274,6 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 24px;
-    max-width: calc(900px - 26px - 26px);
   }
 
   .header-left {

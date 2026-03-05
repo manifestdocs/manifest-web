@@ -266,7 +266,7 @@
   }
 </script>
 
-<div class="feature-detail" class:has-evidence={!!feature && activeTab === 'view' && isLeaf}>
+<div class="feature-detail" class:has-feature={!!feature} class:has-evidence={!!feature && activeTab === 'view' && isLeaf}>
   <div class="detail-main">
     {#if !feature}
       <div class="empty-state">
@@ -370,8 +370,8 @@
     flex-direction: column;
   }
 
-  /* When evidence is present: two-column grid, full height */
-  .feature-detail.has-evidence {
+  /* When a feature is selected: always use 2/3 + 1/3 grid */
+  .feature-detail.has-feature {
     display: grid;
     grid-template-columns: 2fr 1fr;
   }
@@ -381,6 +381,7 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    border-right: 1px solid var(--border-default);
   }
 
   .empty-state {
@@ -401,11 +402,6 @@
     flex: 1;
     padding: 20px 26px;
     overflow-y: auto;
-    max-width: 900px;
-  }
-
-  .feature-detail.has-evidence .detail-content {
-    max-width: none;
   }
 
   .detail-content.editing {
@@ -421,18 +417,23 @@
 
   .evidence-sidebar {
     overflow-y: auto;
-    border-left: 1px solid var(--border-default);
   }
 
-  /* Very narrow: stack vertically */
+  /* Very narrow: collapse to single column */
   @container feature-detail (max-width: 540px) {
-    .feature-detail.has-evidence {
+    .feature-detail.has-feature {
       grid-template-columns: 1fr;
+    }
+
+    .detail-main {
+      border-right: none;
+    }
+
+    .feature-detail.has-evidence {
       grid-template-rows: 1fr auto;
     }
 
     .evidence-sidebar {
-      border-left: none;
       border-top: 1px solid var(--border-default);
       max-height: 300px;
     }

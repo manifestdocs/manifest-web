@@ -156,6 +156,7 @@
 
       <!-- Command -->
       <div class="command-row">
+        <span class="command-label">Test command</span>
         <code>$ {proof.command}</code>
       </div>
 
@@ -280,11 +281,9 @@
     letter-spacing: 0.04em;
     color: var(--foreground-muted);
     padding: 6px 0 2px;
-    border-top: 1px solid var(--border-muted);
   }
 
   .suite-header:first-child {
-    border-top: none;
     padding-top: 0;
   }
 
@@ -349,13 +348,27 @@
 
   .command-row {
     padding: 8px 0;
-    border-top: 1px solid var(--border-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .command-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foreground-subtle);
   }
 
   .command-row code {
     font-size: 12px;
     color: var(--foreground-muted);
     font-family: var(--font-mono, monospace);
+    background: var(--background-subtle);
+    padding: 8px 12px;
+    border-radius: 4px;
+    display: block;
   }
 
   /* ── Toggle buttons ─────────────────────────────────── */
@@ -399,7 +412,6 @@
 
   .evidence-files {
     padding: 8px 0;
-    border-top: 1px solid var(--border-muted);
   }
 
   .evidence-label {
