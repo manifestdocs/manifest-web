@@ -10,6 +10,7 @@
   import {
     findFeature,
     filterByStates,
+    filterByVersion,
     computeFeatureVersion,
     sortFeatures,
   } from './featureTreeUtils.js';
@@ -73,6 +74,8 @@
     hoveredFeatureId?: string | null;
     onHoverFeature?: (id: string | null) => void;
     showBannerSpacer?: boolean;
+    /** Active version filter ID (from plan view header click). Null = backlog, undefined = no filter. */
+    activeVersionId?: string | null;
   }
 
   let {
@@ -98,6 +101,7 @@
     hoveredFeatureId = null,
     onHoverFeature,
     showBannerSpacer = false,
+    activeVersionId = undefined,
   }: Props = $props();
 
   // Layout constant (matches CSS)
@@ -146,10 +150,33 @@
     }
   });
 
-  // Apply filter if any state filters are active
-  const displayFeatures = $derived(
-    activeFilters.size > 0 ? filterByStates(features, activeFilters) : features,
-  );
+  // Apply state and version filters (both can be active simultaneously)
+  const hasVersionFilter = $derived(activeVersionId !== undefined);
+  const displayFeatures = $derived.by(() => {
+    let result = features;
+    if (hasVersionFilter) {
+      result = filterByVersion(result, activeVersionId!);
+    }
+    if (activeFilters.size > 0) {
+      result = filterByStates(result, activeFilters);
+    }
+    return result;
+  });
+
+  // Auto-expand groups when any filter changes so filtered results are visible
+  let previousFilterKey = $state('');
+  $effect(() => {
+    const versionPart = hasVersionFilter ? `v:${activeVersionId}` : '';
+    const statePart = [...activeFilters].sort().join(',');
+    const filterKey = `${versionPart}|${statePart}`;
+    if (initialized && features.length > 0 && filterKey !== previousFilterKey) {
+      const anyFilterActive = hasVersionFilter || activeFilters.size > 0;
+      if (anyFilterActive) {
+        expandedIds = featureExpansion.expandForFilter(displayFeatures);
+      }
+      previousFilterKey = filterKey;
+    }
+  });
 
   // Drag and Drop (extracted)
   const dnd = useDragAndDrop({

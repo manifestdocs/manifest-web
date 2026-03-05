@@ -8,6 +8,7 @@
   } from './versionUtils.js';
   import {
     filterByStates,
+    filterByVersion,
     sortFeatures,
   } from '$lib/components/features/featureTreeUtils.js';
   import type { FilterableState } from '$lib/stores/featureFilter.svelte.js';
@@ -31,6 +32,7 @@
     onDotHover: (featureId: string, versionId: string | null) => void;
     onHoverFeature: (id: string | null) => void;
     totalVersionColumns: number;
+    activeVersionId?: string | null;
   }
 
   let {
@@ -49,15 +51,23 @@
     onDotHover,
     onHoverFeature,
     totalVersionColumns,
+    activeVersionId = undefined,
   }: Props = $props();
 
   let scrollRef = $state<HTMLElement | null>(null);
   let syncing = false;
 
-  // Apply filter if any state filters are active
-  const displayFeatures = $derived(
-    activeFilters.size > 0 ? filterByStates(features, activeFilters) : features,
-  );
+  // Apply state and version filters
+  const displayFeatures = $derived.by(() => {
+    let result = features;
+    if (activeVersionId !== undefined) {
+      result = filterByVersion(result, activeVersionId!);
+    }
+    if (activeFilters.size > 0) {
+      result = filterByStates(result, activeFilters);
+    }
+    return result;
+  });
 
   // Sync scroll from tree → columns
   $effect(() => {

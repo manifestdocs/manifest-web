@@ -376,6 +376,25 @@ function createFeatureExpansionStore() {
     },
 
     /**
+     * Expand all groups in a (potentially filtered) tree.
+     * Used when state filters change so that filtered results are visible.
+     */
+    expandForFilter(filteredFeatures: FeatureTreeNode[]): Set<string> {
+      const groupIds = new Set(getAllGroupIds(filteredFeatures));
+      currentExpandedIds = groupIds;
+
+      if (currentProjectId) {
+        saveToStorage(currentProjectId, {
+          expandedIds: [...groupIds],
+          hasUserInteracted,
+          version: STORAGE_VERSION,
+        });
+      }
+
+      return groupIds;
+    },
+
+    /**
      * Reset the current project state (useful for testing or forced refresh).
      */
     reset(): void {

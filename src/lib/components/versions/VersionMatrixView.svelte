@@ -221,6 +221,7 @@
       onDotHover={handleDotHover}
       {onHoverFeature}
       {totalVersionColumns}
+      {activeVersionId}
     />
   </div>
 </div>

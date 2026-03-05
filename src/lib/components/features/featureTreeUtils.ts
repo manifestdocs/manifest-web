@@ -64,6 +64,31 @@ export function filterByStates(
 }
 
 /**
+ * Filter features to only show leaf nodes assigned to a specific version,
+ * plus ancestor groups that contain matching leaves.
+ * Pass null for backlog (unassigned features).
+ */
+export function filterByVersion(
+  nodes: FeatureTreeNode[],
+  versionId: string | null,
+): FeatureTreeNode[] {
+  return nodes
+    .map((node) => {
+      if (node.children.length > 0) {
+        const filteredChildren = filterByVersion(node.children, versionId);
+        if (filteredChildren.length === 0) return null;
+        return { ...node, children: filteredChildren };
+      }
+      const matches =
+        versionId === null
+          ? !node.target_version_id
+          : node.target_version_id === versionId;
+      return matches ? node : null;
+    })
+    .filter((node): node is FeatureTreeNode => node !== null);
+}
+
+/**
  * Compute a hash-based version number for the feature tree structure.
  * Used to detect tree changes (e.g., from SSE updates).
  */
