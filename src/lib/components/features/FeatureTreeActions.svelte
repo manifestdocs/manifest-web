@@ -25,6 +25,7 @@
   const proposedActive = $derived(activeFilters.has('proposed'));
   const inProgressActive = $derived(activeFilters.has('in_progress'));
   const blockedActive = $derived(activeFilters.has('blocked'));
+  const pendingChangesActive = $derived(activeFilters.has('pending_changes'));
 </script>
 
 <div class="tree-actions">
@@ -117,6 +118,15 @@
         </svg>
       {/if}
     </button>
+    <button
+      class="action-btn filter-btn pending-changes"
+      class:active={pendingChangesActive}
+      onclick={() => onToggleFilter('pending_changes')}
+      title={pendingChangesActive ? 'Hide pending changes filter' : 'Show pending changes'}
+      type="button"
+    >
+      <span class="diff-label">+</span>
+    </button>
   {/if}
   <button
     class="action-btn"
@@ -202,6 +212,24 @@
   .action-btn.filter-btn.blocked.active {
     background: transparent;
     color: var(--state-blocked);
+  }
+
+  .action-btn.filter-btn.pending-changes.active {
+    background: transparent;
+    color: var(--accent-purple);
+  }
+
+  .diff-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 11px;
+    height: 11px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    border: 1px solid currentColor;
+    border-radius: 0;
   }
 
 </style>

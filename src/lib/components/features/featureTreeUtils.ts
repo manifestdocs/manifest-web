@@ -64,6 +64,27 @@ export function filterByStates(
 }
 
 /**
+ * Filter features to only show leaf nodes with pending changes
+ * (desired_details differs from details), plus ancestor groups.
+ */
+export function filterByPendingChanges(
+  nodes: FeatureTreeNode[],
+): FeatureTreeNode[] {
+  return nodes
+    .map((node) => {
+      if (node.children.length > 0) {
+        const filteredChildren = filterByPendingChanges(node.children);
+        if (filteredChildren.length === 0) return null;
+        return { ...node, children: filteredChildren };
+      }
+      const hasPending =
+        !!node.desired_details && node.desired_details !== node.details;
+      return hasPending ? node : null;
+    })
+    .filter((node): node is FeatureTreeNode => node !== null);
+}
+
+/**
  * Filter features to only show leaf nodes assigned to a specific version,
  * plus ancestor groups that contain matching leaves.
  * Pass null for backlog (unassigned features).

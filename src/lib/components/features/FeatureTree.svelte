@@ -10,6 +10,7 @@
   import {
     findFeature,
     filterByStates,
+    filterByPendingChanges,
     filterByVersion,
     computeFeatureVersion,
     sortFeatures,
@@ -152,13 +153,20 @@
 
   // Apply state and version filters (both can be active simultaneously)
   const hasVersionFilter = $derived(activeVersionId !== undefined);
+  const hasPendingChangesFilter = $derived(activeFilters.has('pending_changes'));
+  const stateFilters = $derived(
+    new Set([...activeFilters].filter((f) => f !== 'pending_changes')),
+  );
   const displayFeatures = $derived.by(() => {
     let result = features;
     if (hasVersionFilter) {
       result = filterByVersion(result, activeVersionId!);
     }
-    if (activeFilters.size > 0) {
-      result = filterByStates(result, activeFilters);
+    if (stateFilters.size > 0) {
+      result = filterByStates(result, stateFilters);
+    }
+    if (hasPendingChangesFilter) {
+      result = filterByPendingChanges(result);
     }
     return result;
   });

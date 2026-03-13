@@ -31,7 +31,7 @@
   let isLoading = $state(false);
   let selectedIndex = $state(0);
   let inputRef = $state<HTMLInputElement | null>(null);
-  type FilterableState = 'proposed' | 'in_progress' | 'blocked';
+  type FilterableState = 'proposed' | 'in_progress' | 'blocked' | 'pending_changes';
 
   let activeFilters = $state<Set<FilterableState>>(new Set());
 
@@ -66,9 +66,31 @@
     breadcrumbs: string[];
     isGroup: boolean;
   };
+  // Build a set of feature IDs with pending changes from the tree
+  const pendingChangeIds = $derived.by(() => {
+    const ids = new Set<string>();
+    function collect(nodes: FeatureTreeNode[]) {
+      for (const node of nodes) {
+        if (node.desired_details && node.desired_details !== node.details) {
+          ids.add(node.id);
+        }
+        collect(node.children);
+      }
+    }
+    collect(featureTree);
+    return ids;
+  });
+
   const resultsWithMeta = $derived<ResultWithMeta[]>(
     results
-      .filter((result) => activeFilters.size === 0 || activeFilters.has(result.state as FilterableState))
+      .filter((result) => {
+        if (activeFilters.size === 0) return true;
+        const stateFilters = new Set<string>([...activeFilters].filter((f) => f !== 'pending_changes'));
+        const wantPending = activeFilters.has('pending_changes');
+        const matchesState = stateFilters.size > 0 && stateFilters.has(result.state);
+        const matchesPending = wantPending && pendingChangeIds.has(result.id);
+        return matchesState || matchesPending;
+      })
       .map((result) => {
         const meta = featureMetaMap.get(result.id);
         return {
@@ -238,6 +260,15 @@
               </svg>
             {/if}
           </button>
+          <button
+            type="button"
+            class="filter-icon pending-changes"
+            class:active={activeFilters.has('pending_changes')}
+            onclick={() => toggleFilter('pending_changes')}
+            title={activeFilters.has('pending_changes') ? 'Hide pending changes' : 'Show pending changes'}
+          >
+            <span class="diff-label">+</span>
+          </button>
         </div>
       </div>
 
@@ -366,6 +397,23 @@
 
   .filter-icon.blocked.active {
     color: var(--state-blocked);
+  }
+
+  .filter-icon.pending-changes.active {
+    color: var(--accent-purple);
+  }
+
+  .diff-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 11px;
+    height: 11px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    border: 1px solid currentColor;
+    border-radius: 0;
   }
 
   .palette-results {

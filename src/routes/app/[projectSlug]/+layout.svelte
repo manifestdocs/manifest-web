@@ -650,7 +650,7 @@
           <span>Blocked</span>
         </div>
         <div class="legend-item">
-          <StateIcon state="implemented" size={12} hasChanges />
+          <span class="legend-diff">+</span>
           <span>Pending Changes</span>
         </div>
       </div>
@@ -832,6 +832,20 @@
 
   .status-text {
     font-weight: 500;
+  }
+
+  .legend-diff {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 11px;
+    height: 11px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    border: 1px solid var(--accent-purple);
+    border-radius: 0;
+    color: var(--accent-purple);
   }
 
   .legend-item {
