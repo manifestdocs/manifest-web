@@ -113,7 +113,7 @@ function createNotificationStore() {
     try {
       const notification = new Notification('Manifest', {
         body,
-        icon: '/favicon.png',
+        icon: '/favicon.svg',
         tag: `manifest-${data.featureId}`,
       });
 

@@ -199,9 +199,15 @@
     }
   });
 
-  // Stale slug redirect: if slug doesn't match any loaded project → redirect to first project
+  // Stale slug redirect: if slug doesn't match any loaded project → redirect
   $effect(() => {
-    if (isLoadingProjects || !selectedProjectSlug || projects.length === 0) return;
+    if (isLoadingProjects || !selectedProjectSlug) return;
+    if (projects.length === 0) {
+      // No projects exist (e.g., fresh DB) — go to portfolio welcome screen
+      localStorage.removeItem('manifest_last_project');
+      goto('/app', { replaceState: true });
+      return;
+    }
     if (!projects.find((p) => p.slug === selectedProjectSlug)) {
       localStorage.setItem('manifest_last_project', projects[0].slug);
       goto(`/app/${projects[0].slug}`, { replaceState: true });
@@ -415,7 +421,7 @@
               Plan
             </a>
             <a
-              href="{base}/app/{selectedProjectSlug}/activity"
+              href="{base}/app/{selectedProjectSlug}/activity{featureQueryParam}"
               class="header-tab"
               class:active={page.url.pathname ===
                 `/app/${selectedProjectSlug}/activity`}

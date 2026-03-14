@@ -27,64 +27,33 @@
           stroke-width="2"
           stroke-linejoin="round"
         />
-        <path
-          d="M20 28L24 24L28 28"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <path
-          d="M24 24V34"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        />
+        <line x1="24" y1="24" x2="24" y2="34" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <line x1="19" y1="29" x2="29" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
     </div>
 
-    <h2 class="guide-title">Create Your First Project</h2>
-    <div class="method-cards">
-      <div class="method-panel">
-        <h3 class="method-title">Web UI</h3>
-        <p class="method-description">
-          Use the setup wizard to create a project.
-        </p>
-        <button
-          type="button"
-          class="btn btn-primary method-action"
-          onclick={() => wizardContext?.open()}
-        >
-          Create Project
-        </button>
+    <h2 class="guide-title">Add Your First Project</h2>
+    <p class="guide-subtitle">Point Manifest at an existing project directory to start tracking features.</p>
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">1</span>
+        <div class="step-content">
+          <span class="step-title">Open your project in a coding agent</span>
+        </div>
       </div>
-
-      <div class="method-separator"></div>
-
-      <div class="method-panel">
-        <h3 class="method-title">CLI Coding Agent</h3>
-        <p class="method-description">
-          Initialize from your codebase with automatic code and git analysis.
-        </p>
-        <div class="steps">
-          <div class="step">
-            <span class="step-number">1</span>
-            <div class="step-content">
-              <span class="step-title">Open your project in a coding agent</span
-              >
-            </div>
-          </div>
-          <div class="step">
-            <span class="step-number">2</span>
-            <div class="step-content">
-              <code class="step-command"
-                >"Initialize this project in Manifest"</code
-              >
-            </div>
-          </div>
+      <div class="step">
+        <span class="step-number">2</span>
+        <div class="step-content">
+          <code class="step-command"
+            >"Initialize this project in Manifest"</code
+          >
         </div>
       </div>
     </div>
+
+    <p class="guide-alt">
+      Or <button type="button" class="link-button" onclick={() => wizardContext?.open()}>create a project manually</button> from the web UI. For existing codebases, you'll need to ask your coding agent to plan the feature tree.
+    </p>
 
     <a href="https://manifestdocs.ai/docs/cli/initialize" target="_blank" rel="noopener noreferrer" class="docs-link">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -219,6 +188,14 @@
     margin: 0 0 8px;
   }
 
+  .guide-subtitle {
+    font-size: 14px;
+    color: var(--foreground-subtle);
+    line-height: 1.5;
+    margin: 0 0 28px;
+    max-width: 480px;
+  }
+
   .guide-description {
     font-size: 14px;
     color: var(--foreground-subtle);
@@ -230,48 +207,21 @@
     color: var(--foreground);
   }
 
-  /* Method cards layout */
-  .method-cards {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    width: 100%;
-    margin-bottom: 28px;
-  }
-
-  .method-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 0 24px;
-  }
-
-  .method-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin: 0 0 8px;
-  }
-
-  .method-description {
+  .guide-alt {
     font-size: 13px;
-    color: var(--foreground-subtle);
-    line-height: 1.5;
-    margin: 0 0 16px;
+    color: var(--foreground-muted);
+    margin: 0 0 24px;
   }
 
-  .method-action {
-    margin-top: 0;
+  .link-button {
+    all: unset;
+    color: var(--accent-blue);
+    cursor: pointer;
+    font-size: inherit;
   }
 
-  .method-separator {
-    width: 1px;
-    align-self: stretch;
-    background: var(--border-default);
-    flex-shrink: 0;
-    margin: 0 24px;
+  .link-button:hover {
+    text-decoration: underline;
   }
 
   /* Directory guide (no-directory scenario) */

@@ -321,6 +321,9 @@ Example:
                 >You can always add or edit these later in project settings</span
               >
             </div>
+            <p class="step-note">
+              For existing codebases, ask your coding agent to decompose your codebase into a feature tree after creating the project.
+            </p>
           </div>
         {/if}
 
@@ -399,6 +402,17 @@ Example:
 
   .form-hint-create {
     color: var(--accent-green, #3fb950);
+  }
+
+  .step-note {
+    font-size: 13px;
+    color: var(--foreground-muted);
+    line-height: 1.5;
+    margin: 0;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, transparent);
+    border-radius: 6px;
   }
 
   .instructions-textarea {
