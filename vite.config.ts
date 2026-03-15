@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
@@ -8,12 +9,8 @@ export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   server: {
     host: '127.0.0.1',
-    proxy: {
-      '/api': {
-        target: `http://localhost:${API_PORT}`,
-        changeOrigin: true,
-        ws: true,
-      },
+    fs: {
+      allow: [path.resolve(__dirname, '..')],
     },
   },
   test: {
