@@ -62,7 +62,10 @@ export async function fetchVersions(
       console.error('Failed to load versions:', error);
       return [];
     }
-    return data;
+    // API returns { versions, next, backlog_count } — extract the array
+    if (Array.isArray(data)) return data;
+    if ('versions' in data && Array.isArray(data.versions)) return data.versions;
+    return [];
   } catch (e) {
     console.error('Failed to load versions:', e);
     return [];
