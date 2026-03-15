@@ -6,18 +6,25 @@
  */
 
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { homedir, platform } from 'node:os';
 import { mkdirSync } from 'node:fs';
 import { json } from '@sveltejs/kit';
 import { ZodError, type ZodType } from 'zod';
 import { Database, NotFoundError, ConflictError, ValidationError, DbError } from './db.js';
 
+function defaultDbPath(): string {
+  const home = homedir();
+  if (platform() === 'darwin') {
+    return join(home, 'Library', 'Application Support', 'manifest', 'manifest.db');
+  }
+  return join(process.env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'manifest', 'manifest.db');
+}
+
 let _db: Database | null = null;
 
 export async function getDb(): Promise<Database> {
   if (!_db) {
-    const dbPath = process.env.MANIFEST_DB
-      ?? join(homedir(), '.local', 'share', 'manifest', 'manifest.db');
+    const dbPath = process.env.MANIFEST_DB ?? defaultDbPath();
 
     mkdirSync(join(dbPath, '..'), { recursive: true });
     _db = await Database.open(dbPath);
